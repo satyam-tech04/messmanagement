@@ -30,7 +30,7 @@ import type { TenantContext } from "../domain/tenant-context";
 import { requireRole } from "../domain/tenant-context";
 import { domainError, infrastructureError, type DomainError } from "../errors";
 import { verifyToken } from "../policies/qr.policy";
-import { isCutFromMeal } from "../policies/headcount.policy";
+import { checkMealEligibility } from "../policies/eligibility.policy";
 import type {
   AttendanceRepository,
   AuditLogRepository,
@@ -41,7 +41,7 @@ import type {
 } from "../ports/repositories";
 import type { TokenSigner } from "../ports/token-signer";
 import { err, isErr, ok, type Result } from "../result";
-import { isWithinDateRange, serviceDateOf, type ServiceDate } from "../time";
+import { serviceDateOf, type ServiceDate } from "../time";
 
 export interface VerifyAttendanceDeps {
   readonly tenants: TenantRepository;
@@ -205,69 +205,21 @@ async function checkAccountEligibility(
 
   if (!student) return err(domainError("NOT_FOUND", "Student record not found."));
 
-  // Defence in depth. RLS should make this unreachable; if it is ever reached,
-  // something is badly wrong and the scan must not proceed.
-  if (student.tenantId !== ctx.tenantId) {
-    return err(domainError("TENANT_MISMATCH", "Student belongs to a different mess."));
-  }
-
-  if (student.status === "BLOCKED") {
-    return err(
-      domainError("BLOCKED_UNPAID", `${student.fullName} is blocked for unpaid dues.`, {
-        rollNumber: student.rollNumber,
-      }),
-    );
-  }
-  if (student.status === "INACTIVE") {
-    return err(
-      domainError("STUDENT_INACTIVE", `${student.fullName} is no longer an active student.`, {
-        rollNumber: student.rollNumber,
-      }),
-    );
-  }
-
-  const subscription = student.subscription;
-  if (!subscription || subscription.status !== "ACTIVE") {
-    return err(
-      domainError("NO_ACTIVE_PLAN", `${student.fullName} has no active meal plan.`, {
-        rollNumber: student.rollNumber,
-      }),
-    );
-  }
-  if (!isWithinDateRange(target.serviceDate, subscription.startDate, subscription.endDate)) {
-    return err(
-      domainError("NO_ACTIVE_PLAN", `${student.fullName}'s plan does not cover today.`, {
-        rollNumber: student.rollNumber,
-      }),
-    );
-  }
-  if (!subscription.includedMealSlots.includes(target.mealSlot)) {
-    return err(
-      domainError("NO_ACTIVE_PLAN", `${student.fullName}'s plan does not include this meal.`, {
-        rollNumber: student.rollNumber,
-        slot: target.mealSlot,
-      }),
-    );
-  }
-
-  // An approved cut means the student opted out and the kitchen did not cook
-  // for them. Serving anyway would silently break the headcount they were
-  // credited against.
   const cuts = await deps.messCuts.findForStudentOnDate(
     ctx.tenantId,
     student.studentId,
     target.serviceDate,
   );
-  const activeCut = cuts.find((cut) => isCutFromMeal(cut, target.serviceDate, target.mealSlot));
-  if (activeCut) {
-    return err(
-      domainError("ON_MESS_CUT", `${student.fullName} has cancelled this meal.`, {
-        rollNumber: student.rollNumber,
-      }),
-    );
-  }
 
-  return ok(student);
+  // The same policy the student's phone ran at issuance. One implementation,
+  // two callers — see eligibility.policy.ts for why that matters.
+  return checkMealEligibility({
+    student,
+    expectedTenantId: ctx.tenantId,
+    mealSlot: target.mealSlot,
+    serviceDate: target.serviceDate,
+    cuts,
+  });
 }
 
 async function commitAttendance(

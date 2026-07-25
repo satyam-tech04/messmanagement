@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { QrCode } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
@@ -8,6 +7,8 @@ import { StatusBadge } from "@/components/status-badge";
 import { requireSessionUser } from "@/infra/auth/session";
 import { createClient } from "@/infra/supabase/server";
 import { serviceDateOf } from "@/core/time";
+import { formatServiceDate } from "@/lib/format";
+import { QrDisplay } from "./qr-display";
 
 export const metadata: Metadata = { title: "My QR · Mess OS" };
 
@@ -61,21 +62,18 @@ export default async function StudentPage() {
       />
 
       <Card className="overflow-hidden">
-        <CardContent className="flex flex-col items-center gap-5 py-12 text-center">
-          <div className="bg-primary/10 text-primary flex size-20 items-center justify-center rounded-2xl">
-            <QrCode className="size-10" aria-hidden="true" />
-          </div>
-          <div className="space-y-1.5">
+        <CardContent className="flex flex-col items-center gap-5 py-10">
+          <div className="space-y-1.5 text-center">
             <h2 className="text-xl font-semibold">Your meal QR code</h2>
             <p className="text-muted-foreground mx-auto max-w-sm text-sm">
-              {subscription
-                ? "Show this at the counter. It refreshes every few seconds, so keep the screen open while you queue."
-                : "You need an active meal plan before you can get a QR code. Speak to the mess admin."}
+              Show this at the counter. Keep the screen open while you queue.
             </p>
           </div>
-          <Button size="lg" className="h-12 w-full max-w-xs text-base" disabled>
-            QR code arrives in Phase 1
-          </Button>
+          {/* Renders its own denial states — a blocked student or one without a
+              plan is told why here, rather than finding out at the counter. */}
+          <div className="w-full max-w-sm">
+            <QrDisplay />
+          </div>
         </CardContent>
       </Card>
 
@@ -104,7 +102,9 @@ export default async function StudentPage() {
                 </div>
                 <div className="flex items-center justify-between">
                   <dt className="text-muted-foreground">Valid until</dt>
-                  <dd className="font-medium tabular-nums">{subscription.end_date}</dd>
+                  <dd className="font-medium tabular-nums">
+                    {formatServiceDate(subscription.end_date)}
+                  </dd>
                 </div>
               </dl>
             ) : (
