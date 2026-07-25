@@ -117,6 +117,13 @@ const eslintConfig = defineConfig([
       "import/no-restricted-paths": "off",
       "no-console": "off",
       "@typescript-eslint/no-explicit-any": "off",
+      // The verification scripts use `condition ? pass(...) : fail(...)` as a
+      // statement, which reads far better than an if/else for a long list of
+      // assertions. The rule earns its keep in application code — where a bare
+      // expression usually means a forgotten call — but here it produced six
+      // warnings on every single commit, and warnings nobody can act on are how
+      // people learn to ignore lint output entirely.
+      "@typescript-eslint/no-unused-expressions": "off",
     },
   },
 
