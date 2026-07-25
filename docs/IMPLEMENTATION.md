@@ -19,7 +19,7 @@ conversation: everything needed to continue correctly is here or linked from her
 | Area                                  | State                                                               |
 | ------------------------------------- | ------------------------------------------------------------------- |
 | Repo, tooling, CI, import boundaries  | ✅ `npm run verify` green                                           |
-| Core domain (pure, no I/O)            | ✅ **254 tests**, 99%+ coverage                                     |
+| Core domain (pure, no I/O)            | ✅ **279 tests**, 99%+ coverage                                     |
 | Database schema                       | ✅ migrations 001–005 **applied + sealed** on the live project      |
 | JWT auth hook                         | ✅ enabled and verified end-to-end                                  |
 | Generated DB types                    | ✅ `src/infra/supabase/database.types.ts` (incl. RPC Functions)     |
@@ -29,7 +29,8 @@ conversation: everything needed to continue correctly is here or linked from her
 | UI foundation                         | ✅ shadcn/Base UI, design tokens, app shell, [DESIGN.md](DESIGN.md) |
 | **Phase 1.2 — students, full CRUD**   | ✅ list, add, detail, edit, status change, password reset, audited  |
 | **Phase 1.3 — plans & subscriptions** | ✅ plan CRUD, assign/end with price + meal-slot snapshot            |
-| Phase 1.4 → 1.8                       | ⬜ next — see the phase table below                                 |
+| **Phase 1.4 — menus**                 | ✅ week planner, student view, service-state resolution             |
+| Phase 1.5b → 1.8                      | ⬜ next — QR, scanner, headcount                                    |
 
 **Phase 0 is done.** Three roles sign in against the live database and land on their own
 shell; cross-tenant isolation is proven with real data. Phase 1 domain logic (QR policy,
@@ -57,18 +58,15 @@ Remove everything with `npm run db:seed -- --reset`.
 
 ### Next steps, in order
 
-1. **Phase 1.4 — Menu management + student menu view.** Keyed by
-   `(tenant_id, service_date, meal_slot)`, which is already unique. Dates derive through
-   `src/core/time` in the tenant's timezone.
-2. **Phase 1.5b — QR token endpoint + rotating student QR screen.** The policy is written
+1. **Phase 1.5b — QR token endpoint + rotating student QR screen.** The policy is written
    and tested; this is issuance plus a screen that re-mints before TTL expiry. **Token
    issuance must be denied for a blocked student** — see the test debt register.
-3. **Phase 1.6b — Staff scanner.** Verify endpoint, camera UI, visually distinct outcomes
+2. **Phase 1.6b — Staff scanner.** Verify endpoint, camera UI, visually distinct outcomes
    (served / already served / blocked / wrong window / invalid), the audited manual
    fallback, and an offline queue. Fail closed (rule 7).
-4. **Phase 1.7b — Live headcount** over the realtime `attendance` publication, plus the
+3. **Phase 1.7b — Live headcount** over the realtime `attendance` publication, plus the
    snapshot cron.
-5. **Phase 1.8 — E2E smoke tests** and Phase 1 exit-criteria verification.
+4. **Phase 1.8 — E2E smoke tests** and Phase 1 exit-criteria verification.
 
 ### Deferred to the end, by the user's instruction
 
@@ -152,7 +150,7 @@ with a correct headcount. Billing still on paper.
 | 1.2  | Admin students list + add, credential issuance                     | ✅                    |
 | 1.2d | Student detail — edit, status change, password reset, audited      | ✅                    |
 | 1.3  | Plans & subscriptions, manual activation, price/meal-slot snapshot | ✅                    |
-| 1.4  | Menu management + student menu view                                | ⬜                    |
+| 1.4  | Menu management + student menu view                                | ✅                    |
 | 1.5a | QR token policy (pure) + `TokenSigner` port + tests                | ✅                    |
 | 1.5b | Token issuance endpoint + rotating student QR screen               | ⬜                    |
 | 1.6a | `verifyQrAttendance` / `verifyManualAttendance` + fakes + tests    | ✅                    |
