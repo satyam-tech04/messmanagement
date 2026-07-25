@@ -10,7 +10,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -135,12 +134,15 @@ export function AppShell({
     </div>
   );
 
-  const userMenu = (
+  const accountMenu = (compact: boolean) => (
     <DropdownMenu>
       {/* Base UI composes with `render`, not Radix's `asChild`. The trigger
           already renders a button element, so the styling goes on it directly. */}
       <DropdownMenuTrigger
-        className="hover:bg-accent focus-visible:ring-ring/50 flex h-auto w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors focus-visible:ring-[3px] focus-visible:outline-none"
+        className={cn(
+          "hover:bg-accent focus-visible:ring-ring/50 flex items-center rounded-lg transition-colors focus-visible:ring-[3px] focus-visible:outline-none",
+          compact ? "size-10 justify-center" : "h-auto w-full gap-3 px-2 py-2 text-left",
+        )}
         aria-label="Account menu"
       >
         <Avatar className="size-8">
@@ -148,20 +150,28 @@ export function AppShell({
             {initialsOf(user.fullName)}
           </AvatarFallback>
         </Avatar>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">{user.fullName}</p>
-          <p className="text-muted-foreground truncate text-xs">{roleLabel(user.role)}</p>
-        </div>
-        <Icons.ChevronsUpDown
-          className="text-muted-foreground size-4 shrink-0"
-          aria-hidden="true"
-        />
+        {compact ? null : (
+          <>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium">{user.fullName}</p>
+              <p className="text-muted-foreground truncate text-xs">{roleLabel(user.role)}</p>
+            </div>
+            <Icons.ChevronsUpDown
+              className="text-muted-foreground size-4 shrink-0"
+              aria-hidden="true"
+            />
+          </>
+        )}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel className="font-normal">
+        {/* A plain div, not DropdownMenuLabel: that renders Base UI's
+            `Menu.GroupLabel`, which throws unless it is inside a `Menu.Group`.
+            This is an account header rather than a label for a group of items,
+            so there is no group for it to belong to. */}
+        <div className="px-1.5 py-1">
           <p className="text-sm font-medium">{user.fullName}</p>
           <p className="text-muted-foreground text-xs">{roleLabel(user.role)}</p>
-        </DropdownMenuLabel>
+        </div>
         <DropdownMenuSeparator />
         {/* The menu item IS the submit button, so sign-out works without
             JavaScript and keeps the item's keyboard and focus behaviour. */}
@@ -183,7 +193,7 @@ export function AppShell({
         <div className="flex-1 overflow-y-auto p-3">
           <NavLinks sections={sections} pathname={pathname} />
         </div>
-        <div className="border-border border-t p-2">{userMenu}</div>
+        <div className="border-border border-t p-2">{accountMenu(false)}</div>
       </aside>
 
       {/* Mobile top bar */}
@@ -204,11 +214,16 @@ export function AppShell({
                 onNavigate={() => setMobileOpen(false)}
               />
             </div>
-            <div className="border-border border-t p-2">{userMenu}</div>
+            <div className="border-border border-t p-2">{accountMenu(false)}</div>
           </SheetContent>
         </Sheet>
 
-        <div className="flex-1">{brand}</div>
+        <div className="min-w-0 flex-1">{brand}</div>
+
+        {/* Also in the top bar, not only inside the drawer. Students are on a
+            phone every single time, and signing out should never be two taps
+            behind a hamburger. */}
+        {accountMenu(true)}
       </header>
 
       <main className="lg:pl-64">
