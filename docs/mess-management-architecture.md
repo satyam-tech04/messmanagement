@@ -12,28 +12,28 @@ A multi-tenant SaaS for hostel mess operations. Students hold a fixed-price subs
 
 ### 1.1 Locked Business Rules (v1)
 
-| Rule | Value | Configurable per tenant? |
-|---|---|---|
-| Meal slots | Lunch, Dinner | Yes |
-| Plan durations | Monthly, Quarterly | Yes |
-| Mess-cut advance notice | ≥ 12 hours before meal | Yes |
-| Mess-cut monthly cap | 5 days / calendar month | Yes |
-| Payment grace period | 3 days past due date | Yes |
-| Post-grace action | Block QR generation | Yes |
-| Credit destination | Applied to next invoice (not refunded) | No (v1) |
-| Feedback | 1–5 stars + optional comment | No |
-| Extras | Guest tokens & extra plates, pay-per-use | Yes |
+| Rule                    | Value                                    | Configurable per tenant? |
+| ----------------------- | ---------------------------------------- | ------------------------ |
+| Meal slots              | Lunch, Dinner                            | Yes                      |
+| Plan durations          | Monthly, Quarterly                       | Yes                      |
+| Mess-cut advance notice | ≥ 12 hours before meal                   | Yes                      |
+| Mess-cut monthly cap    | 5 days / calendar month                  | Yes                      |
+| Payment grace period    | 3 days past due date                     | Yes                      |
+| Post-grace action       | Block QR generation                      | Yes                      |
+| Credit destination      | Applied to next invoice (not refunded)   | No (v1)                  |
+| Feedback                | 1–5 stars + optional comment             | No                       |
+| Extras                  | Guest tokens & extra plates, pay-per-use | Yes                      |
 
 > **Every number in this table is a row in `tenant_settings`, never a constant in code.** You are building a product, not one hostel's software. The moment a rule is hardcoded, the second customer becomes a fork.
 
 ### 1.2 Actors
 
-| Actor | Surface | Core capability |
-|---|---|---|
-| **Student** | Mobile PWA | Show QR, pause plan, pay, buy extras, rate meals |
-| **Counter Staff** | Tablet/phone PWA | Scan QR, verify identity, see live bulk count |
-| **Master Admin** | Desktop web | Menu, plans, students, finance, reports |
-| **Platform Super Admin** | Desktop web (Phase 4) | Tenant provisioning, SaaS subscription, support |
+| Actor                    | Surface               | Core capability                                  |
+| ------------------------ | --------------------- | ------------------------------------------------ |
+| **Student**              | Mobile PWA            | Show QR, pause plan, pay, buy extras, rate meals |
+| **Counter Staff**        | Tablet/phone PWA      | Scan QR, verify identity, see live bulk count    |
+| **Master Admin**         | Desktop web           | Menu, plans, students, finance, reports          |
+| **Platform Super Admin** | Desktop web (Phase 4) | Tenant provisioning, SaaS subscription, support  |
 
 ---
 
@@ -94,7 +94,7 @@ If QR validation cannot reach the database, deny the scan (staff use the audited
 
 ### 2.8 Multi-tenancy is a data-model property, not a feature
 
-`tenant_id` on **every** business table, on **every** index, in **every** query, enforced by RLS *and* by the application layer. There is no "add multi-tenancy later" — retrofitting it means auditing every query you ever wrote.
+`tenant_id` on **every** business table, on **every** index, in **every** query, enforced by RLS _and_ by the application layer. There is no "add multi-tenancy later" — retrofitting it means auditing every query you ever wrote.
 
 ### 2.9 Time is tenant-local
 
@@ -287,7 +287,7 @@ Every index leads with `tenant_id` — it is the highest-selectivity column in a
 1. **Application layer (primary):** every use case receives an explicit `TenantContext { tenantId, actorId, role }` derived server-side from the session. Never from a client-supplied parameter.
 2. **RLS (defence in depth):** Postgres policies reject cross-tenant rows even if application code is wrong.
 
-Treating RLS as the *only* authorization is a common mistake — it protects rows but cannot express "staff may verify attendance but not issue refunds." Do both.
+Treating RLS as the _only_ authorization is a common mistake — it protects rows but cannot express "staff may verify attendance but not issue refunds." Do both.
 
 ### 5.2 Custom JWT claims
 
@@ -315,14 +315,14 @@ The most security-sensitive and operationally-critical component.
 
 ### 6.1 Threat model
 
-| Threat | Mitigation |
-|---|---|
-| Student screenshots QR, sends to friend | Token TTL of 30s, client refreshes every 15s |
-| Student replays their own token | `UNIQUE (tenant_id, student_id, service_date, meal_slot)` — second scan is rejected as `ALREADY_SERVED` |
-| Forged token | HMAC-SHA256 signed server-side with a per-tenant secret |
-| Blocked student eats anyway | Token issuance checks account status; verification re-checks |
-| Scanning outside meal hours | Verification checks tenant meal window |
-| Staff fabricating attendance | Manual overrides require a reason, are audit-logged, and surface on the admin dashboard |
+| Threat                                  | Mitigation                                                                                              |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Student screenshots QR, sends to friend | Token TTL of 30s, client refreshes every 15s                                                            |
+| Student replays their own token         | `UNIQUE (tenant_id, student_id, service_date, meal_slot)` — second scan is rejected as `ALREADY_SERVED` |
+| Forged token                            | HMAC-SHA256 signed server-side with a per-tenant secret                                                 |
+| Blocked student eats anyway             | Token issuance checks account status; verification re-checks                                            |
+| Scanning outside meal hours             | Verification checks tenant meal window                                                                  |
+| Staff fabricating attendance            | Manual overrides require a reason, are audit-logged, and surface on the admin dashboard                 |
 
 ### 6.2 Token design — stateless HMAC, not database rows
 
@@ -390,6 +390,7 @@ canApplyMessCut(input): Result<MessCutApproval, MessCutRejection>
 ```
 
 Checks, in order:
+
 1. Subscription is `ACTIVE` and the requested dates fall inside its term
 2. `effective_from` ≥ `now + cut_advance_hours` (12h), computed in tenant timezone
 3. Requested days + already-approved days in that calendar month ≤ `cut_max_days_per_month` (5)
@@ -450,15 +451,15 @@ Push the live count to the staff dashboard via **Supabase Realtime** on the atte
 
 Every one of your business rules is time-based. Use Supabase `pg_cron` + Edge Functions, or Vercel Cron hitting protected `/api/cron/*` routes (guard with a secret header).
 
-| Job | Schedule | Responsibility |
-|---|---|---|
-| `lock-headcount` | 12h before each meal window | Snapshot & lock projected count |
-| `evaluate-dues` | Daily 00:30 tenant-local | ACTIVE → GRACE → BLOCKED transitions |
-| `generate-invoices` | Daily 01:00 | Issue invoices for cycles starting today |
-| `expire-subscriptions` | Daily 01:30 | End-date passed → EXPIRED |
-| `expire-extras` | Daily 02:00 | Unredeemed guest tokens past service date |
-| `send-reminders` | Daily 09:00 | Due-soon, grace-warning, expiry-warning push |
-| `daily-digest` | Daily 21:00 | Admin summary: counts, collections, ratings |
+| Job                    | Schedule                    | Responsibility                               |
+| ---------------------- | --------------------------- | -------------------------------------------- |
+| `lock-headcount`       | 12h before each meal window | Snapshot & lock projected count              |
+| `evaluate-dues`        | Daily 00:30 tenant-local    | ACTIVE → GRACE → BLOCKED transitions         |
+| `generate-invoices`    | Daily 01:00                 | Issue invoices for cycles starting today     |
+| `expire-subscriptions` | Daily 01:30                 | End-date passed → EXPIRED                    |
+| `expire-extras`        | Daily 02:00                 | Unredeemed guest tokens past service date    |
+| `send-reminders`       | Daily 09:00                 | Due-soon, grace-warning, expiry-warning push |
+| `daily-digest`         | Daily 21:00                 | Admin summary: counts, collections, ratings  |
 
 All jobs must be **idempotent and re-runnable** — cron will fire twice one day.
 
@@ -466,17 +467,18 @@ All jobs must be **idempotent and re-runnable** — cron will fire twice one day
 
 ## 10. Testing Strategy
 
-| Layer | Tool | Coverage target | What it protects |
-|---|---|---|---|
-| Domain policies | Vitest | **95%+** | Billing math, cut eligibility, grace transitions |
-| Services / use cases | Vitest + in-memory fakes | 80% | Orchestration, authorization |
-| Repositories | Vitest + local Supabase | Key paths | RLS actually isolates tenants |
-| API / webhooks | Supertest | All money endpoints | Signature verification, idempotency |
-| E2E | Playwright | 5 critical flows | Subscribe→pay→scan→eat; apply cut→credit; overdue→block→pay→unblock; extras purchase→redeem; menu publish→student view |
+| Layer                | Tool                     | Coverage target     | What it protects                                                                                                       |
+| -------------------- | ------------------------ | ------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Domain policies      | Vitest                   | **95%+**            | Billing math, cut eligibility, grace transitions                                                                       |
+| Services / use cases | Vitest + in-memory fakes | 80%                 | Orchestration, authorization                                                                                           |
+| Repositories         | Vitest + local Supabase  | Key paths           | RLS actually isolates tenants                                                                                          |
+| API / webhooks       | Supertest                | All money endpoints | Signature verification, idempotency                                                                                    |
+| E2E                  | Playwright               | 5 critical flows    | Subscribe→pay→scan→eat; apply cut→credit; overdue→block→pay→unblock; extras purchase→redeem; menu publish→student view |
 
 Because the domain layer is pure, that 95% is cheap to reach and catches the bugs that cost real money.
 
 **Non-negotiable test cases** — write these first:
+
 - Duplicate Razorpay webhook → exactly one ledger entry
 - Same QR scanned twice → second returns `ALREADY_SERVED`, no second attendance row
 - Mess cut spanning a month boundary → correct per-month cap accounting
@@ -492,26 +494,31 @@ Because the domain layer is pure, that 95% is cheap to reach and catches the bug
 Each phase ends in something demonstrable. Do not start a phase before the previous one's exit criteria are met.
 
 ### Phase 0 — Foundations (Week 1)
+
 Repo, TypeScript strict, ESLint with import boundaries, Prettier, Husky, CI on PR. Supabase project, migration workflow, generated types. `tenants`, `tenant_settings`, `profiles`, RLS baseline. Auth with role-based route groups. Seed script for one demo tenant. Sentry.
 
 **Exit:** three roles can log in and land on their own shell; a cross-tenant query provably returns nothing.
 
 ### Phase 1 — Core Operating Loop (Weeks 2–4)
+
 Student CRUD & onboarding. Plans & subscriptions (manual activation, no payment yet). Dynamic menu management + student menu view. QR token issuance + rotation. Staff scanner + verification + manual fallback. Attendance recording. Live headcount + snapshot cron.
 
 **Exit:** the pilot hostel can run real lunch and dinner service, verified by QR, with a correct headcount. Billing still on paper. **This is the moment to put it in front of real students.**
 
 ### Phase 2 — Money (Weeks 5–7)
+
 Ledger. Invoice generation. Razorpay orders + webhooks + idempotency. Manual payment override with audit. Mess-cut request flow with 12h and 5-day policy enforcement. Credit computation and application. Grace → block state machine + QR gating. Student billing history. Admin finance dashboard.
 
 **Exit:** a full billing cycle completes end-to-end with zero manual spreadsheet work; a deliberately overdue account blocks and unblocks correctly.
 
 ### Phase 3 — Experience & Insight (Weeks 8–9)
+
 Guest tokens & extra plates (purchase → redemption code → staff redemption). Feedback: 1–5 stars + comment, with rating trends per dish. Admin reports: collections, variance, cut patterns, attendance trends. PWA polish: installability, offline shell, push notifications. Staff scanner UX hardening.
 
 **Exit:** a mess owner opens one dashboard in the morning and needs nothing else.
 
 ### Phase 4 — Productization (Weeks 10+)
+
 Platform Super Admin console. Self-serve tenant onboarding with guided setup. **Layer B billing** — your SaaS subscription from mess owners (monthly/quarterly/6-month/annual). Per-tenant branding. Usage metering. Data export & GDPR-style deletion. Documentation and support runbook.
 
 **Exit:** a second mess onboards without you writing a line of code.
@@ -553,6 +560,7 @@ For billing, mess-cut eligibility, and grace transitions, give Claude Code the t
 ### 13.4 Guard the boundaries in review
 
 The two things to check on every AI-generated PR:
+
 1. Did business logic leak into a React component or Server Action?
 2. Does every new query filter by `tenant_id`, and does every new table have an RLS policy?
 

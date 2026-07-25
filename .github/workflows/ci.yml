@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Typecheck · Lint · Test · Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint (includes core/infra/app import boundaries)
+        run: npm run lint
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Unit tests + domain coverage thresholds
+        run: npm run test:coverage
+
+      - name: Migration immutability
+        run: node scripts/check-migrations.mjs && git diff --exit-code supabase/migrations/checksums.json
+
+      - name: Build
+        run: npm run build
+        env:
+          # Build-time placeholders. Real values live in Vercel project settings;
+          # nothing here touches a live database.
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+          SUPABASE_SERVICE_ROLE_KEY: placeholder-service-role-key
+          QR_SIGNING_SECRET: placeholder-qr-signing-secret-at-least-32-chars
+          CRON_SECRET: placeholder-cron-secret

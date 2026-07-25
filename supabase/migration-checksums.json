@@ -1,0 +1,20 @@
+{
+  "20260725000001_tenancy_and_identity.sql": {
+    "sha256": "f3f5e9f1daae31d80dd482b4fe68c79af08e4999820bebd562c9cf15df86457a",
+    "state": "applied",
+    "appliedTo": "yenxlcrtlmnfotfqqabo",
+    "appliedAt": "2026-07-25"
+  },
+  "20260725000002_operations.sql": {
+    "sha256": "66a148706cd1fc3e5f1a6da916dda924cfa4f0e207ee819fdaa63d9ca120365d",
+    "state": "applied",
+    "appliedTo": "yenxlcrtlmnfotfqqabo",
+    "appliedAt": "2026-07-25"
+  },
+  "20260725000003_auth_hook_profile_access.sql": {
+    "sha256": "432c079131e9efa028ec242c562f0f3278720f7d6313a3866f930ee5aed6b0ea",
+    "state": "applied",
+    "appliedTo": "yenxlcrtlmnfotfqqabo",
+    "appliedAt": "2026-07-25"
+  }
+}
