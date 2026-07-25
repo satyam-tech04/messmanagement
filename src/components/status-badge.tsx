@@ -37,6 +37,8 @@ const STATUS_TONES: Record<string, StatusTone> = {
   PENDING_PAYMENT: "warning",
   EXPIRED: "neutral",
   CANCELLED: "neutral",
+  // Plans — retired means "not offered to anyone new", not "cancelled"
+  RETIRED: "neutral",
   // Invoices (Phase 2)
   PAID: "success",
   PARTIALLY_PAID: "warning",

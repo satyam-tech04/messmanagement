@@ -14,8 +14,11 @@
  */
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import type { StudentStatus } from "@/core/domain/enums";
+import type { MealSlot, StudentStatus } from "@/core/domain/enums";
+import { toPaise } from "@/core/money";
+import { activateSubscription } from "@/core/policies/plan.policy";
 import { changeStudentStatus } from "@/core/policies/student-admin.policy";
+import { toServiceDate } from "@/core/time";
 import { createAdminClient } from "@/infra/supabase/admin";
 import { getSessionUser } from "@/infra/auth/session";
 import { SupabaseAuditLogRepository } from "@/infra/supabase/repositories";
@@ -276,4 +279,170 @@ export async function resetStudentPassword(
   revalidatePath(`/admin/students/${student.id}`);
 
   return { success: "Password reset.", temporaryPassword };
+}
+
+// --- Assign a plan --------------------------------------------------------
+
+const assignSchema = z.object({
+  planId: z.string().uuid("Choose a plan."),
+  startDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Enter a valid start date")
+    .optional()
+    .or(z.literal("")),
+});
+
+export async function assignPlan(
+  studentId: string,
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const loaded = await loadOwnedStudent(studentId);
+  if ("error" in loaded) return { error: loaded.error };
+  const { user, admin, student } = loaded;
+
+  const parsed = assignSchema.safeParse({
+    planId: formData.get("planId"),
+    startDate: formData.get("startDate") ?? "",
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Check the form." };
+  }
+
+  const { data: plan } = await admin
+    .from("plans")
+    .select("id, is_active, price_paise, duration_days, included_meal_slots")
+    .eq("id", parsed.data.planId)
+    .eq("tenant_id", user.tenantId)
+    .maybeSingle();
+
+  if (!plan) return { error: "That plan does not exist in this mess." };
+
+  const { count } = await admin
+    .from("subscriptions")
+    .select("id", { count: "exact", head: true })
+    .eq("tenant_id", user.tenantId)
+    .eq("student_id", student.id)
+    .eq("status", "ACTIVE");
+
+  // The policy decides; this action only gathers the facts it needs.
+  const decision = activateSubscription({
+    actorRole: user.role,
+    studentStatus: student.status as StudentStatus,
+    hasActiveSubscription: (count ?? 0) > 0,
+    plan: {
+      id: plan.id,
+      isActive: plan.is_active,
+      pricePaise: toPaise(plan.price_paise),
+      durationDays: plan.duration_days,
+      mealSlots: plan.included_meal_slots as MealSlot[],
+    },
+    timeZone: user.timezone,
+    now: new Date(),
+    ...(parsed.data.startDate ? { startDate: toServiceDate(parsed.data.startDate) } : {}),
+  });
+
+  if (!decision.ok) return { error: decision.error.message };
+  const activation = decision.value;
+
+  const { data: created, error: insertError } = await admin
+    .from("subscriptions")
+    .insert({
+      tenant_id: user.tenantId,
+      student_id: student.id,
+      plan_id: activation.planId,
+      // Frozen here, deliberately. A later plan price change must never rewrite
+      // what this student agreed to (§4.2).
+      price_paise_snapshot: activation.pricePaiseSnapshot,
+      included_meal_slots_snapshot: [...activation.mealSlotsSnapshot],
+      start_date: activation.startDate,
+      end_date: activation.endDate,
+      status: "ACTIVE",
+    })
+    .select("id")
+    .single();
+
+  if (insertError) {
+    // The partial unique index is the real guarantee — the count check above can
+    // lose a race between two admins assigning at once.
+    if (insertError.code === "23505") {
+      return { error: "This student already has an active plan. Reload the page." };
+    }
+    return { error: `Could not assign the plan: ${insertError.message}` };
+  }
+
+  await new SupabaseAuditLogRepository(admin).write({
+    tenantId: user.tenantId,
+    actorProfileId: user.actorProfileId,
+    action: "SUBSCRIPTION_ACTIVATED",
+    entityType: "subscription",
+    entityId: created.id,
+    after: {
+      studentId: student.id,
+      planId: activation.planId,
+      pricePaise: activation.pricePaiseSnapshot,
+      startDate: activation.startDate,
+      endDate: activation.endDate,
+    },
+  });
+
+  revalidatePath(`/admin/students/${student.id}`);
+  revalidatePath("/admin/students");
+
+  return { success: "Plan assigned. The student can now be served at the counter." };
+}
+
+// --- End a subscription ---------------------------------------------------
+
+const endSchema = z.object({
+  subscriptionId: z.string().uuid(),
+  reason: z.string().trim().min(3, "Give a reason").max(500),
+});
+
+export async function endSubscription(
+  studentId: string,
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const loaded = await loadOwnedStudent(studentId);
+  if ("error" in loaded) return { error: loaded.error };
+  const { user, admin, student } = loaded;
+
+  const parsed = endSchema.safeParse({
+    subscriptionId: formData.get("subscriptionId"),
+    reason: formData.get("reason") ?? "",
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Check the form." };
+  }
+
+  const { error, count } = await admin
+    .from("subscriptions")
+    .update({ status: "CANCELLED" }, { count: "exact" })
+    .eq("id", parsed.data.subscriptionId)
+    .eq("tenant_id", user.tenantId)
+    .eq("student_id", student.id)
+    // Only an ACTIVE subscription may be cancelled — the state machine allows
+    // no transition out of EXPIRED or CANCELLED.
+    .eq("status", "ACTIVE");
+
+  if (error) return { error: `Could not end the plan: ${error.message}` };
+  if (count === 0) {
+    return { error: "That plan is no longer active. Reload the page." };
+  }
+
+  await new SupabaseAuditLogRepository(admin).write({
+    tenantId: user.tenantId,
+    actorProfileId: user.actorProfileId,
+    action: "SUBSCRIPTION_CANCELLED",
+    entityType: "subscription",
+    entityId: parsed.data.subscriptionId,
+    before: { status: "ACTIVE" },
+    after: { status: "CANCELLED", reason: parsed.data.reason },
+  });
+
+  revalidatePath(`/admin/students/${student.id}`);
+  revalidatePath("/admin/students");
+
+  return { success: "Plan ended. You can now assign a new one." };
 }

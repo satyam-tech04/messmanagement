@@ -26,6 +26,7 @@ import {
   StatusCard,
   type StudentDetail,
 } from "./student-detail-client";
+import { AssignPlanDialog, EndPlanButton, type AssignablePlan } from "./plan-actions";
 
 export const metadata: Metadata = { title: "Student · Mess OS" };
 
@@ -125,6 +126,25 @@ export default async function StudentDetailPage(props: PageProps<"/admin/student
   const today = todayIn(user.timezone);
   const active = subscriptions.find((s) => s.status === "ACTIVE");
 
+  // Only offered when there is no active plan — the database enforces one at a
+  // time, so showing the button otherwise would promise something that fails.
+  const { data: planRows } = active
+    ? { data: null }
+    : await supabase
+        .from("plans")
+        .select("id, name, price_paise, duration_days, included_meal_slots")
+        .eq("tenant_id", user.tenantId)
+        .eq("is_active", true)
+        .order("price_paise", { ascending: true });
+
+  const assignablePlans: AssignablePlan[] = (planRows ?? []).map((p) => ({
+    id: p.id,
+    name: p.name,
+    pricePaise: p.price_paise,
+    durationDays: p.duration_days,
+    mealSlots: p.included_meal_slots,
+  }));
+
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <Button variant="ghost" size="sm" className="-ml-2" render={<Link href="/admin/students" />}>
@@ -166,9 +186,13 @@ export default async function StudentDetailPage(props: PageProps<"/admin/student
               title="No plan assigned"
               description="Assign a plan so this student can be served at the counter."
               action={
-                <Button variant="outline" render={<Link href="/admin/plans" />}>
-                  Go to plans
-                </Button>
+                assignablePlans.length > 0 ? (
+                  <AssignPlanDialog studentId={student.id} plans={assignablePlans} today={today} />
+                ) : (
+                  <Button variant="outline" render={<Link href="/admin/plans" />}>
+                    Create a plan first
+                  </Button>
+                )
               }
             />
           ) : (
@@ -181,6 +205,9 @@ export default async function StudentDetailPage(props: PageProps<"/admin/student
                     <TableHead>Period</TableHead>
                     <TableHead className="text-right">Price</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead className="w-0">
+                      <span className="sr-only">Actions</span>
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -208,12 +235,29 @@ export default async function StudentDetailPage(props: PageProps<"/admin/student
                       <TableCell>
                         <StatusBadge status={s.status} />
                       </TableCell>
+                      <TableCell className="text-right">
+                        {s.status === "ACTIVE" ? (
+                          <EndPlanButton
+                            studentId={student.id}
+                            subscriptionId={s.id}
+                            planName={s.plans?.name ?? "this plan"}
+                          />
+                        ) : null}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             </TableShell>
           )}
+
+          {/* Past subscriptions exist but none is active — the student cannot be
+              served, so the way to fix that belongs here, not on another page. */}
+          {subscriptions.length > 0 && !active ? (
+            <div className="pt-4">
+              <AssignPlanDialog studentId={student.id} plans={assignablePlans} today={today} />
+            </div>
+          ) : null}
         </CardContent>
       </Card>
 
