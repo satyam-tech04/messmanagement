@@ -15,6 +15,7 @@ import { cache } from "react";
 import type { TenantContext } from "@/core/domain/tenant-context";
 import type { UserRole } from "@/core/domain/enums";
 import { createClient } from "../supabase/server";
+import { firstRelated } from "../supabase/mappers";
 
 export interface SessionUser extends TenantContext {
   /** Gates every route until the user chooses their own password (D-02). */
@@ -59,11 +60,9 @@ export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
   // indeterminate, and indeterminate means unauthenticated.
   if (profileError || !profile) return null;
 
-  const tenant = profile.tenants as unknown as {
-    slug: string;
-    timezone: string;
-    status: string;
-  } | null;
+  const tenant = firstRelated<{ slug: string; timezone: string; status: string }>(
+    profile.tenants as never,
+  );
   if (!tenant) return null;
 
   // A suspended tenant or a disabled account must not hold a usable session,
@@ -71,8 +70,11 @@ export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
   if (tenant.status !== "ACTIVE") return null;
   if (profile.status !== "ACTIVE") return null;
 
-  const students = (profile.students ?? []) as unknown as Array<{ id: string }>;
-  const studentId = students[0]?.id;
+  // PostgREST collapses this embed to a single OBJECT, not an array, because
+  // `students.profile_id` is unique. Reading `students[0]` silently yielded
+  // undefined and left every student session without a studentId — which the
+  // QR endpoint then refused as FORBIDDEN. See firstRelated().
+  const studentId = firstRelated<{ id: string }>(profile.students as never)?.id;
 
   return {
     tenantId: profile.tenant_id,

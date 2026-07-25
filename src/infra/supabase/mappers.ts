@@ -73,3 +73,26 @@ export function toTenantSettings(row: SettingsRow): TenantSettings {
     currency: row.currency,
   };
 }
+
+/**
+ * Normalises a PostgREST embedded relation to a single row or null.
+ *
+ * PostgREST decides the shape from the schema, not from the query: an embed is
+ * an **object** when the relationship is to-one (the foreign key is unique or
+ * the join follows the FK forwards) and an **array** when it is to-many. That
+ * distinction is invisible in the select string, so it is easy to guess wrong —
+ * and a wrong guess is silent, because indexing an object returns `undefined`
+ * rather than throwing.
+ *
+ * That exact mistake shipped: `profiles → students` is a reverse embed whose FK
+ * is unique, so it collapsed to an object, `students[0]` was `undefined`, and
+ * every student session ended up with no `studentId`.
+ *
+ * Handling both shapes also means a migration that adds or drops a UNIQUE
+ * constraint cannot silently break an unrelated screen.
+ */
+export function firstRelated<T>(relation: T | T[] | null | undefined): T | null {
+  if (relation == null) return null;
+  if (Array.isArray(relation)) return relation[0] ?? null;
+  return relation;
+}
