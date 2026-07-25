@@ -1,0 +1,279 @@
+"use server";
+
+/**
+ * Student detail mutations.
+ *
+ * Each action does the same four things and nothing more: authenticate, validate
+ * with Zod, call one decision function, map the result. The decisions themselves
+ * — who may change a status, which transitions are legal — live in
+ * `src/core/policies/student-admin.policy.ts` (rule 2).
+ *
+ * Every mutation here writes to `audit_log`. Editing a student's details,
+ * blocking them, or resetting their password are precisely the actions that get
+ * disputed weeks later, and the log is the only answer.
+ */
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import type { StudentStatus } from "@/core/domain/enums";
+import { changeStudentStatus } from "@/core/policies/student-admin.policy";
+import { createAdminClient } from "@/infra/supabase/admin";
+import { getSessionUser } from "@/infra/auth/session";
+import { SupabaseAuditLogRepository } from "@/infra/supabase/repositories";
+import { generateTemporaryPassword } from "@/lib/password";
+
+export interface ActionState {
+  readonly error?: string;
+  readonly fieldErrors?: Record<string, string>;
+  readonly success?: string;
+  /** Only ever set by resetPassword, and shown exactly once. */
+  readonly temporaryPassword?: string;
+}
+
+const idSchema = z.string().uuid("Malformed student reference.");
+
+/**
+ * Loads a student and proves it belongs to the caller's tenant.
+ *
+ * The service-role client bypasses RLS, so this check *is* the tenant boundary
+ * for these actions — without it, a guessed UUID from another hostel would be
+ * editable (rule 8).
+ */
+async function loadOwnedStudent(studentId: string) {
+  const user = await getSessionUser();
+  if (!user) return { error: "Your session has expired. Sign in again." as const };
+  if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
+    return { error: "Only an admin can change student records." as const };
+  }
+
+  const parsedId = idSchema.safeParse(studentId);
+  if (!parsedId.success) return { error: "Student not found." as const };
+
+  const admin = createAdminClient();
+  const { data: student, error } = await admin
+    .from("students")
+    .select("id, tenant_id, profile_id, roll_number, status, block, room_number")
+    .eq("id", parsedId.data)
+    .eq("tenant_id", user.tenantId)
+    .maybeSingle();
+
+  if (error) return { error: `Could not load the student: ${error.message}` as const };
+  // Same message whether it does not exist or belongs to another mess — a
+  // distinct "wrong tenant" error would confirm the id is real.
+  if (!student) return { error: "Student not found." as const };
+
+  return { user, admin, student };
+}
+
+// --- Edit details ---------------------------------------------------------
+
+const detailsSchema = z.object({
+  fullName: z.string().trim().min(2, "Enter the student's full name").max(120),
+  phone: z
+    .string()
+    .trim()
+    .regex(/^\+?[0-9]{7,15}$/, "Enter a valid phone number")
+    .optional()
+    .or(z.literal("")),
+  email: z.email("Enter a valid email").optional().or(z.literal("")),
+  block: z.string().trim().max(40).optional().or(z.literal("")),
+  roomNumber: z.string().trim().max(40).optional().or(z.literal("")),
+});
+
+export async function updateStudentDetails(
+  studentId: string,
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const loaded = await loadOwnedStudent(studentId);
+  if ("error" in loaded) return { error: loaded.error };
+  const { user, admin, student } = loaded;
+
+  const parsed = detailsSchema.safeParse({
+    fullName: formData.get("fullName"),
+    phone: formData.get("phone") ?? "",
+    email: formData.get("email") ?? "",
+    block: formData.get("block") ?? "",
+    roomNumber: formData.get("roomNumber") ?? "",
+  });
+
+  if (!parsed.success) {
+    const fieldErrors: Record<string, string> = {};
+    for (const issue of parsed.error.issues) {
+      const key = String(issue.path[0] ?? "form");
+      fieldErrors[key] ??= issue.message;
+    }
+    return { error: "Check the highlighted fields.", fieldErrors };
+  }
+
+  const input = parsed.data;
+
+  // Captured before the write so the audit entry can show what actually changed.
+  const { data: before } = await admin
+    .from("profiles")
+    .select("full_name, phone, email")
+    .eq("id", student.profile_id)
+    .maybeSingle();
+
+  const { error: profileError } = await admin
+    .from("profiles")
+    .update({
+      full_name: input.fullName,
+      phone: input.phone || null,
+      email: input.email || null,
+    })
+    .eq("id", student.profile_id)
+    .eq("tenant_id", user.tenantId);
+
+  if (profileError) return { error: `Could not save: ${profileError.message}` };
+
+  const { error: studentError } = await admin
+    .from("students")
+    .update({ block: input.block || null, room_number: input.roomNumber || null })
+    .eq("id", student.id)
+    .eq("tenant_id", user.tenantId);
+
+  if (studentError) return { error: `Could not save: ${studentError.message}` };
+
+  await new SupabaseAuditLogRepository(admin).write({
+    tenantId: user.tenantId,
+    actorProfileId: user.actorProfileId,
+    action: "STUDENT_UPDATED",
+    entityType: "student",
+    entityId: student.id,
+    before: {
+      fullName: before?.full_name ?? null,
+      phone: before?.phone ?? null,
+      email: before?.email ?? null,
+      block: student.block,
+      roomNumber: student.room_number,
+    },
+    after: {
+      fullName: input.fullName,
+      phone: input.phone || null,
+      email: input.email || null,
+      block: input.block || null,
+      roomNumber: input.roomNumber || null,
+    },
+  });
+
+  revalidatePath(`/admin/students/${student.id}`);
+  revalidatePath("/admin/students");
+
+  return { success: "Details saved." };
+}
+
+// --- Change status --------------------------------------------------------
+
+const statusSchema = z.object({
+  status: z.enum(["ACTIVE", "GRACE", "BLOCKED", "INACTIVE"]),
+  reason: z.string().trim().min(3, "Give a reason for this change").max(500),
+});
+
+export async function updateStudentStatus(
+  studentId: string,
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const loaded = await loadOwnedStudent(studentId);
+  if ("error" in loaded) return { error: loaded.error };
+  const { user, admin, student } = loaded;
+
+  const parsed = statusSchema.safeParse({
+    status: formData.get("status"),
+    reason: formData.get("reason") ?? "",
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Check the form." };
+  }
+
+  // The decision — authorization, legal transition, mandatory reason — is made
+  // once, in core, where it is unit-tested. This action only maps the result.
+  const decision = changeStudentStatus({
+    actorRole: user.role,
+    current: student.status as StudentStatus,
+    next: parsed.data.status,
+    reason: parsed.data.reason,
+  });
+
+  if (!decision.ok) return { error: decision.error.message };
+  const change = decision.value;
+
+  const { error: updateError } = await admin
+    .from("students")
+    .update({ status: change.to })
+    .eq("id", student.id)
+    .eq("tenant_id", user.tenantId)
+    // Optimistic concurrency: if another admin changed the status since this
+    // page rendered, this matches zero rows rather than overwriting their
+    // decision with one made against stale information.
+    .eq("status", change.from);
+
+  if (updateError) return { error: `Could not change the status: ${updateError.message}` };
+
+  await new SupabaseAuditLogRepository(admin).write({
+    tenantId: user.tenantId,
+    actorProfileId: user.actorProfileId,
+    action: "STUDENT_STATUS_CHANGED",
+    entityType: "student",
+    entityId: student.id,
+    before: { status: change.from },
+    after: { status: change.to, reason: change.reason },
+  });
+
+  revalidatePath(`/admin/students/${student.id}`);
+  revalidatePath("/admin/students");
+
+  return { success: `Status changed to ${change.to.toLowerCase()}.` };
+}
+
+// --- Reset password -------------------------------------------------------
+
+export async function resetStudentPassword(
+  studentId: string,
+  _prev: ActionState,
+  _formData: FormData,
+): Promise<ActionState> {
+  const loaded = await loadOwnedStudent(studentId);
+  if ("error" in loaded) return { error: loaded.error };
+  const { user, admin, student } = loaded;
+
+  const temporaryPassword = generateTemporaryPassword();
+
+  const { error: authError } = await admin.auth.admin.updateUserById(student.profile_id, {
+    password: temporaryPassword,
+  });
+  if (authError) return { error: `Could not reset the password: ${authError.message}` };
+
+  // The admin now knows this password, so the account is not genuinely the
+  // student's again until they choose their own.
+  const { error: flagError } = await admin
+    .from("profiles")
+    .update({ must_change_password: true })
+    .eq("id", student.profile_id)
+    .eq("tenant_id", user.tenantId);
+
+  if (flagError) {
+    // The password already changed, so this cannot be rolled back silently —
+    // say so plainly rather than reporting a clean success.
+    return {
+      error:
+        "The password was reset, but the forced-change flag could not be set. Tell the student to change it manually.",
+      temporaryPassword,
+    };
+  }
+
+  await new SupabaseAuditLogRepository(admin).write({
+    tenantId: user.tenantId,
+    actorProfileId: user.actorProfileId,
+    action: "STUDENT_PASSWORD_RESET",
+    entityType: "student",
+    entityId: student.id,
+    // Never the password itself, not even hashed — an audit log is read by more
+    // people than a credential ever should be.
+    after: { rollNumber: student.roll_number },
+  });
+
+  revalidatePath(`/admin/students/${student.id}`);
+
+  return { success: "Password reset.", temporaryPassword };
+}

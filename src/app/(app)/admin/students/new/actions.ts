@@ -12,6 +12,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { isValidRollNumber, normalizeRollNumber, syntheticEmailFor } from "@/core/domain/identity";
+import { subscriptionPeriodFor } from "@/core/policies/student-admin.policy";
+import { serviceDateOf } from "@/core/time";
 import { createAdminClient } from "@/infra/supabase/admin";
 import { createClient } from "@/infra/supabase/server";
 import { getSessionUser } from "@/infra/auth/session";
@@ -44,6 +46,8 @@ export interface CreateStudentState {
     readonly rollNumber: string;
     readonly fullName: string;
     readonly temporaryPassword: string;
+    /** Set when the student was created but the plan assignment failed. */
+    readonly planWarning?: string;
   };
 }
 
@@ -146,6 +150,10 @@ export async function createStudent(
       block: input.block || null,
       room_number: input.roomNumber || null,
       status: "ACTIVE",
+      // Set explicitly rather than relying on the column's `default current_date`,
+      // which is the database's UTC day: a student added at 02:00 IST would
+      // otherwise be recorded as having joined the previous day (rule 9).
+      joined_at: serviceDateOf(user.timezone, new Date()),
     })
     .select("id")
     .single();
@@ -164,22 +172,39 @@ export async function createStudent(
       .maybeSingle();
 
     if (plan) {
-      const start = new Date();
-      const end = new Date(start);
-      end.setDate(end.getDate() + plan.duration_days - 1);
-      const iso = (d: Date) => d.toISOString().slice(0, 10);
+      // Derived in the tenant's timezone, never from toISOString() — for an IST
+      // hostel that shifts the date back a day for most of the working day and
+      // ends the plan early (rule 9).
+      const period = subscriptionPeriodFor({
+        timeZone: user.timezone,
+        now: new Date(),
+        durationDays: plan.duration_days,
+      });
 
-      await admin.from("subscriptions").insert({
+      const { error: subscriptionError } = await admin.from("subscriptions").insert({
         tenant_id: user.tenantId,
         student_id: student.id,
         plan_id: input.planId,
         // Frozen now. A later plan price change must never rewrite history.
         price_paise_snapshot: plan.price_paise,
         included_meal_slots_snapshot: plan.included_meal_slots,
-        start_date: iso(start),
-        end_date: iso(end),
+        start_date: period.startDate,
+        end_date: period.endDate,
         status: "ACTIVE",
       });
+
+      // The student exists either way; surfacing this beats silently creating an
+      // account with no plan and leaving the admin to discover it at the counter.
+      if (subscriptionError) {
+        return {
+          created: {
+            rollNumber: input.rollNumber.trim(),
+            fullName: input.fullName,
+            temporaryPassword,
+            planWarning: `The login was created, but the plan could not be assigned: ${subscriptionError.message}. Assign it from the student's page.`,
+          },
+        };
+      }
     }
   }
 

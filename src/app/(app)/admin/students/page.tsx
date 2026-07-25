@@ -15,6 +15,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { TableEmpty, TableError, TableFooterBar, TableShell } from "@/components/data-table";
 import { requireSessionUser } from "@/infra/auth/session";
 import { createClient } from "@/infra/supabase/server";
+import { formatServiceDate } from "@/lib/format";
 import { StudentsFilters } from "./students-filters";
 
 export const metadata: Metadata = { title: "Students · Mess OS" };
@@ -185,7 +186,7 @@ export default async function StudentsPage(props: {
                         <span className="text-sm">
                           Active
                           <span className="text-muted-foreground block text-xs tabular-nums">
-                            until {active.end_date}
+                            until {formatServiceDate(active.end_date)}
                           </span>
                         </span>
                       ) : (

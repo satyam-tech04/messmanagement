@@ -19,15 +19,16 @@ conversation: everything needed to continue correctly is here or linked from her
 | Area                                 | State                                                               |
 | ------------------------------------ | ------------------------------------------------------------------- |
 | Repo, tooling, CI, import boundaries | ✅ `npm run verify` green                                           |
-| Core domain (pure, no I/O)           | ✅ **189 tests**, 99%+ coverage                                     |
-| Database schema                      | ✅ migrations 001–004 **applied + sealed** on the live project      |
+| Core domain (pure, no I/O)           | ✅ **224 tests**, 99%+ coverage                                     |
+| Database schema                      | ✅ migrations 001–005 **applied + sealed** on the live project      |
 | JWT auth hook                        | ✅ enabled and verified end-to-end                                  |
 | Generated DB types                   | ✅ `src/infra/supabase/database.types.ts` (incl. RPC Functions)     |
 | Infrastructure layer (`src/infra`)   | ✅ env, clients, HMAC signer, 7 repositories                        |
 | **Phase 0 — auth and shells**        | ✅ **complete, both exit criteria proven**                          |
 | Seeded demo data                     | ✅ 2 tenants, 10 students, plans, menus                             |
 | UI foundation                        | ✅ shadcn/Base UI, design tokens, app shell, [DESIGN.md](DESIGN.md) |
-| Phase 1 feature screens              | ⬜ next                                                             |
+| **Phase 1.2 — students, full CRUD**  | ✅ list, add, detail, edit, status change, password reset, audited  |
+| Phase 1.3 → 1.8                      | ⬜ next — see the phase table below                                 |
 
 **Phase 0 is done.** Three roles sign in against the live database and land on their own
 shell; cross-tenant isolation is proven with real data. Phase 1 domain logic (QR policy,
@@ -40,33 +41,44 @@ remains is the screens and endpoints on top of it.
 | ------- | ----------------------------------- | ------------- |
 | Admin   | `admin@unversity-mess.test`         | `MessOS@2026` |
 | Staff   | `staff@unversity-mess.test`         | `MessOS@2026` |
-| Student | `CS21B001` (roll number, not email) | `MessOS@2026` |
+| Student | `CS21B003` (roll number, not email) | `MessOS@2026` |
 
-A second tenant `demo-hostel` exists solely to prove isolation — it also has a `CS21B001`.
+⚠️ **Do not use `CS21B001` or `CS21B002` to test student login.** Both exist in _both_
+seeded tenants, and roll numbers are unique per tenant, not globally — so the login action
+refuses to guess which hostel you meant and returns "That roll number exists at more than
+one mess." That is correct behaviour, not a bug: logging a student into the wrong hostel
+would show them another mess's data. Use `CS21B003`–`CS21B006`, `EE21B011` or `EE21B012`,
+which exist in `unversity-mess` only.
+
+A second tenant `demo-hostel` exists solely to prove isolation — its admin is
+`admin@demo-hostel.test`, and it deliberately reuses `CS21B001`/`CS21B002`.
 Remove everything with `npm run db:seed -- --reset`.
 
 ### Next steps, in order
 
-1. **Phase 1.2 — Admin students CRUD** with credential issuance. This is the first
-   screen built to the full [DESIGN.md](DESIGN.md) bar: a real data table with
-   loading / empty / error / populated states, search, filters and pagination.
-2. **Supabase clients** — `src/lib/supabase/{client,server,admin}.ts` using
-   `@supabase/ssr`. Use the `getAll`/`setAll` cookie methods (the `get`/`set`/`remove` form
-   is deprecated); in this version `setAll` receives `(cookiesToSet, headers)`. Prefer
-   `getClaims()` over `getSession()` — it verifies the JWT and returns our custom
-   `tenant_id` / `user_role` claims without a network round trip.
-3. **`src/infra/crypto/hmac-signer.ts`** — implements the `TokenSigner` port with
-   `node:crypto`. **Must use `crypto.timingSafeEqual`**; a byte-wise comparison leaks the
-   signature. Add a test that it round-trips with `qr.policy` and rejects tampering.
-4. **`src/infra/supabase/repositories/*`** — implement the ports already defined in
-   `src/core/ports/repositories.ts`. `AttendanceRepository.record` **must** use
-   `INSERT … ON CONFLICT DO NOTHING RETURNING` and report `created: false` on conflict —
-   never read-then-write, which breaks when two counters scan at once.
-5. **Auth (Phase 0.6)** — roll-number login per D-02, `src/proxy.ts` route gating (Next 16
-   renamed `middleware.ts`; nodejs runtime only), forced password change, three role shells.
-6. **Seed (Phase 0.7)** — demo tenant + admin + staff + students + plans + menu. Seed
-   **two** tenants so cross-tenant isolation is provable against real data.
-7. Then Phase 1.2 → 1.8 in the table below.
+1. **Phase 1.3 — Plans & subscriptions.** Plan CRUD, then manual subscription activation
+   that **snapshots `price_paise` and `included_meal_slots` onto the subscription row**. A
+   later plan price change must never rewrite what an existing student agreed to.
+   Mid-cycle joiners pro-rate the first invoice (D-04) — the arithmetic belongs in a
+   policy in `src/core`, not in the Server Action.
+2. **Phase 1.4 — Menu management + student menu view.** Keyed by
+   `(tenant_id, service_date, meal_slot)`, which is already unique. Dates derive through
+   `src/core/time` in the tenant's timezone.
+3. **Phase 1.5b — QR token endpoint + rotating student QR screen.** The policy is written
+   and tested; this is issuance plus a screen that re-mints before TTL expiry. **Token
+   issuance must be denied for a blocked student** — see the test debt register.
+4. **Phase 1.6b — Staff scanner.** Verify endpoint, camera UI, visually distinct outcomes
+   (served / already served / blocked / wrong window / invalid), the audited manual
+   fallback, and an offline queue. Fail closed (rule 7).
+5. **Phase 1.7b — Live headcount** over the realtime `attendance` publication, plus the
+   snapshot cron.
+6. **Phase 1.8 — E2E smoke tests** and Phase 1 exit-criteria verification.
+
+### Deferred to the end, by the user's instruction
+
+- The GitHub repo is still **Public** and should be Private before real student data.
+- The first two commits carry a `Co-Authored-By: Claude` trailer; later ones do not.
+- General cleanup pass.
 
 ### Live project facts
 
@@ -141,7 +153,8 @@ with a correct headcount. Billing still on paper.
 | #    | Task                                                               | Status                |
 | ---- | ------------------------------------------------------------------ | --------------------- |
 | 1.1  | Migration 002 — operations tables, RLS, realtime                   | ✅ applied + verified |
-| 1.2  | Admin student CRUD + credential issuance                           | ⬜                    |
+| 1.2  | Admin students list + add, credential issuance                     | ✅                    |
+| 1.2d | Student detail — edit, status change, password reset, audited      | ✅                    |
 | 1.3  | Plans & subscriptions, manual activation, price/meal-slot snapshot | ⬜                    |
 | 1.4  | Menu management + student menu view                                | ⬜                    |
 | 1.5a | QR token policy (pure) + `TokenSigner` port + tests                | ✅                    |
@@ -154,7 +167,7 @@ with a correct headcount. Billing still on paper.
 
 ### Database state
 
-Migrations 001–003 are applied to `yenxlcrtlmnfotfqqabo` and sealed immutable.
+Migrations 001–005 are applied to `yenxlcrtlmnfotfqqabo` and sealed immutable.
 
 `npm run db:verify` asserts 13 tables with RLS, 10 enums, all uniqueness constraints, the
 security helpers, realtime on `attendance`, constraint behaviour, **and** that a real
@@ -166,16 +179,25 @@ Migration 003 fixed a silent auth-hook failure — see D-12.
 
 ```
 src/core/                            ✅ complete, pure, tested
-  domain/{enums,tenant-context}.ts
+  domain/{enums,identity,tenant-context}.ts
   policies/{qr,headcount}.policy.ts
   services/verify-attendance.ts
   ports/{repositories,token-signer}.ts
   time/index.ts                      tenant-timezone module
   money.ts  result.ts  errors/
-src/infra/supabase/database.types.ts   ✅ generated from the live schema
-src/app/                             ⬜ still create-next-app default
-src/infra/                           ⬜ does not exist
+src/infra/                           ✅ env, supabase clients + 7 repositories,
+                                        hmac-signer, auth/session
+src/components/                      ✅ app-shell, data-table (four states),
+                                        page-header, stat-card, status-badge, ui/
+src/app/(auth)/                      ✅ login, change-password
+src/app/(app)/admin/                 ✅ dashboard, students list, students/new
+src/app/(app)/{staff,student}/       ✅ shells + dashboards
+src/proxy.ts                         ✅ session refresh + role gating
 ```
+
+`(auth)` and `(app)` are **route groups** — parentheses keep them out of the URL, so
+`(app)/admin/students/page.tsx` serves `/admin/students`. They exist so the signed-out
+screens and the signed-in shell can have different layouts.
 
 ### Scripts
 

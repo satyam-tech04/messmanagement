@@ -105,6 +105,16 @@ function CredentialsIssued({ created }: { created: NonNullable<CreateStudentStat
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        {created.planWarning ? (
+          <div
+            role="alert"
+            className="flex items-start gap-2.5 rounded-lg border border-amber-500/30 bg-amber-50 px-3.5 py-3 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-200"
+          >
+            <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            <span>{created.planWarning}</span>
+          </div>
+        ) : null}
+
         <dl className="bg-muted/50 divide-border divide-y rounded-lg border">
           <div className="flex items-center justify-between gap-4 px-4 py-3">
             <dt className="text-muted-foreground text-sm">Roll number</dt>
