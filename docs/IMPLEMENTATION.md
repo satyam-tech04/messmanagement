@@ -19,7 +19,7 @@ conversation: everything needed to continue correctly is here or linked from her
 | Area                                  | State                                                               |
 | ------------------------------------- | ------------------------------------------------------------------- |
 | Repo, tooling, CI, import boundaries  | ✅ `npm run verify` green                                           |
-| Core domain (pure, no I/O)            | ✅ **298 tests**, 99%+ coverage                                     |
+| Core domain (pure, no I/O)            | ✅ **344 tests**, 99%+ coverage                                     |
 | Database schema                       | ✅ migrations 001–005 **applied + sealed** on the live project      |
 | JWT auth hook                         | ✅ enabled and verified end-to-end                                  |
 | Generated DB types                    | ✅ `src/infra/supabase/database.types.ts` (incl. RPC Functions)     |
@@ -31,7 +31,8 @@ conversation: everything needed to continue correctly is here or linked from her
 | **Phase 1.3 — plans & subscriptions** | ✅ plan CRUD, assign/end with price + meal-slot snapshot            |
 | **Phase 1.4 — menus**                 | ✅ week planner, student view, service-state resolution             |
 | **Phase 1.5b — student QR**           | ✅ rotating code, denial states, eligibility checked at issuance    |
-| Phase 1.6b → 1.8                      | ⬜ next — staff scanner, headcount, E2E                             |
+| **Phase 1.6b — counter scanner**      | ✅ camera, distinct outcomes, manual fallback, offline queue        |
+| Phase 1.7b → 1.8                      | ⬜ next — live headcount, snapshot cron, E2E                        |
 
 **Phase 0 is done.** Three roles sign in against the live database and land on their own
 shell; cross-tenant isolation is proven with real data. Phase 1 domain logic (QR policy,
@@ -59,12 +60,9 @@ Remove everything with `npm run db:seed -- --reset`.
 
 ### Next steps, in order
 
-1. **Phase 1.6b — Staff scanner.** Verify endpoint, camera UI, visually distinct outcomes
-   (served / already served / blocked / wrong window / invalid), the audited manual
-   fallback, and an offline queue. Fail closed (rule 7).
-2. **Phase 1.7b — Live headcount** over the realtime `attendance` publication, plus the
+1. **Phase 1.7b — Live headcount** over the realtime `attendance` publication, plus the
    snapshot cron.
-3. **Phase 1.8 — E2E smoke tests** and Phase 1 exit-criteria verification.
+2. **Phase 1.8 — E2E smoke tests** and Phase 1 exit-criteria verification.
 
 ### Deferred to the end, by the user's instruction
 
@@ -152,7 +150,7 @@ with a correct headcount. Billing still on paper.
 | 1.5a | QR token policy (pure) + `TokenSigner` port + tests                | ✅                    |
 | 1.5b | Token issuance endpoint + rotating student QR screen               | ✅                    |
 | 1.6a | `verifyQrAttendance` / `verifyManualAttendance` + fakes + tests    | ✅                    |
-| 1.6b | Staff scanner UI, verify endpoint, error states, offline queue     | ⬜                    |
+| 1.6b | Staff scanner UI, verify endpoint, error states, offline queue     | ✅                    |
 | 1.7a | Headcount projection + variance policy (pure) + tests              | ✅                    |
 | 1.7b | Live realtime count + snapshot cron job                            | ⬜                    |
 | 1.8  | E2E smoke tests, exit-criteria verification                        | ⬜                    |
@@ -243,7 +241,7 @@ Cases from architecture doc §10 that must exist before the relevant phase ships
 | Cross-tenant read with a valid JWT → sees only own tenant          | 0     | ✅     |
 | Blocked student's **token issuance** → denied                      | 1     | ✅     |
 | HMAC signer uses constant-time comparison                          | 1     | ✅     |
-| Two concurrent scans of one student → exactly one attendance row   | 1     | ⬜     |
+| Two concurrent scans of one student → exactly one attendance row   | 1     | ✅     |
 | Duplicate Razorpay webhook → exactly one ledger entry              | 2     | ⏸️     |
 | Mess cut spanning a month boundary → correct per-month accounting  | 2     | ⏸️     |
 | Cut requested at 11h59m before the meal → rejected                 | 2     | ⏸️     |

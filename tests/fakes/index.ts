@@ -165,8 +165,11 @@ export class FakeSubscriptionRepository implements SubscriptionRepository {
 
 export class FakeAuditLogRepository implements AuditLogRepository {
   readonly entries: Array<Record<string, unknown>> = [];
+  /** Simulates the audit write failing after attendance was already committed. */
+  failWrites = false;
 
   async write(entry: Record<string, unknown>): Promise<void> {
+    if (this.failWrites) throw new Error("simulated audit_log write failure");
     this.entries.push(entry);
   }
 }

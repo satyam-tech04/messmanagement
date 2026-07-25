@@ -76,6 +76,15 @@ export interface VerifiedAttendance {
   readonly mealSlot: MealSlot;
   readonly serviceDate: ServiceDate;
   readonly servedAt: Date;
+  /**
+   * Set when the meal was recorded but its audit entry could not be written.
+   *
+   * Only reachable on the manual path. The attendance row is already committed
+   * and cannot be cleanly rolled back, and withholding food over a logging
+   * failure would be the wrong trade — but an unexplained manual entry is
+   * exactly the row an admin questions weeks later, so staff are told now.
+   */
+  readonly auditFailed?: boolean;
 }
 
 export async function verifyQrAttendance(
@@ -267,21 +276,29 @@ async function commitAttendance(
 
   // Manual entries are audit-logged; QR scans are not, because 600 audit rows a
   // day of ordinary scans would bury the overrides that actually need review.
+  let auditFailed = false;
   if (args.method === "MANUAL") {
-    await deps.audit.write({
-      tenantId: ctx.tenantId,
-      actorProfileId: ctx.actorProfileId,
-      action: "ATTENDANCE_MANUAL_OVERRIDE",
-      entityType: "attendance",
-      entityId: outcome.record.id,
-      after: {
-        studentId: student.studentId,
-        rollNumber: student.rollNumber,
-        serviceDate: args.serviceDate,
-        mealSlot: args.mealSlot,
-        reason: args.overrideReason,
-      },
-    });
+    try {
+      await deps.audit.write({
+        tenantId: ctx.tenantId,
+        actorProfileId: ctx.actorProfileId,
+        action: "ATTENDANCE_MANUAL_OVERRIDE",
+        entityType: "attendance",
+        entityId: outcome.record.id,
+        after: {
+          studentId: student.studentId,
+          rollNumber: student.rollNumber,
+          serviceDate: args.serviceDate,
+          mealSlot: args.mealSlot,
+          reason: args.overrideReason,
+        },
+      });
+    } catch {
+      // The attendance row is already committed. Letting this propagate would
+      // surface as a 500 at the counter while the student *is* recorded as
+      // served — staff would then reasonably turn them away. Report it instead.
+      auditFailed = true;
+    }
   }
 
   return ok({
@@ -293,5 +310,6 @@ async function commitAttendance(
     mealSlot: args.mealSlot,
     serviceDate: args.serviceDate,
     servedAt: outcome.record.scannedAt,
+    ...(auditFailed ? { auditFailed: true } : {}),
   });
 }

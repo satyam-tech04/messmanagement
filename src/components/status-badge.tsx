@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import type { StatusTone } from "@/lib/tone";
 
 /**
  * Status badge with a fixed colour vocabulary (DESIGN.md §3).
@@ -9,7 +10,9 @@ import { cn } from "@/lib/utils";
  * which is read at speed under bad canteen lighting.
  */
 
-export type StatusTone = "success" | "warning" | "danger" | "neutral" | "info";
+// The tone vocabulary lives in `src/lib/tone` so non-component modules can
+// speak it too. Re-exported here because every existing import expects it.
+export type { StatusTone };
 
 const TONE_CLASSES: Record<StatusTone, string> = {
   success:
