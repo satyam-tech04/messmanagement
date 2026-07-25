@@ -19,7 +19,7 @@ conversation: everything needed to continue correctly is here or linked from her
 | Area                                  | State                                                               |
 | ------------------------------------- | ------------------------------------------------------------------- |
 | Repo, tooling, CI, import boundaries  | ✅ `npm run verify` green                                           |
-| Core domain (pure, no I/O)            | ✅ **344 tests**, 99%+ coverage                                     |
+| Core domain (pure, no I/O)            | ✅ **357 tests**, 99%+ coverage                                     |
 | Database schema                       | ✅ migrations 001–005 **applied + sealed** on the live project      |
 | JWT auth hook                         | ✅ enabled and verified end-to-end                                  |
 | Generated DB types                    | ✅ `src/infra/supabase/database.types.ts` (incl. RPC Functions)     |
@@ -32,7 +32,9 @@ conversation: everything needed to continue correctly is here or linked from her
 | **Phase 1.4 — menus**                 | ✅ week planner, student view, service-state resolution             |
 | **Phase 1.5b — student QR**           | ✅ rotating code, denial states, eligibility checked at issuance    |
 | **Phase 1.6b — counter scanner**      | ✅ camera, distinct outcomes, manual fallback, offline queue        |
-| Phase 1.7b → 1.8                      | ⬜ next — live headcount, snapshot cron, E2E                        |
+| **Phase 1.7b — live headcount**       | ✅ realtime count, snapshot cron with locking                       |
+| **Phase 1.8 — exit criteria**         | ✅ **14 checks pass against the live DB** (`npm run verify:phase1`) |
+| **MVP (Phase 0 + 1)**                 | ✅ **complete**                                                     |
 
 **Phase 0 is done.** Three roles sign in against the live database and land on their own
 shell; cross-tenant isolation is proven with real data. Phase 1 domain logic (QR policy,
@@ -60,9 +62,14 @@ Remove everything with `npm run db:seed -- --reset`.
 
 ### Next steps, in order
 
-1. **Phase 1.7b — Live headcount** over the realtime `attendance` publication, plus the
-   snapshot cron.
-2. **Phase 1.8 — E2E smoke tests** and Phase 1 exit-criteria verification.
+**The MVP is complete.** Phase 1 exit criteria are proven — see below. What remains before
+the pilot runs on it:
+
+1. **The deferred cleanup list** below — the repo is still public, and there is a general
+   tidy-up pass outstanding.
+2. **Widen the pilot's meal windows temporarily** if the client wants to test outside
+   12:00–14:30 / 19:30–22:00 IST. Scans are correctly refused outside them.
+3. **Phase 2 (money)** is blocked on D-05 and D-06, which need the product owner.
 
 ### Deferred to the end, by the user's instruction
 
@@ -81,8 +88,9 @@ Remove everything with `npm run db:seed -- --reset`.
 ### Commands that must stay green
 
 ```bash
-npm run verify      # typecheck + lint + tests
-npm run db:verify   # schema assertions + a real JWT claim check against the live DB
+npm run verify        # typecheck + lint + tests
+npm run db:verify     # schema assertions + a real JWT claim check against the live DB
+npm run verify:phase1 # drives the whole service loop against the live DB (14 checks)
 ```
 
 ### Already learned the hard way — do not rediscover
@@ -152,8 +160,8 @@ with a correct headcount. Billing still on paper.
 | 1.6a | `verifyQrAttendance` / `verifyManualAttendance` + fakes + tests    | ✅                    |
 | 1.6b | Staff scanner UI, verify endpoint, error states, offline queue     | ✅                    |
 | 1.7a | Headcount projection + variance policy (pure) + tests              | ✅                    |
-| 1.7b | Live realtime count + snapshot cron job                            | ⬜                    |
-| 1.8  | E2E smoke tests, exit-criteria verification                        | ⬜                    |
+| 1.7b | Live realtime count + snapshot cron job                            | ✅                    |
+| 1.8  | E2E smoke tests, exit-criteria verification                        | ✅                    |
 
 ### Database state
 
@@ -200,6 +208,27 @@ screens and the signed-in shell can have different layouts.
 | `gen-types.mjs`        | Generates DB types by catalog introspection (no Docker, no PAT)   |
 | `verify-schema.mjs`    | Asserts RLS, constraints, enums, policies                         |
 | `verify-jwt-hook.mjs`  | Signs in for real and decodes the token's claims                  |
+
+### ✅ Phase 1 is complete — exit criteria proven
+
+**"The pilot hostel can run real lunch and dinner service, verified by QR, with a correct
+headcount."**
+
+`npm run verify:phase1` drives the same services the HTTP routes call, against the **live**
+database, and passes 14 checks. It creates its own throwaway student so no seeded or real
+row is touched, and cleans up afterwards.
+
+1. **QR issuance** — an eligible student gets a signed token; the wrong secret, an expired
+   token, and a token scanned outside its meal window are each rejected. The screen's
+   refresh interval is verified to be shorter than the token TTL.
+2. **Blocked students** — denied at issuance _and_ at the counter. The manual fallback
+   refuses them too, proving it is not a bypass.
+3. **Idempotency** — a second scan of the same meal returns `ALREADY_SERVED`; three
+   simultaneous scans produce exactly one success and exactly one row per meal.
+4. **Audit** — every manual override is written with its reason.
+5. **Headcount** — a snapshot per served meal; re-running the cron does not duplicate rows;
+   a locked count never moves even when the underlying subscriptions change.
+6. **Multi-tenancy** — another mess cannot serve this student by roll number.
 
 ## Phase 2 — Money ⏸️ _out of MVP scope_
 

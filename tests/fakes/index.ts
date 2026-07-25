@@ -20,6 +20,8 @@ import type {
   AttendanceRecord,
   AttendanceRepository,
   AuditLogRepository,
+  HeadcountSnapshotRepository,
+  HeadcountSnapshotRow,
   MessCutRepository,
   RateLimiter,
   RecordAttendanceInput,
@@ -160,6 +162,56 @@ export class FakeSubscriptionRepository implements SubscriptionRepository {
     serviceDate: ServiceDate,
   ): Promise<SubscriberSnapshot[]> {
     return this.subscribers.filter((s) => s.startDate <= serviceDate && s.endDate >= serviceDate);
+  }
+}
+
+/**
+ * Mirrors the real `(tenant_id, service_date, meal_slot)` unique constraint, so
+ * a re-run overwrites rather than duplicating — the property the cron depends
+ * on.
+ */
+export class FakeHeadcountSnapshotRepository implements HeadcountSnapshotRepository {
+  readonly rows: HeadcountSnapshotRow[] = [];
+
+  /** Synchronous accessor for assertions; the port method stays async. */
+  rowFor(serviceDate: ServiceDate, mealSlot: MealSlot): HeadcountSnapshotRow | null {
+    return this.rows.find((r) => r.serviceDate === serviceDate && r.mealSlot === mealSlot) ?? null;
+  }
+
+  async find(
+    _tenantId: string,
+    serviceDate: ServiceDate,
+    mealSlot: MealSlot,
+  ): Promise<HeadcountSnapshotRow | null> {
+    return this.rows.find((r) => r.serviceDate === serviceDate && r.mealSlot === mealSlot) ?? null;
+  }
+
+  async findForDate(_tenantId: string, serviceDate: ServiceDate): Promise<HeadcountSnapshotRow[]> {
+    return this.rows.filter((r) => r.serviceDate === serviceDate);
+  }
+
+  async upsert(input: {
+    tenantId: string;
+    serviceDate: ServiceDate;
+    mealSlot: MealSlot;
+    projectedCount: number;
+    guestCount: number;
+    extraPlateCount: number;
+    lockedAt: Date | null;
+  }): Promise<void> {
+    const row: HeadcountSnapshotRow = {
+      serviceDate: input.serviceDate,
+      mealSlot: input.mealSlot,
+      projectedCount: input.projectedCount,
+      guestCount: input.guestCount,
+      extraPlateCount: input.extraPlateCount,
+      lockedAt: input.lockedAt,
+    };
+    const index = this.rows.findIndex(
+      (r) => r.serviceDate === input.serviceDate && r.mealSlot === input.mealSlot,
+    );
+    if (index >= 0) this.rows[index] = row;
+    else this.rows.push(row);
   }
 }
 

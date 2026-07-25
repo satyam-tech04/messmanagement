@@ -158,3 +158,52 @@ silently.
 - [ ] Scan the same student again — `ALREADY_SERVED`, and no second attendance row exists
 - [ ] Today's menu renders on the student surface
 - [ ] The live headcount on the staff dashboard moves when a scan succeeds
+
+---
+
+## Headcount snapshot cron
+
+`POST /api/cron/headcount` projects and persists the count the kitchen cooks to,
+for **every active tenant**, each in its own timezone.
+
+| Query        | Effect                                                          |
+| ------------ | --------------------------------------------------------------- |
+| _(none)_     | Refresh the projection. Locked snapshots are left alone.        |
+| `?lock=true` | Freeze the count. Later runs will not change a locked snapshot. |
+
+**Authentication.** Send the shared secret as either
+`Authorization: Bearer $CRON_SECRET` (what Vercel Cron sends) or `x-cron-secret`.
+Compared in constant time. Without the guard, anyone could enumerate tenants and
+read their subscriber counts.
+
+```bash
+curl -X POST "$NEXT_PUBLIC_APP_URL/api/cron/headcount" \
+  -H "x-cron-secret: $CRON_SECRET"
+```
+
+### The schedules are UTC — this matters
+
+Vercel Cron expressions are evaluated in **UTC**, while the lock must land
+12 hours before each meal in the _tenant's_ local time (§9). For the IST pilot
+tenant (UTC+5:30):
+
+| Meal   | Opens (IST) | Lock at (IST) | Cron (UTC)    |
+| ------ | ----------- | ------------- | ------------- |
+| Lunch  | 12:00       | 00:00         | `30 18 * * *` |
+| Dinner | 19:30       | 07:30         | `0 2 * * *`   |
+
+Plus an hourly unlocked refresh so a student who joins mid-morning is counted.
+
+**Onboarding a tenant in a different timezone means revisiting `vercel.json`.**
+The job itself is timezone-correct — it derives each tenant's own service date —
+but _when the lock fires_ is a single global schedule. A mess in another zone
+would get its count locked at the wrong hour. Fixing that properly means either
+per-tenant scheduling or locking based on each tenant's next meal window rather
+than the clock; both are out of MVP scope with one pilot hostel.
+
+### Re-running is safe
+
+The write upserts on `(tenant_id, service_date, meal_slot)`, and a locked
+snapshot is skipped rather than revised — once the kitchen has bought
+ingredients against a number, that number must not move. One tenant failing does
+not abort the rest.

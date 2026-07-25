@@ -111,6 +111,43 @@ export interface SubscriptionRepository {
   findActiveCovering(tenantId: string, serviceDate: ServiceDate): Promise<SubscriberSnapshot[]>;
 }
 
+export interface HeadcountSnapshotRow {
+  readonly serviceDate: ServiceDate;
+  readonly mealSlot: MealSlot;
+  readonly projectedCount: number;
+  readonly guestCount: number;
+  readonly extraPlateCount: number;
+  /** Non-null once the count is committed and must stop moving. */
+  readonly lockedAt: Date | null;
+}
+
+export interface HeadcountSnapshotRepository {
+  find(
+    tenantId: string,
+    serviceDate: ServiceDate,
+    mealSlot: MealSlot,
+  ): Promise<HeadcountSnapshotRow | null>;
+
+  findForDate(tenantId: string, serviceDate: ServiceDate): Promise<HeadcountSnapshotRow[]>;
+
+  /**
+   * Upserts on `(tenant_id, service_date, meal_slot)`.
+   *
+   * Must use the unique constraint rather than read-then-write: the cron fires
+   * twice some days, and a locked count that got duplicated would leave the
+   * kitchen with two different numbers and no way to tell which was acted on.
+   */
+  upsert(input: {
+    readonly tenantId: string;
+    readonly serviceDate: ServiceDate;
+    readonly mealSlot: MealSlot;
+    readonly projectedCount: number;
+    readonly guestCount: number;
+    readonly extraPlateCount: number;
+    readonly lockedAt: Date | null;
+  }): Promise<void>;
+}
+
 /** Append-only audit trail for the actions that become disputes (§4.4). */
 export interface AuditLogRepository {
   write(entry: {

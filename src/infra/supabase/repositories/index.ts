@@ -21,6 +21,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   AttendanceRepository,
   AuditLogRepository,
+  HeadcountSnapshotRepository,
   MessCutRepository,
   RateLimiter,
   StudentRepository,
@@ -29,6 +30,7 @@ import type {
 } from "@/core/ports/repositories";
 import type { Database } from "../database.types";
 import { SupabaseAttendanceRepository } from "./attendance.repository";
+import { SupabaseHeadcountSnapshotRepository } from "./headcount-snapshot.repository";
 import { SupabaseAuditLogRepository } from "./audit-log.repository";
 import { SupabaseMessCutRepository } from "./mess-cut.repository";
 import { SupabaseRateLimiter } from "./rate-limiter";
@@ -42,6 +44,7 @@ export interface Repositories {
   readonly attendance: AttendanceRepository;
   readonly messCuts: MessCutRepository;
   readonly subscriptions: SubscriptionRepository;
+  readonly headcountSnapshots: HeadcountSnapshotRepository;
   readonly audit: AuditLogRepository;
   readonly rateLimiter: RateLimiter;
 }
@@ -58,6 +61,7 @@ export function createRepositories(
     attendance: new SupabaseAttendanceRepository(db),
     messCuts: new SupabaseMessCutRepository(db),
     subscriptions: new SupabaseSubscriptionRepository(db),
+    headcountSnapshots: new SupabaseHeadcountSnapshotRepository(db),
     audit: new SupabaseAuditLogRepository(admin),
     rateLimiter: new SupabaseRateLimiter(admin),
   };
@@ -67,6 +71,7 @@ export { rateLimitBuckets } from "./rate-limiter";
 export {
   SupabaseAttendanceRepository,
   SupabaseAuditLogRepository,
+  SupabaseHeadcountSnapshotRepository,
   SupabaseMessCutRepository,
   SupabaseRateLimiter,
   SupabaseStudentRepository,

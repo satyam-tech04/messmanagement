@@ -141,7 +141,7 @@ const eslintConfig = defineConfig([
 
   // Tests and scripts may reach anywhere; they exist to exercise the wiring.
   {
-    files: ["tests/**/*.ts", "scripts/**/*.{ts,mjs,js}", "*.config.{ts,mjs,js}"],
+    files: ["tests/**/*.ts", "scripts/**/*.{ts,mts,mjs,js}", "*.config.{ts,mjs,js}"],
     rules: {
       "import/no-restricted-paths": "off",
       "no-console": "off",

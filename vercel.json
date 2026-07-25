@@ -1,0 +1,17 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    {
+      "path": "/api/cron/headcount",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/headcount?lock=true",
+      "schedule": "30 18 * * *"
+    },
+    {
+      "path": "/api/cron/headcount?lock=true",
+      "schedule": "0 2 * * *"
+    }
+  ]
+}
