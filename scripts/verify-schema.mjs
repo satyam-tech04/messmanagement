@@ -247,15 +247,20 @@ await expectRejection(
    select id, 30, 30 from t`,
 );
 
-// The slug we will actually use must be accepted.
+// The hyphenated form must be accepted, and a name may keep its underscore
+// (D-13: slug `unversity-mess`, display name `unversity_mess`). Uses a
+// throwaway slug rather than the real one, which now exists from the seed —
+// otherwise this asserts uniqueness rather than format.
 try {
   await client.query("begin");
-  await client.query(`insert into tenants (slug, name) values ('unversity-mess','unversity_mess')`);
+  await client.query(`insert into tenants (slug, name) values ($1, 'unversity_mess')`, [
+    `probe-${Math.random().toString(36).slice(2, 10)}`,
+  ]);
   await client.query("rollback");
-  pass("slug 'unversity-mess' with name 'unversity_mess' — accepted");
+  pass("hyphenated slug accepted, and a name may keep its underscore (D-13)");
 } catch (e) {
   await client.query("rollback");
-  fail(`slug 'unversity-mess' rejected: ${e.message}`);
+  fail(`hyphenated slug rejected: ${e.message}`);
 }
 
 await client.end();

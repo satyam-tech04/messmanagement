@@ -22,5 +22,11 @@
     "state": "applied",
     "appliedTo": "yenxlcrtlmnfotfqqabo",
     "appliedAt": "2026-07-25"
+  },
+  "20260725000005_plans_unique_name.sql": {
+    "sha256": "340fd5d12d5d638c637ecf696162a241acce82924eacfa5c5b06fd47d9be062d",
+    "state": "applied",
+    "appliedTo": "yenxlcrtlmnfotfqqabo",
+    "appliedAt": "2026-07-25"
   }
 }

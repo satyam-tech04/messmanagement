@@ -118,7 +118,18 @@ async function reset(): Promise<void> {
 
 async function seed(): Promise<void> {
   const today = new Date();
-  const iso = (d: Date) => d.toISOString().slice(0, 10);
+
+  /**
+   * Formats a Date's LOCAL calendar components.
+   *
+   * NOT `toISOString().slice(0,10)` — that converts to UTC first, so a date
+   * built as "31 July local" in Asia/Kolkata comes back as "2026-07-30". This
+   * is exactly the class of bug §2.9 of the architecture doc calls the most
+   * confusing in this system, and it bit this script: subscriptions were
+   * ending a day early.
+   */
+  const iso = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   const startDate = iso(new Date(today.getFullYear(), today.getMonth(), 1));
   const endDate = iso(new Date(today.getFullYear(), today.getMonth() + 1, 0));
 
@@ -148,34 +159,50 @@ async function seed(): Promise<void> {
       );
 
     // --- Plan ---
-    const { data: plan } = await db
-      .from("plans")
-      .upsert(
-        {
-          tenant_id: tenantId,
-          name: "Monthly — Lunch & Dinner",
-          duration_type: "MONTHLY",
-          duration_days: 30,
-          // Money is integer paise, always: ₹4,000.00
-          price_paise: 400000,
-          included_meal_slots: ["LUNCH", "DINNER"],
-          is_active: true,
-        },
-        { onConflict: "tenant_id,name" as never, ignoreDuplicates: false },
-      )
-      .select("id")
-      .maybeSingle();
+    // Every Supabase call in this script checks its error. An earlier version
+    // did not, and an upsert against a constraint that did not yet exist failed
+    // silently — the seed then reported "8 students with active plans" having
+    // created none. A seed that lies is worse tha    // --- Plan ---
+    // Every Supabase call in this script checks its error. An earlier version
+    // did not, and an upsert failed silently — the seed then reported
+    // "8 students with active plans" having created none. A seed that lies is
+    // worse than one that crashes.
+    //
+    // Select-then-write rather than upsert: uniqueness is enforced by a
+    // case-insensitive expression index (migration 005), and Postgres cannot
+    // match ON CONFLICT to an expression index. Keeping the domain rule
+    // case-insensitive is worth more than the convenience of an upsert here.
+    const PLAN_NAME = "Monthly — Lunch & Dinner";
+    const PLAN_FIELDS = {
+      tenant_id: tenantId,
+      name: PLAN_NAME,
+      duration_type: "MONTHLY",
+      duration_days: 30,
+      // Money is integer paise, always: ₹4,000.00
+      price_paise: 400000,
+      included_meal_slots: ["LUNCH", "DINNER"],
+      is_active: true,
+    };
 
-    let planId = plan?.id as string | undefined;
-    if (!planId) {
-      const { data: existing } = await db
-        .from("plans")
-        .select("id")
-        .eq("tenant_id", tenantId)
-        .limit(1)
-        .maybeSingle();
-      planId = existing?.id;
+    const { data: found, error: findError } = await db
+      .from("plans")
+      .select("id")
+      .eq("tenant_id", tenantId)
+      .ilike("name", PLAN_NAME)
+      .maybeSingle();
+    if (findError) throw new Error(`plan lookup for ${t.slug}: ${findError.message}`);
+
+    let planId: string | undefined = found?.id;
+
+    if (planId) {
+      const { error } = await db.from("plans").update(PLAN_FIELDS).eq("id", planId);
+      if (error) throw new Error(`plan update for ${t.slug}: ${error.message}`);
+    } else {
+      const { data, error } = await db.from("plans").insert(PLAN_FIELDS).select("id").single();
+      if (error) throw new Error(`plan insert for ${t.slug}: ${error.message}`);
+      planId = data.id as string;
     }
+    console.log(`  plan     ${PLAN_NAME}`);
 
     // --- Admin and staff (real email logins) ---
     for (const [role, person] of [
@@ -216,7 +243,7 @@ async function seed(): Promise<void> {
         { onConflict: "id" },
       );
 
-      const { data: student } = await db
+      const { data: student, error: studentError } = await db
         .from("students")
         .upsert(
           {
@@ -231,6 +258,7 @@ async function seed(): Promise<void> {
         )
         .select("id")
         .single();
+      if (studentError) throw new Error(`student ${roll}: ${studentError.message}`);
 
       if (planId && student) {
         const { data: hasSub } = await db
@@ -241,7 +269,7 @@ async function seed(): Promise<void> {
           .maybeSingle();
 
         if (!hasSub) {
-          await db.from("subscriptions").insert({
+          const { error: subError } = await db.from("subscriptions").insert({
             tenant_id: tenantId,
             student_id: student.id,
             plan_id: planId,
@@ -252,10 +280,16 @@ async function seed(): Promise<void> {
             end_date: endDate,
             status: "ACTIVE",
           });
+          if (subError) throw new Error(`subscription ${roll}: ${subError.message}`);
         }
       }
     }
-    console.log(`  ${t.students.length} students with active plans`);
+    const { count: subCount } = await db
+      .from("subscriptions")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", tenantId)
+      .eq("status", "ACTIVE");
+    console.log(`  ${t.students.length} students, ${subCount ?? 0} active subscriptions`);
 
     // --- Today's menu ---
     const serviceDate = iso(today);
