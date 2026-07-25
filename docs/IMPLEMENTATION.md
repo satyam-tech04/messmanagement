@@ -16,23 +16,40 @@ conversation: everything needed to continue correctly is here or linked from her
 
 ### What is done and verified
 
-| Area                                 | State                                                          |
-| ------------------------------------ | -------------------------------------------------------------- |
-| Repo, tooling, CI, import boundaries | ✅ `npm run verify` is green                                   |
-| Core domain (pure, no I/O)           | ✅ complete, **159 tests**, 99%+ coverage                      |
-| Database schema                      | ✅ migrations 001–003 **applied + sealed** on the live project |
-| JWT auth hook                        | ✅ enabled in dashboard **and** verified end-to-end            |
-| Generated DB types                   | ✅ `src/infra/supabase/database.types.ts`                      |
-| Infrastructure layer (`src/infra`)   | ⬜ **does not exist yet**                                      |
-| Any UI, auth, or routes              | ⬜ **does not exist yet**                                      |
+| Area                                 | State                                                               |
+| ------------------------------------ | ------------------------------------------------------------------- |
+| Repo, tooling, CI, import boundaries | ✅ `npm run verify` green                                           |
+| Core domain (pure, no I/O)           | ✅ **189 tests**, 99%+ coverage                                     |
+| Database schema                      | ✅ migrations 001–004 **applied + sealed** on the live project      |
+| JWT auth hook                        | ✅ enabled and verified end-to-end                                  |
+| Generated DB types                   | ✅ `src/infra/supabase/database.types.ts` (incl. RPC Functions)     |
+| Infrastructure layer (`src/infra`)   | ✅ env, clients, HMAC signer, 7 repositories                        |
+| **Phase 0 — auth and shells**        | ✅ **complete, both exit criteria proven**                          |
+| Seeded demo data                     | ✅ 2 tenants, 10 students, plans, menus                             |
+| UI foundation                        | ✅ shadcn/Base UI, design tokens, app shell, [DESIGN.md](DESIGN.md) |
+| Phase 1 feature screens              | ⬜ next                                                             |
 
-The domain is finished and the database is real. **Nothing is wired between them.**
-`src/app` is still the untouched `create-next-app` default page.
+**Phase 0 is done.** Three roles sign in against the live database and land on their own
+shell; cross-tenant isolation is proven with real data. Phase 1 domain logic (QR policy,
+attendance verification, headcount projection) is already written and tested — what
+remains is the screens and endpoints on top of it.
+
+### Demo logins (after `npm run db:seed`)
+
+| Role    | Identifier                          | Password      |
+| ------- | ----------------------------------- | ------------- |
+| Admin   | `admin@unversity-mess.test`         | `MessOS@2026` |
+| Staff   | `staff@unversity-mess.test`         | `MessOS@2026` |
+| Student | `CS21B001` (roll number, not email) | `MessOS@2026` |
+
+A second tenant `demo-hostel` exists solely to prove isolation — it also has a `CS21B001`.
+Remove everything with `npm run db:seed -- --reset`.
 
 ### Next steps, in order
 
-1. **`src/lib/env.ts`** — Zod-validated env. Server-only vars must never be reachable from
-   a client component. Parse, don't trust (rule 10).
+1. **Phase 1.2 — Admin students CRUD** with credential issuance. This is the first
+   screen built to the full [DESIGN.md](DESIGN.md) bar: a real data table with
+   loading / empty / error / populated states, search, filters and pagination.
 2. **Supabase clients** — `src/lib/supabase/{client,server,admin}.ts` using
    `@supabase/ssr`. Use the `getAll`/`setAll` cookie methods (the `get`/`set`/`remove` form
    is deprecated); in this version `setAll` receives `(cookiesToSet, headers)`. Prefer
@@ -99,12 +116,22 @@ provably returns nothing.
 | 0.3 | CLAUDE.md, this tracker, decision log, runbook                         | ✅                    |
 | 0.4 | Migration 001 — tenancy, identity, RLS, JWT hook                       | ✅ applied + verified |
 | 0.5 | Core layer — Result, errors, enums, money, tenant-timezone + tests     | ✅                    |
-| 0.6 | Auth — roll-number login, `proxy.ts` gating, forced password change    | ⬜                    |
-| 0.7 | Seed demo tenant; prove cross-tenant isolation                         | 🚧 half               |
+| 0.6 | Auth — roll-number login, `proxy.ts` gating, forced password change    | ✅                    |
+| 0.7 | Seed two tenants; prove cross-tenant isolation                         | ✅                    |
 
-**Exit criterion "cross-tenant query returns nothing" is already proven** by
-`scripts/verify-jwt-hook.mjs` — a real signed-in user sees exactly their own tenant row.
-The "three roles log in" half needs 0.6.
+### ✅ Phase 0 is complete — both exit criteria proven
+
+`npm run db:verify` runs all three verification scripts and passes 43 checks:
+
+1. **Three roles log in and land on their own shell.** admin / staff / student all
+   authenticate and carry the correct `user_role` claim; the student signs in by
+   **roll number**, not email (D-02).
+2. **A cross-tenant query provably returns nothing.** Tested with a legitimately
+   obtained, valid JWT — not by reading policy definitions. Both seeded tenants
+   contain a student with roll number `CS21B001`, so any leak surfaces immediately.
+   Tenant A sees its 8 students and only its own tenant row; a student sees only
+   themselves, cannot read `tenant_secrets` or `audit_log`; and a cross-tenant
+   insert is refused with HTTP 400.
 
 ## Phase 1 — Core Operating Loop
 

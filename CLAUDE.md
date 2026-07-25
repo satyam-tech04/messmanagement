@@ -13,6 +13,7 @@ it carries current state, next steps in order, and the traps already discovered.
 - Phase tracker and current status: [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md)
 - Resolved + open product decisions: [docs/DECISIONS.md](docs/DECISIONS.md)
 - Runbook (env, migrations, deploy): [docs/RUNBOOK.md](docs/RUNBOOK.md)
+- **UI standard (read before building any screen): [docs/DESIGN.md](docs/DESIGN.md)**
 
 **Live-client context:** a real hostel with 300–1000 students will use this three times a
 day. Bugs mean students don't get fed or get double-charged. There is no staging
@@ -86,6 +87,15 @@ write `new Date().toISOString().slice(0, 10)`.
 ### 10. Validate at every boundary with Zod
 
 Every route input, every webhook body, every env var. Parse, don't trust.
+
+### 11. The UI bar is premium and complete
+
+Every list is a real table with **four** designed states — loading (skeletons), empty
+(with the action that fixes it), error (with a retry), and populated. Money and dates are
+always formatted, never raw. Status is a badge with colour _and_ text. Dark mode and
+keyboard navigation are not optional extras. Full standard: [docs/DESIGN.md](docs/DESIGN.md).
+
+A screen with a bare "No data" message or an unhandled loading state is unfinished.
 
 ---
 
