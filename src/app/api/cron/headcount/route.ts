@@ -16,6 +16,7 @@ import { timingSafeEqual } from "node:crypto";
 import { snapshotHeadcount } from "@/core/services/snapshot-headcount";
 import { isErr } from "@/core/result";
 import { serviceDateOf } from "@/core/time";
+import { cronPlanFor } from "@/lib/cron-plan";
 import { serverEnv } from "@/lib/env.server";
 import { createAdminClient } from "@/infra/supabase/admin";
 import { createRepositories } from "@/infra/supabase/repositories";
@@ -30,7 +31,7 @@ function secretMatches(provided: string | null): boolean {
   return timingSafeEqual(a, b);
 }
 
-export async function POST(request: Request) {
+async function run(request: Request) {
   // Vercel Cron sends `Authorization: Bearer <secret>`; a manual run may send
   // the bare header. Accept both rather than making the runbook fiddly.
   const auth = request.headers.get("authorization");
@@ -42,8 +43,13 @@ export async function POST(request: Request) {
   }
 
   const url = new URL(request.url);
-  // Locking is the 12-hours-before run; the frequent refresh runs unlocked.
-  const lock = url.searchParams.get("lock") === "true";
+  // Which meal to lock comes from the schedule that fired, not a query string:
+  // Vercel's docs point at `x-vercel-cron-schedule` for telling apart schedules
+  // that share a path. Query parameters still win for a manual run.
+  const plan = cronPlanFor({
+    schedule: request.headers.get("x-vercel-cron-schedule"),
+    params: url.searchParams,
+  });
 
   const admin = createAdminClient();
   const repos = createRepositories(admin, admin);
@@ -73,7 +79,7 @@ export async function POST(request: Request) {
         snapshots: repos.headcountSnapshots,
         now: () => new Date(),
       },
-      { lock },
+      { lock: plan.lock, ...(plan.slots ? { slots: plan.slots } : {}) },
     );
 
     // One tenant failing must not abort the rest — a shared cron that stops at
@@ -84,7 +90,7 @@ export async function POST(request: Request) {
         : {
             tenant: tenant.slug,
             serviceDate,
-            locked: lock,
+            locked: plan.lock,
             written: result.value.written.map((w) => ({
               mealSlot: w.mealSlot,
               projectedCount: w.projectedCount,
@@ -96,7 +102,26 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json(
-    { ok: true, ranAt: new Date().toISOString(), lock, tenants: results },
+    {
+      ok: true,
+      ranAt: new Date().toISOString(),
+      lock: plan.lock,
+      slots: plan.slots ?? "all",
+      tenants: results,
+    },
     { headers: { "Cache-Control": "no-store" } },
   );
+}
+
+/**
+ * Vercel Cron triggers with a **GET**, so this is the one that actually runs in
+ * production. POST is kept for manual `curl` runs, which read more naturally as
+ * a command than a GET does.
+ */
+export async function GET(request: Request) {
+  return run(request);
+}
+
+export async function POST(request: Request) {
+  return run(request);
 }

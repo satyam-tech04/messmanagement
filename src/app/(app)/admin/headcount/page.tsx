@@ -62,17 +62,19 @@ export default async function HeadcountPage() {
   const counts: SlotCount[] = settings.mealSlots.map((config) => {
     const snapshot = snapshots.find((s) => s.mealSlot === config.slot);
 
-    // The snapshot is what the kitchen cooked to. Without one — the cron has
-    // not run yet — project live so the screen is still useful, rather than
-    // showing a zero that reads as "nobody is eating".
+    // Only a *locked* snapshot is authoritative — it is the number the kitchen
+    // actually cooked to. An unlocked one is just a stale copy of something we
+    // can compute right now, so preferring it would show a figure that is
+    // wrong by however long ago the job last ran.
     const projected =
-      snapshot?.projectedCount ??
-      projectHeadcount({
-        serviceDate: today,
-        mealSlot: config.slot,
-        subscribers,
-        messCuts: cuts,
-      }).projectedCount;
+      snapshot?.lockedAt != null
+        ? snapshot.projectedCount
+        : projectHeadcount({
+            serviceDate: today,
+            mealSlot: config.slot,
+            subscribers,
+            messCuts: cuts,
+          }).projectedCount;
 
     return {
       mealSlot: config.slot,

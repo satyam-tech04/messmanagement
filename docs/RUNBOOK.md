@@ -163,43 +163,81 @@ silently.
 
 ## Headcount snapshot cron
 
-`POST /api/cron/headcount` projects and persists the count the kitchen cooks to,
+`GET /api/cron/headcount` projects and persists the count the kitchen cooks to,
 for **every active tenant**, each in its own timezone.
 
-| Query        | Effect                                                          |
-| ------------ | --------------------------------------------------------------- |
-| _(none)_     | Refresh the projection. Locked snapshots are left alone.        |
-| `?lock=true` | Freeze the count. Later runs will not change a locked snapshot. |
+**Vercel triggers cron jobs with a `GET`.** `POST` is also accepted, for manual
+`curl` runs where it reads more naturally as a command.
 
-**Authentication.** Send the shared secret as either
-`Authorization: Bearer $CRON_SECRET` (what Vercel Cron sends) or `x-cron-secret`.
-Compared in constant time. Without the guard, anyone could enumerate tenants and
-read their subscriber counts.
+### Authentication
+
+Send the shared secret as either `Authorization: Bearer $CRON_SECRET` (what
+Vercel Cron sends) or `x-cron-secret`. Compared in constant time. Without the
+guard, anyone could enumerate tenants and read their subscriber counts.
 
 ```bash
+# Refresh without locking
 curl -X POST "$NEXT_PUBLIC_APP_URL/api/cron/headcount" \
+  -H "x-cron-secret: $CRON_SECRET"
+
+# Lock a specific meal, e.g. to rehearse the scheduled run
+curl -X POST "$NEXT_PUBLIC_APP_URL/api/cron/headcount?lock=true&slots=LUNCH" \
   -H "x-cron-secret: $CRON_SECRET"
 ```
 
-### The schedules are UTC — this matters
+`lock` must be exactly `true`; anything else is treated as false, so a typo
+cannot freeze a count.
 
-Vercel Cron expressions are evaluated in **UTC**, while the lock must land
-12 hours before each meal in the _tenant's_ local time (§9). For the IST pilot
-tenant (UTC+5:30):
+### The Vercel Hobby plan constrains the schedule
+
+The project runs on **Hobby (free)**, which allows:
+
+|                      | Hobby            | Pro             |
+| -------------------- | ---------------- | --------------- |
+| Minimum interval     | **Once per day** | Once per minute |
+| Scheduling precision | **±59 minutes**  | Per-minute      |
+
+A more frequent expression such as `0 * * * *` **fails at deploy time** with
+_"Hobby accounts are limited to daily cron jobs"_ — it does not merely run less
+often. So there is no periodic refresh job; each meal instead gets one daily
+schedule that locks it.
+
+That costs nothing, because the headcount screens compute the projection **live**
+and only prefer a snapshot once it is **locked**. An unlocked snapshot is just a
+stale copy of something the page can calculate now.
+
+### Which meal each schedule locks
+
+Vercel cron expressions are always **UTC**, while the lock must land ~12 hours
+before each meal in the _tenant's_ local time (§9). For the IST pilot tenant
+(UTC+5:30):
 
 | Meal   | Opens (IST) | Lock at (IST) | Cron (UTC)    |
 | ------ | ----------- | ------------- | ------------- |
 | Lunch  | 12:00       | 00:00         | `30 18 * * *` |
 | Dinner | 19:30       | 07:30         | `0 2 * * *`   |
 
-Plus an hourly unlocked refresh so a student who joins mid-morning is counted.
+Both schedules share one path. The run works out which meal to lock from the
+`x-vercel-cron-schedule` header — the mechanism Vercel documents for exactly
+this — mapped in `src/lib/cron-plan.ts`. **Keep that map and `vercel.json` in
+step**; an unrecognised schedule deliberately falls back to an unlocked refresh
+rather than risking locking the wrong meal.
 
-**Onboarding a tenant in a different timezone means revisiting `vercel.json`.**
+The ±59 minute slack is harmless here: a lock placed roughly 12 hours ahead of
+service does not care about the exact minute.
+
+### Onboarding a tenant in another timezone
+
 The job itself is timezone-correct — it derives each tenant's own service date —
-but _when the lock fires_ is a single global schedule. A mess in another zone
-would get its count locked at the wrong hour. Fixing that properly means either
-per-tenant scheduling or locking based on each tenant's next meal window rather
-than the clock; both are out of MVP scope with one pilot hostel.
+but _when_ the lock fires is a single global schedule. A mess in another zone
+would have its count locked at the wrong local hour. Fixing that properly means
+per-tenant scheduling, or locking based on each tenant's next meal window rather
+than the clock. Out of MVP scope with one pilot hostel.
+
+If more frequent or precisely-timed jobs are ever needed, the options are
+Vercel Pro, or moving the schedule to Supabase `pg_cron` (which lives beside the
+database and is not subject to Vercel's plan limits) with the endpoint kept as
+it is.
 
 ### Re-running is safe
 

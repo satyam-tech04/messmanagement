@@ -19,7 +19,7 @@ conversation: everything needed to continue correctly is here or linked from her
 | Area                                  | State                                                               |
 | ------------------------------------- | ------------------------------------------------------------------- |
 | Repo, tooling, CI, import boundaries  | ✅ `npm run verify` green                                           |
-| Core domain (pure, no I/O)            | ✅ **357 tests**, 99%+ coverage                                     |
+| Core domain (pure, no I/O)            | ✅ **368 tests**, 99%+ coverage                                     |
 | Database schema                       | ✅ migrations 001–005 **applied + sealed** on the live project      |
 | JWT auth hook                         | ✅ enabled and verified end-to-end                                  |
 | Generated DB types                    | ✅ `src/infra/supabase/database.types.ts` (incl. RPC Functions)     |
@@ -111,6 +111,10 @@ npm run verify:phase1 # drives the whole service loop against the live DB (14 ch
   Phase 2 only; the schema already supports both answers.
 - **Free tier has no PITR.** Acceptable for the pilot; upgrade before real student data
   matters.
+- **Vercel Hobby allows only daily cron jobs**, with ±59 minutes of slack. A more frequent
+  expression fails at deploy time. The headcount lock therefore runs once per meal per day,
+  and the screens compute live projections in between — see RUNBOOK. Revisit if the pilot
+  ever needs sub-daily scheduled work.
 
 ---
 
