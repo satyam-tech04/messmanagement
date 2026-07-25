@@ -22,7 +22,7 @@ conversation: everything needed to continue correctly is here or linked from her
 | Core domain (pure, no I/O)           | ✅ complete, **159 tests**, 99%+ coverage                      |
 | Database schema                      | ✅ migrations 001–003 **applied + sealed** on the live project |
 | JWT auth hook                        | ✅ enabled in dashboard **and** verified end-to-end            |
-| Generated DB types                   | ✅ `src/lib/supabase/database.types.ts`                        |
+| Generated DB types                   | ✅ `src/infra/supabase/database.types.ts`                      |
 | Infrastructure layer (`src/infra`)   | ⬜ **does not exist yet**                                      |
 | Any UI, auth, or routes              | ⬜ **does not exist yet**                                      |
 
@@ -145,7 +145,7 @@ src/core/                            ✅ complete, pure, tested
   ports/{repositories,token-signer}.ts
   time/index.ts                      tenant-timezone module
   money.ts  result.ts  errors/
-src/lib/supabase/database.types.ts   ✅ generated from the live schema
+src/infra/supabase/database.types.ts   ✅ generated from the live schema
 src/app/                             ⬜ still create-next-app default
 src/infra/                           ⬜ does not exist
 ```

@@ -516,7 +516,20 @@ export type Database = {
     };
     };
     Views: Record<never, never>;
-    Functions: Record<never, never>;
+    Functions: {
+      consume_rate_limit: {
+        Args: { p_bucket_key: string; p_window_seconds: number; p_max_requests: number };
+        Returns: boolean;
+      };
+      custom_access_token_hook: {
+        Args: { event: Json };
+        Returns: Json;
+      };
+      prune_rate_limits: {
+        Args: { p_older_than: string };
+        Returns: number;
+      };
+    };
     Enums: {
       attendance_method: "QR" | "MANUAL" | "RFID";
       meal_slot: "BREAKFAST" | "LUNCH" | "SNACKS" | "DINNER";

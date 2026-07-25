@@ -138,7 +138,7 @@ types (`npm run db:types`) in the same commit as the migration.
 | `npm run db:dry`        | Connect and list pending migrations without applying         |
 | `npm run db:push`       | Apply migrations to the Supabase project                     |
 | `npm run db:seal`       | Mark pushed migrations immutable (run right after `db:push`) |
-| `npm run db:types`      | Regenerate `src/lib/supabase/database.types.ts`              |
+| `npm run db:types`      | Regenerate `src/infra/supabase/database.types.ts`            |
 | `npm run db:seed`       | Seed the demo tenant                                         |
 | `npm run db:verify`     | Assert RLS/constraints/enums **and** that JWTs carry claims  |
 

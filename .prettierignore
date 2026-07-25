@@ -4,5 +4,5 @@ coverage
 out
 build
 package-lock.json
-src/lib/supabase/database.types.ts
+src/infra/supabase/database.types.ts
 supabase/.temp

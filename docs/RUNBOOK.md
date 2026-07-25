@@ -65,7 +65,7 @@ If the pooler region ever changes, override `SUPABASE_DB_REGION` /
 value under **Connect → Session pooler**.
 
 Commit the migration, `supabase/migration-checksums.json` and
-`src/lib/supabase/database.types.ts` **together**. A migration
+`src/infra/supabase/database.types.ts` **together**. A migration
 without its regenerated types is how schema drift gets past review.
 
 ### Before pushing, check

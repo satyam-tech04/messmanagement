@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Generates `src/lib/supabase/database.types.ts` by introspecting the live
+ * Generates `src/infra/supabase/database.types.ts` by introspecting the live
  * database catalog.
  *
  * Why not `supabase gen types`? Its `--db-url` mode runs pg-meta inside Docker,
@@ -21,7 +21,7 @@ import { execSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import pg from "pg";
 
-const OUT = "src/lib/supabase/database.types.ts";
+const OUT = "src/infra/supabase/database.types.ts";
 
 const client = new pg.Client({
   connectionString: execSync("node scripts/db-url.mjs", { encoding: "utf8" }).trim(),
@@ -67,6 +67,24 @@ const { rows: columns } = await client.query(`
      and not a.attisdropped
    order by c.relname, a.attnum`);
 
+// --- Callable functions (RPC) ---------------------------------------------
+// Only functions PostgREST can actually expose: schema `public`, kind 'f', and
+// not returning `trigger`. Without these, every `.rpc()` call is a type error.
+const { rows: functions } = await client.query(`
+  select p.proname                                          as name,
+         coalesce(p.proargnames, '{}')                      as arg_names,
+         array(select format_type(t, null)
+                 from unnest(p.proargtypes) as t)           as arg_types,
+         format_type(p.prorettype, null)                    as return_type,
+         (select typtype from pg_type where oid = p.prorettype) as return_kind,
+         (select typname from pg_type where oid = p.prorettype) as return_name
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'public'
+     and p.prokind = 'f'
+     and format_type(p.prorettype, null) <> 'trigger'
+   order by p.proname`);
+
 await client.end();
 
 /** Maps a Postgres base type to its TypeScript representation. */
@@ -104,6 +122,51 @@ function tsType(col) {
     default:
       return "unknown";
   }
+}
+
+/** `format_type` output ("character varying", "integer") -> TS type. */
+function tsTypeFromSql(sqlType) {
+  const bare = sqlType
+    .replace(/\[\]$/, "")
+    .replace(/\(.*\)$/, "")
+    .trim();
+  const isArray = sqlType.endsWith("[]");
+  const map = {
+    uuid: "string",
+    text: "string",
+    "character varying": "string",
+    character: "string",
+    inet: "string",
+    date: "string",
+    "timestamp with time zone": "string",
+    "timestamp without time zone": "string",
+    interval: "string",
+    smallint: "number",
+    integer: "number",
+    bigint: "number",
+    real: "number",
+    "double precision": "number",
+    numeric: "number",
+    boolean: "boolean",
+    json: "Json",
+    jsonb: "Json",
+    void: "undefined",
+  };
+  const base =
+    map[bare] ?? (enums.has(bare) ? `Database["public"]["Enums"]["${bare}"]` : "unknown");
+  return isArray ? `${base}[]` : base;
+}
+
+function renderFunction(fn) {
+  const names = fn.arg_names ?? [];
+  const types = fn.arg_types ?? [];
+  const args = types.length
+    ? `{ ${types.map((t, i) => `${names[i] ?? `arg${i}`}: ${tsTypeFromSql(t)}`).join("; ")} }`
+    : "Record<PropertyKey, never>";
+  return `      ${fn.name}: {
+        Args: ${args};
+        Returns: ${tsTypeFromSql(fn.return_type)};
+      };`;
 }
 
 const byTable = new Map();
@@ -156,6 +219,8 @@ const tablesBlock = [...byTable.entries()]
   .map(([name, cols]) => renderTable(name, cols))
   .join("\n");
 
+const functionsBlock = functions.map(renderFunction).join("\n");
+
 const enumsBlock = [...enums.entries()]
   .sort(([a], [b]) => a.localeCompare(b))
   .map(([name, labels]) => `      ${name}: ${labels.map((l) => `"${l}"`).join(" | ")};`)
@@ -179,7 +244,9 @@ export type Database = {
 ${tablesBlock}
     };
     Views: Record<never, never>;
-    Functions: Record<never, never>;
+    Functions: {
+${functionsBlock}
+    };
     Enums: {
 ${enumsBlock}
     };
@@ -198,6 +265,6 @@ export type TablesUpdate<T extends keyof PublicSchema["Tables"]> =
 export type Enums<T extends keyof PublicSchema["Enums"]> = PublicSchema["Enums"][T];
 `;
 
-mkdirSync("src/lib/supabase", { recursive: true });
+mkdirSync("src/infra/supabase", { recursive: true });
 writeFileSync(OUT, output);
 console.log(`✔ ${OUT}: ${byTable.size} tables, ${enums.size} enums, ${columns.length} columns`);

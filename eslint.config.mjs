@@ -8,8 +8,19 @@ import prettier from "eslint-config-prettier";
  * Layering rule (architecture doc §2.2, §3.1): dependencies point INWARD only.
  *
  *   src/core   -> may import: nothing outside src/core
- *   src/infra  -> may import: src/core
+ *   src/infra  -> may import: src/core, src/lib
  *   src/app    -> may import: src/core, src/infra, src/components, src/lib
+ *   src/lib    -> may import: src/core only  (it is a leaf: config, env, utils)
+ *
+ * `src/lib` is deliberately a leaf that both infra and app may depend on. It
+ * holds environment config and pure helpers, nothing that performs I/O. The
+ * corollary — enforced below — is that lib must never import infra or app, or
+ * it stops being a leaf and the graph gains a cycle.
+ *
+ * Note where the Supabase clients and generated `database.types.ts` live:
+ * `src/infra/supabase`, not `src/lib`. Database access and its generated types
+ * ARE infrastructure. Putting them in lib would have forced infra to depend on
+ * lib for its own persistence types, inverting the relationship.
  *
  * These are enforced mechanically, not by convention. A violation is a lint
  * error that fails CI, because the doc is right: an unenforced boundary is
@@ -47,6 +58,24 @@ const layeringZones = [
     target: "./src/infra",
     from: "./src/components",
     message: "infra must not import components.",
+  },
+  // lib is a leaf. If it reaches into infra or app it stops being safely
+  // importable from everywhere and introduces a cycle.
+  {
+    target: "./src/lib",
+    from: "./src/infra",
+    message:
+      "lib must not import infra. lib is a leaf (config, env, pure helpers); move I/O-aware code into infra.",
+  },
+  {
+    target: "./src/lib",
+    from: "./src/app",
+    message: "lib must not import app.",
+  },
+  {
+    target: "./src/lib",
+    from: "./src/components",
+    message: "lib must not import components.",
   },
 ];
 
@@ -135,7 +164,7 @@ const eslintConfig = defineConfig([
     "build/**",
     "coverage/**",
     "next-env.d.ts",
-    "src/lib/supabase/database.types.ts",
+    "src/infra/supabase/database.types.ts",
   ]),
 ]);
 

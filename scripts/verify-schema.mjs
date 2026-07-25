@@ -175,6 +175,38 @@ hookPolicy.length
   ? pass("supabase_auth_admin can read profiles (JWT claims will populate)")
   : fail("no RLS policy for supabase_auth_admin on profiles — JWTs will carry NO claims");
 
+// --- RPC exposure and grants ---------------------------------------------
+// The rate limiter's logic lives in `app`, which PostgREST does not expose, so
+// a `public` wrapper is required for .rpc() to reach it (migration 004). It
+// must be callable by service_role ONLY — a client able to call it could
+// exhaust its own limit, or pass someone else's bucket key to lock that student
+// out of their meal.
+console.log("\nRPC exposure and grants");
+for (const fn of ["consume_rate_limit", "prune_rate_limits"]) {
+  const { rows } = await client.query(
+    `select has_function_privilege('service_role', p.oid, 'EXECUTE') as service_role,
+            has_function_privilege('authenticated', p.oid, 'EXECUTE') as authenticated,
+            has_function_privilege('anon', p.oid, 'EXECUTE') as anon
+       from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public' and p.proname = $1`,
+    [fn],
+  );
+  const g = rows[0];
+  if (!g) {
+    fail(`public.${fn}() — MISSING (rate limiting cannot run)`);
+  } else if (!g.service_role) {
+    fail(`public.${fn}() — service_role cannot execute it`);
+  } else if (g.authenticated || g.anon) {
+    fail(
+      `public.${fn}() — executable by ${g.authenticated ? "authenticated" : ""}${
+        g.anon ? " anon" : ""
+      }; a client could reset or weaponise its own limit`,
+    );
+  } else {
+    pass(`public.${fn}() — service_role only`);
+  }
+}
+
 // --- Realtime -------------------------------------------------------------
 console.log("\nRealtime publication");
 const { rows: rt } = await client.query(

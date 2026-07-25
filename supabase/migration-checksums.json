@@ -16,5 +16,11 @@
     "state": "applied",
     "appliedTo": "yenxlcrtlmnfotfqqabo",
     "appliedAt": "2026-07-25"
+  },
+  "20260725000004_rate_limit_rpc.sql": {
+    "sha256": "0d8d994208ec555b408e588151aeff8b91fbf2c80c731c39928901e123b80746",
+    "state": "applied",
+    "appliedTo": "yenxlcrtlmnfotfqqabo",
+    "appliedAt": "2026-07-25"
   }
 }
