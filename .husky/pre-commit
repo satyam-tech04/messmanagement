@@ -1,3 +1,14 @@
+# 1. Auto-format and auto-fix the staged files (prettier + eslint --fix).
 npx lint-staged
+
+# 2. Applied migrations are immutable; record checksums for any new ones.
 node scripts/check-migrations.mjs
-git add supabase/migrations/checksums.json 2>/dev/null || true
+git add supabase/migration-checksums.json 2>/dev/null || true
+
+# 3. Full typecheck + lint + tests across the whole repo.
+#
+# lint-staged only sees STAGED files, which misses the failure that matters
+# most: a change in one file breaking another. A type error, or an
+# import-boundary violation in an untouched file, sails straight past it.
+# This costs ~3s and means a commit is never broken at rest.
+npm run verify

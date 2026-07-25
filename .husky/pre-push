@@ -1,2 +1,5 @@
-npm run typecheck
-npm run test
+# Backstop. pre-commit already runs this, but a commit made with --no-verify
+# would otherwise reach the remote unchecked. Also checks formatting across the
+# whole repo, which lint-staged only guarantees for files that were staged.
+npm run verify
+npm run format:check
