@@ -19,7 +19,7 @@ conversation: everything needed to continue correctly is here or linked from her
 | Area                                  | State                                                               |
 | ------------------------------------- | ------------------------------------------------------------------- |
 | Repo, tooling, CI, import boundaries  | ✅ `npm run verify` green                                           |
-| Core domain (pure, no I/O)            | ✅ **368 tests**, 99%+ coverage                                     |
+| Core domain (pure, no I/O)            | ✅ **385 tests**, 99%+ coverage                                     |
 | Database schema                       | ✅ migrations 001–005 **applied + sealed** on the live project      |
 | JWT auth hook                         | ✅ enabled and verified end-to-end                                  |
 | Generated DB types                    | ✅ `src/infra/supabase/database.types.ts` (incl. RPC Functions)     |
@@ -34,7 +34,7 @@ conversation: everything needed to continue correctly is here or linked from her
 | **Phase 1.6b — counter scanner**      | ✅ camera, distinct outcomes, manual fallback, offline queue        |
 | **Phase 1.7b — live headcount**       | ✅ realtime count, snapshot cron with locking                       |
 | **Phase 1.8 — exit criteria**         | ✅ **14 checks pass against the live DB** (`npm run verify:phase1`) |
-| **MVP (Phase 0 + 1)**                 | ✅ **complete**                                                     |
+| **MVP (Phase 0 + 1)**                 | ✅ **complete** — every nav route resolves                          |
 
 **Phase 0 is done.** Three roles sign in against the live database and land on their own
 shell; cross-tenant isolation is proven with real data. Phase 1 domain logic (QR policy,
@@ -104,6 +104,11 @@ npm run verify:phase1 # drives the whole service loop against the live DB (14 ch
   app at a different database than the migrations.
 - Money is integer paise. Dates derive in the tenant's timezone via `src/core/time`, never
   `toISOString().slice(0, 10)`.
+- **Every nav link must resolve.** `src/lib/navigation.ts` is data, so a route can be listed
+  long before it exists and nothing fails at build time — it 404s in the user's face
+  instead. Phase-2 routes carry `disabled: true` and render as greyed spans; anything else
+  needs a real page. Diff the nav hrefs against `find src/app -name page.tsx` after adding
+  either.
 
 ### Unresolved, and who owns it
 
