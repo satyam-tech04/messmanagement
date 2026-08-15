@@ -173,6 +173,12 @@ export function AppShell({
           <p className="text-muted-foreground text-xs">{roleLabel(user.role)}</p>
         </div>
         <DropdownMenuSeparator />
+        <DropdownMenuItem render={<Link href="/change-password" />}>
+          <Icons.KeyRound className="size-4" aria-hidden="true" />
+          Change password
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+
         {/* The menu item IS the submit button, so sign-out works without
             JavaScript and keeps the item's keyboard and focus behaviour. */}
         <form action={signOutAction} className="contents">

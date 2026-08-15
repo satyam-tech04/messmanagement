@@ -79,12 +79,15 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
   const repos = createRepositories(supabase, admin);
 
+  // The client's device id is a **label for the audit trail only**. It must
+  // never key the rate limit: anything the caller controls can be varied per
+  // request, so a runaway loop would simply mint a new bucket each time and the
+  // limit would never bite. The counter identity that cannot be forged is the
+  // signed-in staff account.
   const deviceId = parsed.data.deviceId ?? null;
 
-  // Keyed by device, not by student: one tablet serving a queue is the normal
-  // pattern, and a per-student key would do nothing to stop a runaway loop.
   const allowed = await repos.rateLimiter.consume(
-    rateLimitBuckets.qrVerify(user.tenantId, deviceId ?? user.actorProfileId),
+    rateLimitBuckets.qrVerify(user.tenantId, user.actorProfileId),
     60,
     240,
   );

@@ -2,7 +2,17 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
-import { Camera, CameraOff, Check, CloudOff, Keyboard, Loader2, RefreshCw, X } from "lucide-react";
+import {
+  AlertTriangle,
+  Camera,
+  CameraOff,
+  Check,
+  CloudOff,
+  Keyboard,
+  Loader2,
+  RefreshCw,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -12,7 +22,13 @@ import {
   type ScanDetails,
   type ScanOutcome,
 } from "@/lib/scan-outcome";
-import { enqueueScan, flushScanQueue, queuedScans } from "./scan-queue";
+import {
+  clearExpiredScans,
+  enqueueScan,
+  expiredScans,
+  flushScanQueue,
+  queuedScans,
+} from "./scan-queue";
 import { ManualEntryDialog } from "./manual-entry";
 
 interface VerifyResponse {
@@ -96,6 +112,7 @@ export function Scanner({ deviceId, timeZone }: { deviceId: string; timeZone: st
   );
   const [result, setResult] = useState<Result | null>(null);
   const [pending, setPending] = useState(0);
+  const [stale, setStale] = useState(0);
   const [servedCount, setServedCount] = useState(0);
 
   const show = useCallback(
@@ -131,6 +148,7 @@ export function Scanner({ deviceId, timeZone }: { deviceId: string; timeZone: st
         // replay is safe because the server is idempotent.
         enqueueScan(body);
         setPending(queuedScans().length);
+        setStale(expiredScans().length);
         show({
           ok: false,
           code: "QUEUED_OFFLINE",
@@ -209,6 +227,7 @@ export function Scanner({ deviceId, timeZone }: { deviceId: string; timeZone: st
       const { synced } = await flushScanQueue();
       if (cancelled) return;
       setPending(queuedScans().length);
+      setStale(expiredScans().length);
       if (synced > 0) setServedCount((c) => c + synced);
     }
 
@@ -242,6 +261,23 @@ export function Scanner({ deviceId, timeZone }: { deviceId: string; timeZone: st
           <span className="font-semibold tabular-nums">{servedCount}</span>
         </div>
         <div className="flex items-center gap-2">
+          {stale > 0 ? (
+            // These are meals that were served and can no longer be synced —
+            // replaying them would file the wrong service date. Staff must be
+            // told so the admin can enter them by hand.
+            <button
+              type="button"
+              onClick={() => {
+                clearExpiredScans();
+                setStale(0);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-900 dark:bg-red-950/60 dark:text-red-200"
+            >
+              <AlertTriangle className="size-3.5" aria-hidden="true" />
+              <span className="tabular-nums">{stale}</span> not recorded — tell the admin, then tap
+              to dismiss
+            </button>
+          ) : null}
           {pending > 0 ? (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-900 dark:bg-amber-950/60 dark:text-amber-200">
               <CloudOff className="size-3.5" aria-hidden="true" />

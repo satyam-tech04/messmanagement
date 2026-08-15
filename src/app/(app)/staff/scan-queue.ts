@@ -17,8 +17,17 @@
  */
 
 const STORAGE_KEY = "messos.scanQueue.v1";
-/** Beyond this the meal is over and replaying would write the wrong service date. */
-const MAX_AGE_MS = 6 * 60 * 60 * 1000;
+
+/**
+ * Beyond this the meal is over and replaying would write the wrong service
+ * date, so a stale entry must not be synced.
+ *
+ * It must not be *discarded* either. These are students who already walked away
+ * with their food; a tablet left offline overnight would otherwise erase a
+ * whole service with nobody ever knowing. Stale entries are held back from sync
+ * and surfaced to staff instead — see `expiredScans`.
+ */
+export const MAX_QUEUE_AGE_MS = 6 * 60 * 60 * 1000;
 const MAX_ENTRIES = 500;
 
 export interface QueuedScan {
@@ -51,11 +60,26 @@ function write(entries: QueuedScan[]): void {
   }
 }
 
+/** Entries still young enough to sync. */
 export function queuedScans(): QueuedScan[] {
   const now = Date.now();
-  const fresh = read().filter((entry) => now - entry.queuedAt < MAX_AGE_MS);
-  if (fresh.length !== read().length) write(fresh);
-  return fresh;
+  return read().filter((entry) => now - entry.queuedAt < MAX_QUEUE_AGE_MS);
+}
+
+/**
+ * Entries too old to sync safely.
+ *
+ * Each one is a meal that was served and never recorded. They are kept until
+ * someone acknowledges them, so the loss is visible rather than silent.
+ */
+export function expiredScans(): QueuedScan[] {
+  const now = Date.now();
+  return read().filter((entry) => now - entry.queuedAt >= MAX_QUEUE_AGE_MS);
+}
+
+/** Forgets stale entries, once staff have seen them. */
+export function clearExpiredScans(): void {
+  write(queuedScans());
 }
 
 export function enqueueScan(body: Record<string, unknown>): QueuedScan {

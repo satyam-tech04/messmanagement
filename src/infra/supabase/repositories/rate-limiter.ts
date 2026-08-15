@@ -46,6 +46,10 @@ export class SupabaseRateLimiter implements RateLimiter {
 /** Bucket key helpers, so the same student is never counted under two keys. */
 export const rateLimitBuckets = {
   qrToken: (tenantId: string, studentId: string) => `qr-token:${tenantId}:${studentId}`,
-  qrVerify: (tenantId: string, deviceId: string) => `qr-verify:${tenantId}:${deviceId}`,
+  /**
+   * Keyed by the signed-in staff profile, never by a client-supplied device id.
+   * A caller who can choose the key can defeat the limit by varying it.
+   */
+  qrVerify: (tenantId: string, staffProfileId: string) => `qr-verify:${tenantId}:${staffProfileId}`,
   login: (identifier: string) => `login:${identifier.toLowerCase()}`,
 } as const;
