@@ -253,3 +253,32 @@ describe("calculateVariance", () => {
     expect(calculateVariance(TODAY, "LUNCH", 300, 299).variancePercent).toBe(-0.3);
   });
 });
+
+describe("a cut awaiting approval does not reduce the count", () => {
+  const serviceDate = toServiceDate("2026-08-12");
+
+  function cut(status: MessCutSnapshot["status"]): MessCutSnapshot {
+    return {
+      studentId: "s1",
+      dateFrom: serviceDate,
+      dateTo: serviceDate,
+      mealSlots: ["LUNCH"],
+      status,
+    };
+  }
+
+  it("ignores a PENDING request — asking must not shrink the kitchen's order", () => {
+    // An away request waits for an admin. Until they decide, the student is
+    // still expected, and the kitchen must still cook for them.
+    expect(isCutFromMeal(cut("PENDING"), serviceDate, "LUNCH")).toBe(false);
+  });
+
+  it("counts it once approved", () => {
+    expect(isCutFromMeal(cut("APPROVED"), serviceDate, "LUNCH")).toBe(true);
+  });
+
+  it("still ignores rejected and cancelled requests", () => {
+    expect(isCutFromMeal(cut("REJECTED"), serviceDate, "LUNCH")).toBe(false);
+    expect(isCutFromMeal(cut("CANCELLED"), serviceDate, "LUNCH")).toBe(false);
+  });
+});

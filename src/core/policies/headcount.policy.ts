@@ -37,8 +37,14 @@ export interface MessCutSnapshot {
   readonly dateFrom: ServiceDate;
   readonly dateTo: ServiceDate;
   readonly mealSlots: readonly MealSlot[];
-  /** Only APPROVED and CREDITED cuts remove a plate from the count. */
-  readonly status: "APPROVED" | "REJECTED" | "CANCELLED" | "CREDITED";
+  /**
+   * Only APPROVED and CREDITED cuts remove a plate from the count.
+   *
+   * PENDING matters most here: an away request awaiting an admin's decision
+   * must NOT reduce the headcount, or a student could cut the kitchen's order
+   * simply by asking.
+   */
+  readonly status: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED" | "CREDITED";
 }
 
 export interface HeadcountInput {

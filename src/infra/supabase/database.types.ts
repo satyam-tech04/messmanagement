@@ -455,6 +455,12 @@ export type Database = {
         currency: string;
         created_at: string;
         updated_at: string;
+        allow_meal_skipping: boolean;
+        allow_partial_day_skip: boolean;
+        allow_away_requests: boolean;
+        away_requires_approval: boolean;
+        away_advance_hours: number;
+        away_max_days: number;
       };
       Insert: {
         tenant_id: string;
@@ -471,6 +477,12 @@ export type Database = {
         currency?: string;
         created_at?: string;
         updated_at?: string;
+        allow_meal_skipping?: boolean;
+        allow_partial_day_skip?: boolean;
+        allow_away_requests?: boolean;
+        away_requires_approval?: boolean;
+        away_advance_hours?: number;
+        away_max_days?: number;
       };
       Update: {
         tenant_id?: string;
@@ -487,6 +499,12 @@ export type Database = {
         currency?: string;
         created_at?: string;
         updated_at?: string;
+        allow_meal_skipping?: boolean;
+        allow_partial_day_skip?: boolean;
+        allow_away_requests?: boolean;
+        away_requires_approval?: boolean;
+        away_advance_hours?: number;
+        away_max_days?: number;
       };
       Relationships: [];
     };
@@ -542,7 +560,7 @@ export type Database = {
     Enums: {
       attendance_method: "QR" | "MANUAL" | "RFID";
       meal_slot: "BREAKFAST" | "LUNCH" | "SNACKS" | "DINNER";
-      mess_cut_status: "APPROVED" | "REJECTED" | "CANCELLED" | "CREDITED";
+      mess_cut_status: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED" | "CREDITED";
       plan_duration: "MONTHLY" | "QUARTERLY";
       profile_status: "ACTIVE" | "DISABLED";
       student_status: "ACTIVE" | "GRACE" | "BLOCKED" | "INACTIVE";

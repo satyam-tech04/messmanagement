@@ -40,5 +40,11 @@
     "state": "applied",
     "appliedTo": "yenxlcrtlmnfotfqqabo",
     "appliedAt": "2026-08-15"
+  },
+  "20260815000008_absence_settings.sql": {
+    "sha256": "96007b1f1040285d8f1f921f642307423d0ac7891b12488308f14c31a31c05af",
+    "state": "applied",
+    "appliedTo": "yenxlcrtlmnfotfqqabo",
+    "appliedAt": "2026-08-15"
   }
 }
