@@ -15,6 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { createClient } from "@/infra/supabase/client";
 
 interface TokenResponse {
   readonly token: string;
@@ -248,6 +249,67 @@ export function QrDisplay({ timeZone, counter }: { timeZone: string; counter: Co
       window.removeEventListener("online", onWake);
     };
   }, [fetchToken, revealedAt]);
+
+  /**
+   * The moment staff scan, not up to a rotation later.
+   *
+   * Without this the student holds a live code for as long as the refresh
+   * interval after they have already been served — they see a QR, staff see a
+   * green tick, and the natural reaction is to hold the phone up again at a
+   * counter that will now refuse them.
+   *
+   * Push, not polling: the socket costs nothing until a row actually arrives,
+   * and it only exists while a code is on screen — so at most five minutes per
+   * student, and none at all for anyone who has not revealed one.
+   *
+   * `attendance_read_own` restricts this to the signed-in student's own rows, so
+   * RLS is the security boundary here, not the client-side check below.
+   */
+  // Extracted so the effect depends on two stable strings rather than on the
+  // whole state object, which changes identity on every rotation.
+  const liveServiceDate = state.kind === "ready" ? state.data.serviceDate : null;
+  const liveMealSlot = state.kind === "ready" ? state.data.mealSlot : null;
+
+  useEffect(() => {
+    if (!liveServiceDate || !liveMealSlot) return;
+
+    const supabase = createClient();
+    const serviceDate = liveServiceDate;
+    const mealSlot = liveMealSlot;
+
+    const channel = supabase
+      .channel(`my-attendance:${serviceDate}:${mealSlot}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "attendance" },
+        (payload) => {
+          const row = payload.new as {
+            service_date?: string;
+            meal_slot?: string;
+            scanned_at?: string;
+          };
+          // A late scan for a different meal must not clear the code the
+          // student is holding for this one.
+          if (row.service_date !== serviceDate || row.meal_slot !== mealSlot) return;
+
+          if (timerRef.current) clearTimeout(timerRef.current);
+          timerRef.current = null;
+          setSecondsLeft(null);
+          setState({
+            kind: "served",
+            mealSlot,
+            servedAt: row.scanned_at ?? new Date().toISOString(),
+          });
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+    // Keyed on the meal, not the token: rotating the code must not tear down
+    // and rebuild the socket every twenty-five seconds.
+  }, [liveServiceDate, liveMealSlot]);
 
   const reveal = useCallback(() => {
     setRevealedAt(Date.now());
