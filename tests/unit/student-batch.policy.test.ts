@@ -240,3 +240,94 @@ describe("validateStudentBatch — every error is reported at once", () => {
     expect(validateStudentBatch([row({ fullName: "" })], []).ok).toBe(false);
   });
 });
+
+/**
+ * Per-row start dates.
+ *
+ * The batch date is a default, not a rule. The job this form is actually used
+ * for is back-filling weeks of rolling admissions — students who joined on
+ * different days — and forcing one date on all of them means either splitting
+ * the work into a batch per date, or adding everyone without a plan and going
+ * back through them one at a time. Both defeat the point of the form.
+ *
+ * So a row may override, and a blank row inherits. The bound is checked here
+ * rather than at write time so the all-or-nothing promise survives: a bad date
+ * on row 9 must not be discovered after eight logins exist.
+ */
+describe("validateStudentBatch — per-row start dates", () => {
+  const opts = { planDurationDays: 30, today: "2026-08-15", batchStartDate: "2026-08-01" };
+
+  it("inherits the batch date when the row leaves it blank", () => {
+    const r = validateStudentBatch([row()], [], opts);
+    expect(r.ok).toBe(true);
+    expect(r.valid[0]!.planStartDate).toBe("2026-08-01");
+  });
+
+  it("uses the row's own date when given", () => {
+    const r = validateStudentBatch([row({ planStartDate: "2026-08-07" })], [], opts);
+    expect(r.ok).toBe(true);
+    expect(r.valid[0]!.planStartDate).toBe("2026-08-07");
+  });
+
+  it("lets different rows start on different days — the whole point", () => {
+    const r = validateStudentBatch(
+      [
+        row({ rollNumber: "A1", planStartDate: "2026-08-01" }),
+        row({ rollNumber: "A2", planStartDate: "2026-08-09" }),
+        row({ rollNumber: "A3" }),
+      ],
+      [],
+      opts,
+    );
+    expect(r.ok).toBe(true);
+    expect(r.valid.map((v) => v.planStartDate)).toEqual(["2026-08-01", "2026-08-09", "2026-08-01"]);
+  });
+
+  it("rejects a malformed date on a row", () => {
+    const r = validateStudentBatch([row({ planStartDate: "01/08/2026" })], [], opts);
+    expect(r.ok).toBe(false);
+    expect(r.errors[0]!.field).toBe("planStartDate");
+  });
+
+  it("rejects a row whose plan would already have ended", () => {
+    // Caught here, before any login exists, rather than surfacing as a warning
+    // on a student who has already been created.
+    const r = validateStudentBatch([row({ planStartDate: "2026-01-01" })], [], opts);
+    expect(r.ok).toBe(false);
+    expect(r.errors[0]!.field).toBe("planStartDate");
+    expect(r.errors[0]!.message).toMatch(/ended/i);
+  });
+
+  it("names the row, so it is obvious which date to fix", () => {
+    const r = validateStudentBatch(
+      [row({ rollNumber: "A1" }), row({ rollNumber: "A2", planStartDate: "2020-01-01" })],
+      [],
+      opts,
+    );
+    expect(r.errors).toHaveLength(1);
+    expect(r.errors[0]!.index).toBe(1);
+  });
+
+  it("bounds a row date by the plan's own duration, like everywhere else", () => {
+    const start = "2026-06-01";
+    expect(validateStudentBatch([row({ planStartDate: start })], [], opts).ok).toBe(false);
+    expect(
+      validateStudentBatch([row({ planStartDate: start })], [], { ...opts, planDurationDays: 90 })
+        .ok,
+    ).toBe(true);
+  });
+
+  it("ignores dates entirely when no plan was chosen for the batch", () => {
+    // Without a plan there is no subscription to date, so a stray value in the
+    // column must not block the whole batch.
+    const r = validateStudentBatch([row({ planStartDate: "2020-01-01" })], [], {
+      today: "2026-08-15",
+    });
+    expect(r.ok).toBe(true);
+    expect(r.valid[0]!.planStartDate).toBeUndefined();
+  });
+
+  it("still works with no options at all, as the single-student path uses it", () => {
+    expect(validateStudentBatch([row()], []).ok).toBe(true);
+  });
+});

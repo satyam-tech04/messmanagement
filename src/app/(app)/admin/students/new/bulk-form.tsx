@@ -32,21 +32,36 @@ export interface BulkPlanOption {
 const STARTING_ROWS = 5;
 
 interface FieldSpec {
-  readonly key: "rollNumber" | "fullName" | "phone" | "block" | "roomNumber";
+  readonly key: "rollNumber" | "fullName" | "phone" | "block" | "roomNumber" | "planStartDate";
   readonly label: string;
   readonly width: string;
   readonly placeholder: string;
   /** Roll numbers are compared by eye and read aloud, so digits must align. */
   readonly mono?: boolean;
+  readonly type?: string;
 }
 
-const FIELDS: readonly FieldSpec[] = [
-  { key: "rollNumber", label: "Roll number", width: "w-40", placeholder: "CS22B101", mono: true },
-  { key: "fullName", label: "Full name", width: "w-56", placeholder: "Priya Menon" },
-  { key: "phone", label: "Phone", width: "w-36", placeholder: "9876543210" },
-  { key: "block", label: "Block", width: "w-20", placeholder: "A" },
-  { key: "roomNumber", label: "Room", width: "w-24", placeholder: "104" },
+const BASE_FIELDS: readonly FieldSpec[] = [
+  { key: "rollNumber", label: "Roll number", width: "w-36", placeholder: "CS22B101", mono: true },
+  { key: "fullName", label: "Full name", width: "w-48", placeholder: "Priya Menon" },
+  { key: "phone", label: "Phone", width: "w-32", placeholder: "9876543210" },
+  { key: "block", label: "Block", width: "w-16", placeholder: "A" },
+  { key: "roomNumber", label: "Room", width: "w-20", placeholder: "104" },
 ];
+
+/**
+ * The per-row start date appears only once a plan is chosen.
+ *
+ * A column that cannot mean anything yet is worse than a missing one — it
+ * invites an entry that will be silently ignored.
+ */
+const STARTED_FIELD: FieldSpec = {
+  key: "planStartDate",
+  label: "Started",
+  width: "w-36",
+  placeholder: "",
+  type: "date",
+};
 
 function SubmitButton({ count }: { count: number }) {
   const { pending } = useFormStatus();
@@ -170,6 +185,7 @@ export function BulkStudentForm({
   const [planId, setPlanId] = useState("");
 
   const errorFor = (index: number) => state.rowErrors?.find((e) => e.index === index);
+  const fields = planId ? [...BASE_FIELDS, STARTED_FIELD] : BASE_FIELDS;
 
   if (state.created && state.created.length > 0) {
     return (
@@ -245,7 +261,7 @@ export function BulkStudentForm({
                   long before anyone got round to entering them. */}
               {planId ? (
                 <div className="max-w-xs space-y-2 pt-2">
-                  <Label htmlFor="planStartDate">Plan started on</Label>
+                  <Label htmlFor="planStartDate">Default start date</Label>
                   <Input
                     id="planStartDate"
                     name="planStartDate"
@@ -270,7 +286,7 @@ export function BulkStudentForm({
                   <th className="text-muted-foreground w-8 pb-2 text-left text-xs font-medium">
                     #
                   </th>
-                  {FIELDS.map((f) => (
+                  {fields.map((f) => (
                     <th
                       key={f.key}
                       className="text-muted-foreground px-1 pb-2 text-left text-xs font-medium"
@@ -292,16 +308,19 @@ export function BulkStudentForm({
                       <td className="text-muted-foreground py-1 pr-2 text-xs tabular-nums">
                         {i + 1}
                       </td>
-                      {FIELDS.map((f) => (
+                      {fields.map((f) => (
                         <td key={f.key} className={cn("px-1 py-1", f.width)}>
                           <Input
                             name={`row-${i}-${f.key}`}
+                            type={f.type}
                             placeholder={f.placeholder}
+                            max={f.type === "date" ? today : undefined}
                             aria-label={`${f.label}, row ${i + 1}`}
                             aria-invalid={rowError?.field === f.key}
                             className={cn(
                               "h-9",
                               f.mono && "font-mono",
+                              f.type === "date" && "tabular-nums",
                               rowError?.field === f.key && "border-destructive",
                             )}
                           />

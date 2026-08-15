@@ -22,6 +22,7 @@ import {
 import { createAdminClient } from "@/infra/supabase/admin";
 import { createClient } from "@/infra/supabase/server";
 import { getSessionUser } from "@/infra/auth/session";
+import { serviceDateOf } from "@/core/time";
 import { createOneStudent } from "./create-one-student";
 
 const schema = z.object({
@@ -180,6 +181,7 @@ function readRows(formData: FormData): StudentDraft[] {
       email: String(formData.get(`row-${i}-email`) ?? ""),
       block: String(formData.get(`row-${i}-block`) ?? ""),
       roomNumber: String(formData.get(`row-${i}-roomNumber`) ?? ""),
+      planStartDate: String(formData.get(`row-${i}-planStartDate`) ?? ""),
     });
   }
   return rows;
@@ -221,9 +223,27 @@ export async function createStudentsBulk(
     return { error: `Could not check existing roll numbers: ${readError.message}` };
   }
 
+  // The chosen plan's length is what bounds how far any row may backdate, so it
+  // is read before validating rather than discovered at write time.
+  let planDurationDays: number | undefined;
+  if (planId) {
+    const { data: plan } = await supabase
+      .from("plans")
+      .select("duration_days")
+      .eq("tenant_id", user.tenantId)
+      .eq("id", planId)
+      .maybeSingle();
+    planDurationDays = plan?.duration_days;
+  }
+
   const validation = validateStudentBatch(
     rows,
     (enrolled ?? []).map((r) => r.roll_number),
+    {
+      batchStartDate: planStartDate || undefined,
+      planDurationDays,
+      today: serviceDateOf(user.timezone, new Date()),
+    },
   );
 
   if (!validation.ok) {
@@ -253,7 +273,9 @@ export async function createStudentsBulk(
     const result = await createOneStudent(admin, actor, {
       ...draft,
       planId: planId || undefined,
-      planStartDate: planStartDate || undefined,
+      // Already resolved per row by the validator: the row's own date, or the
+      // batch default where the row left it blank.
+      planStartDate: draft.planStartDate,
     });
 
     if (result.ok) {

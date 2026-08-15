@@ -16,6 +16,8 @@
  * auth user has already been created for it.
  */
 import { isValidRollNumber } from "../domain/identity";
+import { validateSubscriptionStart } from "./student-admin.policy";
+import { toServiceDate, type ServiceDate } from "../time";
 
 /**
  * Most students one submission may create.
@@ -34,6 +36,26 @@ export interface StudentDraft {
   readonly block?: string;
   readonly roomNumber?: string;
   readonly planId?: string;
+  /**
+   * When this student's plan began.
+   *
+   * Per row, not per batch, because the form's real job is back-filling weeks
+   * of rolling admissions — students who joined on different days. A blank row
+   * inherits the batch default.
+   */
+  readonly planStartDate?: string;
+}
+
+export interface BatchOptions {
+  /** Applied to any row that leaves its own date blank. */
+  readonly batchStartDate?: string;
+  /**
+   * The chosen plan's length, which is what bounds how far a row may backdate.
+   * Absent means no plan was chosen, so dates are ignored entirely.
+   */
+  readonly planDurationDays?: number;
+  /** Today in the tenant's timezone. Required to bound any date. */
+  readonly today?: string;
 }
 
 export interface BatchRowError {
@@ -57,15 +79,24 @@ const clean = (v: string | undefined): string => (v ?? "").trim();
 
 /** A row the admin never touched — not an error, just an unused slot. */
 function isBlank(row: StudentDraft): boolean {
-  return [row.rollNumber, row.fullName, row.phone, row.email, row.block, row.roomNumber].every(
-    (v) => clean(v).length === 0,
-  );
+  return [
+    row.rollNumber,
+    row.fullName,
+    row.phone,
+    row.email,
+    row.block,
+    row.roomNumber,
+    row.planStartDate,
+  ].every((v) => clean(v).length === 0);
 }
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 export function validateStudentBatch(
   rows: readonly StudentDraft[],
   /** Roll numbers already enrolled in this mess. Compared case-insensitively. */
   existingRollNumbers: readonly string[],
+  options: BatchOptions = {},
 ): BatchValidation {
   const errors: BatchRowError[] = [];
   const valid: StudentDraft[] = [];
@@ -131,6 +162,28 @@ export function validateStudentBatch(
       }
     }
 
+    // Dates only mean something when a plan was chosen; without one there is no
+    // subscription to date, so a stray value must not block the batch.
+    let planStartDate: string | undefined;
+    if (options.planDurationDays && options.today) {
+      const raw = clean(row.planStartDate) || clean(options.batchStartDate);
+      if (raw) {
+        if (!ISO_DATE.test(raw)) {
+          push("planStartDate", "Enter the start date as YYYY-MM-DD.");
+        } else {
+          // The same bound every other screen applies, checked here so a bad
+          // date on row 9 is found before rows 1-8 have logins.
+          const checked = validateSubscriptionStart({
+            startDate: toServiceDate(raw),
+            today: toServiceDate(options.today) as ServiceDate,
+            durationDays: options.planDurationDays,
+          });
+          if (!checked.ok) push("planStartDate", checked.error.message);
+          else planStartDate = raw;
+        }
+      }
+    }
+
     if (fullName.length < 2) push("fullName", "Enter the student's full name.");
     if (fullName.length > 120) push("fullName", "That name is too long.");
     if (phone && !PHONE.test(phone)) push("phone", "Enter a valid phone number.");
@@ -144,6 +197,7 @@ export function validateStudentBatch(
       block: clean(row.block) || undefined,
       roomNumber: clean(row.roomNumber) || undefined,
       planId: clean(row.planId) || undefined,
+      planStartDate,
     });
   }
 
