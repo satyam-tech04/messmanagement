@@ -21,6 +21,7 @@ import {
   FakeStudentRepository,
   FakeTenantRepository,
   fakeSigner,
+  tenantSettings,
 } from "../fakes";
 
 const IST = "Asia/Kolkata";
@@ -35,23 +36,17 @@ const BETWEEN_MEALS = new Date("2026-07-15T11:00:00Z");
 /** 08:30 IST — before the first service. */
 const BEFORE_LUNCH = new Date("2026-07-15T03:00:00Z");
 
-const settings: TenantSettings = {
+const settings: TenantSettings = tenantSettings({
   tenantId: TENANT,
   mealSlots: [
     { slot: "LUNCH", start: toWallClockTime("12:00"), end: toWallClockTime("14:30") },
     { slot: "DINNER", start: toWallClockTime("19:30"), end: toWallClockTime("22:00") },
   ],
-  cutAdvanceHours: 12,
-  cutMaxDaysPerMonth: 5,
-  gracePeriodDays: 3,
-  blockOnOverdue: true,
-  allowExtras: false,
-  guestTokenPricePaise: 0,
-  extraPlatePricePaise: 0,
   qrTokenTtlSeconds: 30,
   qrRefreshSeconds: 15,
-  currency: "INR",
-};
+  cutAdvanceHours: 12,
+  cutMaxDaysPerMonth: 5,
+});
 
 const studentCtx: TenantContext = {
   tenantId: TENANT,

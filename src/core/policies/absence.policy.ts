@@ -143,6 +143,22 @@ export function requestAbsence(request: AbsenceRequest): Result<AbsenceDraft, Do
     return err(domainError("VALIDATION_FAILED", "The last day cannot be before the first."));
   }
 
+  // The allowance is per calendar month, so a skip crossing a boundary has no
+  // single answer to "does this fit?". Splitting it here would be worse than
+  // refusing: the student would submit one thing, find two in their list, and
+  // only be able to have one of them if the next month were already full.
+  // Away periods are uncapped and cross freely — a student going home over the
+  // end of term is exactly what the two-kinds design exists to allow.
+  if (kind === "SKIP" && monthKeyOf(request.dateFrom) !== monthKeyOf(request.dateTo)) {
+    return err(
+      domainError(
+        "VALIDATION_FAILED",
+        "The monthly allowance resets on the 1st, so a skip cannot run into the next month. Submit one for each month.",
+        { from: monthKeyOf(request.dateFrom), to: monthKeyOf(request.dateTo) },
+      ),
+    );
+  }
+
   const dates = eachDateInclusive(request.dateFrom, request.dateTo);
 
   if (kind === "AWAY" && dates.length > settings.awayMaxDays) {
@@ -195,7 +211,7 @@ export function requestAbsence(request: AbsenceRequest): Result<AbsenceDraft, Do
   const noticeGiven = hoursBetween(request.now, earliestOpening);
   if (noticeGiven < requiredHours) {
     const today = serviceDateOf(request.timeZone, request.now);
-    const earliestDate = earliestAcceptableDate(today, requiredHours);
+    const earliestDate = earliestAbsenceDate(today, requiredHours);
     return err(
       domainError(
         "VALIDATION_FAILED",
@@ -257,8 +273,14 @@ function openingOf(
   return openings.reduce((earliest, o) => (o < earliest ? o : earliest));
 }
 
-/** The first date whose earliest meal is far enough away to satisfy the notice. */
-function earliestAcceptableDate(today: ServiceDate, requiredHours: number): ServiceDate {
+/**
+ * The first date whose earliest meal is far enough away to satisfy the notice.
+ *
+ * Exported because the date picker's `min` must be this same answer. Two
+ * independent calculations would drift, and the student would be refused for
+ * choosing a date the form itself offered them.
+ */
+export function earliestAbsenceDate(today: ServiceDate, requiredHours: number): ServiceDate {
   // Whole days, deliberately: telling a student "choose 12 Aug" is actionable,
   // where "wait another 3 hours and 20 minutes" is not.
   const daysNeeded = Math.max(1, Math.ceil(requiredHours / 24));

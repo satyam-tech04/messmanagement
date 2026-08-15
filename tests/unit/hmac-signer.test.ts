@@ -6,6 +6,7 @@ import { issueToken, verifyToken } from "@/core/policies/qr.policy";
 import type { TenantSettings } from "@/core/domain/tenant-context";
 import { toWallClockTime, serviceDateOf } from "@/core/time";
 import { isErr, isOk, unwrap } from "@/core/result";
+import { tenantSettings } from "../fakes";
 
 const SECRET = "a-tenant-signing-secret-of-at-least-32-chars";
 const OTHER_SECRET = "a-completely-different-secret-of-32-plus-chars";
@@ -73,20 +74,12 @@ describe("hmacTokenSigner", () => {
 });
 
 describe("hmacTokenSigner wired into the real QR policy", () => {
-  const settings: TenantSettings = {
+  const settings: TenantSettings = tenantSettings({
     tenantId: "tenant-a",
     mealSlots: [{ slot: "LUNCH", start: toWallClockTime("12:00"), end: toWallClockTime("14:30") }],
-    cutAdvanceHours: 12,
-    cutMaxDaysPerMonth: 5,
-    gracePeriodDays: 3,
-    blockOnOverdue: true,
-    allowExtras: false,
-    guestTokenPricePaise: 0,
-    extraPlatePricePaise: 0,
     qrTokenTtlSeconds: 30,
     qrRefreshSeconds: 15,
-    currency: "INR",
-  };
+  });
   const IST = "Asia/Kolkata";
   const DURING_LUNCH = new Date("2026-07-15T07:30:00Z"); // 13:00 IST
 

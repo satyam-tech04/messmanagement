@@ -45,6 +45,23 @@ export const TenantStatus = {
 } as const;
 export type TenantStatus = (typeof TenantStatus)[keyof typeof TenantStatus];
 
+/**
+ * An absence request's lifecycle (rule 6 — one status, documented transitions).
+ *
+ * Only APPROVED and CREDITED remove a plate from the headcount. PENDING is a
+ * request the admin has not yet looked at, and must never be treated as a
+ * granted one: cooking for a student who is present is a small waste, but not
+ * cooking for one who is here is the failure the product exists to prevent.
+ */
+export const MessCutStatus = {
+  PENDING: "PENDING",
+  APPROVED: "APPROVED",
+  REJECTED: "REJECTED",
+  CANCELLED: "CANCELLED",
+  CREDITED: "CREDITED",
+} as const;
+export type MessCutStatus = (typeof MessCutStatus)[keyof typeof MessCutStatus];
+
 export const ProfileStatus = {
   ACTIVE: "ACTIVE",
   DISABLED: "DISABLED",

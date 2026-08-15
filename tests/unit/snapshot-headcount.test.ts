@@ -17,29 +17,24 @@ import {
   FakeMessCutRepository,
   FakeSubscriptionRepository,
   FakeTenantRepository,
+  tenantSettings,
 } from "../fakes";
 
 const IST = "Asia/Kolkata";
 const TENANT = "11111111-1111-1111-1111-111111111111";
 const DATE = toServiceDate("2026-07-15");
 
-const settings: TenantSettings = {
+const settings: TenantSettings = tenantSettings({
   tenantId: TENANT,
   mealSlots: [
     { slot: "LUNCH", start: toWallClockTime("12:00"), end: toWallClockTime("14:30") },
     { slot: "DINNER", start: toWallClockTime("19:30"), end: toWallClockTime("22:00") },
   ],
-  cutAdvanceHours: 12,
-  cutMaxDaysPerMonth: 5,
-  gracePeriodDays: 3,
-  blockOnOverdue: true,
-  allowExtras: false,
-  guestTokenPricePaise: 0,
-  extraPlatePricePaise: 0,
   qrTokenTtlSeconds: 30,
   qrRefreshSeconds: 15,
-  currency: "INR",
-};
+  cutAdvanceHours: 12,
+  cutMaxDaysPerMonth: 5,
+});
 
 function subscriber(id: string, over: Partial<SubscriberSnapshot> = {}): SubscriberSnapshot {
   return {

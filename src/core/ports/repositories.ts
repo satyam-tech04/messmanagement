@@ -10,7 +10,7 @@
  * Every method takes an explicit `tenantId`. There is no ambient tenant.
  */
 
-import type { MealSlot, StudentStatus } from "../domain/enums";
+import type { MealSlot, MessCutStatus, StudentStatus } from "../domain/enums";
 import type { TenantSettings } from "../domain/tenant-context";
 import type { ServiceDate } from "../time";
 import type { MessCutSnapshot, SubscriberSnapshot } from "../policies/headcount.policy";
@@ -117,6 +117,62 @@ export interface MessCutRepository {
     studentId: string,
     serviceDate: ServiceDate,
   ): Promise<MessCutSnapshot[]>;
+
+  /**
+   * Every live request of this student's overlapping the calendar month that
+   * contains `reference`.
+   *
+   * Overlapping, not contained: a cut running 28 Feb–3 Mar consumes days in two
+   * months, and `daysUsedInMonth` needs the whole row to work out how many fall
+   * inside this one.
+   *
+   * PENDING is included. An away request awaiting review has not been granted,
+   * but it has been *asked for*, and letting it be spent twice while the admin
+   * is thinking about it is a race the student wins.
+   */
+  findLiveInMonth(
+    tenantId: string,
+    studentId: string,
+    reference: ServiceDate,
+  ): Promise<AbsenceRow[]>;
+
+  /**
+   * Records an absence.
+   *
+   * Idempotent by `mess_cuts_one_live_request_idx`: a retried submit returns
+   * the row that already exists rather than adding a second one.
+   */
+  create(input: CreateAbsenceInput): Promise<AbsenceRow>;
+
+  /** Withdraws a request. Returns null if it is not this student's to withdraw. */
+  cancel(tenantId: string, studentId: string, id: string): Promise<AbsenceRow | null>;
+
+  /** The student's own history, newest first. */
+  findForStudent(tenantId: string, studentId: string, limit: number): Promise<AbsenceRow[]>;
+}
+
+/** One row of `mess_cuts`, as the student's own screens need it. */
+export interface AbsenceRow {
+  readonly id: string;
+  readonly studentId: string;
+  readonly dateFrom: ServiceDate;
+  readonly dateTo: ServiceDate;
+  readonly mealSlots: readonly MealSlot[];
+  readonly status: MessCutStatus;
+  readonly requestedAt: Date;
+  readonly rejectionReason: string | null;
+}
+
+export interface CreateAbsenceInput {
+  readonly tenantId: string;
+  readonly studentId: string;
+  readonly subscriptionId: string;
+  readonly dateFrom: ServiceDate;
+  readonly dateTo: ServiceDate;
+  readonly mealSlots: readonly MealSlot[];
+  readonly status: MessCutStatus;
+  /** The instant the first affected meal opens, in the tenant's timezone. */
+  readonly effectiveFrom: Date;
 }
 
 export interface SubscriptionRepository {

@@ -23,11 +23,17 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   if (user.mustChangePassword) redirect("/change-password");
 
   const supabase = await createClient();
-  const { data: tenant } = await supabase
-    .from("tenants")
-    .select("name")
-    .eq("id", user.tenantId)
-    .maybeSingle();
+  const [{ data: tenant }, { data: settings }] = await Promise.all([
+    supabase.from("tenants").select("name").eq("id", user.tenantId).maybeSingle(),
+    // Only the two nav-visible toggles. A student sees no way to skip a meal
+    // until the mess turns it on — a link that only leads to a refusal is worse
+    // than no link.
+    supabase
+      .from("tenant_settings")
+      .select("allow_meal_skipping, allow_away_requests")
+      .eq("tenant_id", user.tenantId)
+      .maybeSingle(),
+  ]);
 
   return (
     <AppShell
@@ -35,6 +41,10 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         fullName: user.fullName,
         role: user.role,
         tenantName: tenant?.name ?? "Mess",
+      }}
+      features={{
+        allowMealSkipping: settings?.allow_meal_skipping ?? false,
+        allowAwayRequests: settings?.allow_away_requests ?? false,
       }}
       signOutAction={signOut}
     >

@@ -130,36 +130,62 @@ that the hyphen form is accepted, so this cannot silently drift.
 tenant. It is a multi-tenant SaaS; naming the codebase after the first customer
 would contradict the whole design.
 
+### D-05 — Mess-cut cap shape
+
+**Decided:** 2026-08-15. **Per calendar month**, resetting on the 1st.
+
+**Why:** a pooled quarterly allowance lets absences bunch — exam week arrives and half the
+hostel goes home at once — and the headcount projection is the product's main claim. A
+monthly reset keeps the worst case bounded and is also the rule a student can hold in their
+head without a running total.
+
+**Consequence:** a skip request may not span a month boundary; `requestAbsence` refuses one
+with a message telling the student to submit two. `daysUsedInMonth` counts a **set of
+dates**, so a cut crossing the boundary contributes only its days inside this month, and two
+overlapping cuts never consume the same day twice. Away periods are exempt — see below.
+
+**Still configurable:** the cap's _value_ lives in `tenant_settings.cut_max_days_per_month`
+(0–31) and is editable in Settings, so a mess can loosen or tighten it without a deploy.
+
+### D-06 — Partial-day cuts
+
+**Decided:** 2026-08-15. **Configurable per mess**, via
+`tenant_settings.allow_partial_day_skip`, defaulting to on.
+
+**Why:** the right answer depends on how the mess cooks. A mess that cooks per meal saves
+real money on a lunch-only skip; one that cooks per day saves nothing from it and just gets
+a more complicated count. Forcing either rule on both would be wrong for one of them.
+
+**Consequence:** the cap counts in **days**, not meals, under both settings — a day on which
+a student skips anything is a day spent. That keeps one number on screen ("3 of 5 days
+left") rather than a meals-vs-days figure nobody can reconcile. With partial skipping off,
+the student's form fixes every meal on their plan as selected, visibly rather than silently.
+
+### D-14 — Being away is not the same as skipping, and is not capped
+
+**Decided:** 2026-08-15. Two kinds of absence share the `mess_cuts` table: **SKIP** (short,
+self-service, capped) and **AWAY** (a planned period, reviewed by the admin, uncapped).
+
+**Why:** one cap cannot serve both. A five-day monthly allowance would block a student going
+home for a fortnight, which is entirely legitimate and should not be penalised. Sending
+those to the admin instead also gives the kitchen warning of a large drop in the headcount,
+which a silent self-service cut would not.
+
+**Mechanics:** `allow_away_requests` and `away_requires_approval` are separate toggles, both
+off/on independently of skipping. An AWAY always covers every meal the mess serves — nobody
+is present for half a day. `away_advance_hours` is separate from `cut_advance_hours`, since
+a fortnight away is worth knowing about earlier than tonight's dinner. `away_max_days`
+(1–400) caps a single request so a mistyped date cannot cancel a whole term in one click.
+
+**Consequence:** `mess_cut_status` gained **PENDING**. Only APPROVED and CREDITED remove a
+plate from the headcount — cooking for a student who turns up is a small waste, not cooking
+for one who is here is the failure the product exists to prevent. PENDING nonetheless
+consumes the monthly allowance while it waits, or a student could spend the same five days
+repeatedly while the admin is deciding.
+
 ---
 
 ## Open — must be answered before Phase 2
-
-### D-05 — Mess-cut cap shape 🔴
-
-**Question:** for a quarterly subscription, is the cap 5 days per calendar month, or 15
-days pooled across the quarter?
-
-**Status:** awaiting product-owner input.
-
-**Impact:** `MessCutPolicy` cap accounting. Per-month is stricter and makes headcount more
-predictable; pooled is more generous but lets cuts bunch into one month, which weakens the
-headcount projection that is the product's main selling point.
-
-**Not blocking now:** the cap value lives in `tenant_settings`, never in code, so only the
-_counting rule_ is undecided — not the schema.
-
-### D-06 — Partial-day cuts 🔴
-
-**Question:** may a student cut only lunch and still eat dinner, or is a cut always a whole
-day?
-
-**Status:** awaiting product-owner input.
-
-**Impact:** if partial cuts are allowed, the cap must count in **meals**, not days, and the
-mess-cut UI needs per-slot selection.
-
-**Not blocking now:** `mess_cuts.meal_slots text[]` already models both. Whole-day cuts are
-simply the case where the array holds every slot. No migration is needed either way.
 
 ### D-07 — Unused credits at subscription end
 

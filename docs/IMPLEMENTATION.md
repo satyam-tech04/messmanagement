@@ -9,7 +9,7 @@ Legend: ✅ done · 🚧 in progress · ⬜ not started · ⏸️ deferred by de
 
 ---
 
-## ▶ RESUME HERE — state as of 2026-07-25
+## ▶ RESUME HERE — state as of 2026-08-15
 
 **Read this first if you are picking the project up cold.** It is written to survive a lost
 conversation: everything needed to continue correctly is here or linked from here.
@@ -19,8 +19,8 @@ conversation: everything needed to continue correctly is here or linked from her
 | Area                                  | State                                                               |
 | ------------------------------------- | ------------------------------------------------------------------- |
 | Repo, tooling, CI, import boundaries  | ✅ `npm run verify` green                                           |
-| Core domain (pure, no I/O)            | ✅ **460 tests**, 99%+ coverage                                     |
-| Database schema                       | ✅ migrations 001–007 **applied + sealed** on the live project      |
+| Core domain (pure, no I/O)            | ✅ **579 tests**, 99%+ coverage                                     |
+| Database schema                       | ✅ migrations 001–009 **applied + sealed** on the live project      |
 | JWT auth hook                         | ✅ enabled and verified end-to-end                                  |
 | Generated DB types                    | ✅ `src/infra/supabase/database.types.ts` (incl. RPC Functions)     |
 | Infrastructure layer (`src/infra`)    | ✅ env, clients, HMAC signer, 7 repositories                        |
@@ -35,6 +35,7 @@ conversation: everything needed to continue correctly is here or linked from her
 | **Phase 1.7b — live headcount**       | ✅ realtime count, snapshot cron with locking                       |
 | **Phase 1.8 — exit criteria**         | ✅ **14 checks pass against the live DB** (`npm run verify:phase1`) |
 | **MVP (Phase 0 + 1)**                 | ✅ **complete** — every nav route resolves                          |
+| **Absences (skip / away)**            | ✅ policy, service, settings toggles, student + admin screens       |
 
 **Phase 0 is done.** Three roles sign in against the live database and land on their own
 shell; cross-tenant isolation is proven with real data. Phase 1 domain logic (QR policy,
@@ -65,11 +66,17 @@ Remove everything with `npm run db:seed -- --reset`.
 **The MVP is complete.** Phase 1 exit criteria are proven — see below. What remains before
 the pilot runs on it:
 
-1. **The deferred cleanup list** below — the repo is still public, and there is a general
+1. **Turn absences on for the pilot tenant.** They ship **off**, by design — Settings →
+   _Skipping meals_ / _Time away_. Until then the student nav shows no Absences link and
+   `/student/absences` 404s, which is the intended behaviour, not a bug.
+2. **Gaps 9–14 from the review**: audit-log viewer, student attendance history, bulk student
+   import, plans empty states, cross-tenant roll-number login, email notifications.
+3. **The deferred cleanup list** below — the repo is still public, and there is a general
    tidy-up pass outstanding.
-2. **Widen the pilot's meal windows temporarily** if the client wants to test outside
-   12:00–14:30 / 19:30–22:00 IST. Scans are correctly refused outside them.
-3. **Phase 2 (money)** is blocked on D-05 and D-06, which need the product owner.
+4. **Widen the pilot's meal windows temporarily** if the client wants to test outside the
+   configured IST windows. Scans are correctly refused outside them.
+5. **Phase 2 (money)** — D-05 and D-06 are now settled (see DECISIONS.md); the remaining
+   blockers are the ledger and Razorpay, not product questions.
 
 ### Deferred to the end, by the user's instruction
 
@@ -124,12 +131,20 @@ npm run verify:phase1 # drives the whole service loop against the live DB (14 ch
   long before it exists and nothing fails at build time — it 404s in the user's face
   instead. Phase-2 routes carry `disabled: true` and render as greyed spans; anything else
   needs a real page. Diff the nav hrefs against `find src/app -name page.tsx` after adding
-  either.
+  either. Feature-gated links (Absences) are built by `studentNav()` from flags the layout
+  reads — the default is **hidden**, so a caller that forgets to pass settings advertises
+  nothing.
+- **`ON CONFLICT` cannot infer a PARTIAL unique index** — Postgres raises 42P10. Both
+  `attendance_one_live_per_student_meal` and `mess_cuts_one_live_request_idx` are partial, so
+  their writers do a plain INSERT and catch 23505. The idempotency guarantee is the index
+  either way; only the error handling moves up a level.
+- **The generated types carry no `Relationships`**, so every PostgREST embed arrives as
+  `never` and must be named at the call site. Always unwrap with `firstRelated<T>()`: the
+  embed is an **object** for a to-one relation and an **array** for to-many, and reading that
+  wrong once already left every student session without a `studentId` in production.
 
 ### Unresolved, and who owns it
 
-- **D-05 / D-06** (mess-cut cap shape, partial-day cuts) — awaiting product owner. Blocks
-  Phase 2 only; the schema already supports both answers.
 - **Free tier has no PITR.** Acceptable for the pilot; upgrade before real student data
   matters.
 - **Vercel Hobby allows only daily cron jobs**, with ±59 minutes of slack. A more frequent

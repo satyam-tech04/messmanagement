@@ -94,6 +94,16 @@ export default async function SettingsPage() {
         slots={slots}
         qrTokenTtlSeconds={settings.qrTokenTtlSeconds}
         qrRefreshSeconds={settings.qrRefreshSeconds}
+        absence={{
+          allowMealSkipping: settings.allowMealSkipping,
+          allowPartialDaySkip: settings.allowPartialDaySkip,
+          allowAwayRequests: settings.allowAwayRequests,
+          awayRequiresApproval: settings.awayRequiresApproval,
+          cutAdvanceHours: settings.cutAdvanceHours,
+          cutMaxDaysPerMonth: settings.cutMaxDaysPerMonth,
+          awayAdvanceHours: settings.awayAdvanceHours,
+          awayMaxDays: settings.awayMaxDays,
+        }}
       />
     </div>
   );

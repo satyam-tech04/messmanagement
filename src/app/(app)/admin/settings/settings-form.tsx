@@ -18,6 +18,194 @@ export interface SlotSetting {
   readonly end: string;
 }
 
+export interface AbsenceSetting {
+  readonly allowMealSkipping: boolean;
+  readonly allowPartialDaySkip: boolean;
+  readonly allowAwayRequests: boolean;
+  readonly awayRequiresApproval: boolean;
+  readonly cutAdvanceHours: number;
+  readonly cutMaxDaysPerMonth: number;
+  readonly awayAdvanceHours: number;
+  readonly awayMaxDays: number;
+}
+
+/**
+ * A labelled switch that submits as a checkbox.
+ *
+ * Controlled, because the fields it governs fade with it — but the fields stay
+ * *enabled* either way. A disabled input submits nothing, which would arrive as
+ * NaN and be rejected as a bad number the admin never touched.
+ */
+function Toggle({
+  name,
+  label,
+  hint,
+  checked,
+  onChange,
+}: {
+  name: string;
+  label: string;
+  hint: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <label className="flex cursor-pointer items-start gap-3">
+      <Checkbox
+        id={name}
+        name={name}
+        checked={checked}
+        onCheckedChange={(v) => onChange(v === true)}
+        className="mt-0.5"
+      />
+      <span className="space-y-0.5">
+        <span className="block text-sm font-medium">{label}</span>
+        <span className="text-muted-foreground block text-xs">{hint}</span>
+      </span>
+    </label>
+  );
+}
+
+function NumberField({
+  name,
+  label,
+  hint,
+  defaultValue,
+  min,
+  max,
+  dimmed,
+}: {
+  name: string;
+  label: string;
+  hint: string;
+  defaultValue: number;
+  min: number;
+  max: number;
+  dimmed: boolean;
+}) {
+  return (
+    <div className={`space-y-2 transition-opacity ${dimmed ? "opacity-50" : ""}`}>
+      <Label htmlFor={name}>{label}</Label>
+      <Input
+        id={name}
+        name={name}
+        type="number"
+        min={min}
+        max={max}
+        step={1}
+        defaultValue={defaultValue}
+        className="tabular-nums"
+      />
+      <p className="text-muted-foreground text-xs">{hint}</p>
+    </div>
+  );
+}
+
+function AbsenceCard({ absence }: { absence: AbsenceSetting }) {
+  const [skipping, setSkipping] = useState(absence.allowMealSkipping);
+  const [partial, setPartial] = useState(absence.allowPartialDaySkip);
+  const [away, setAway] = useState(absence.allowAwayRequests);
+  const [approval, setApproval] = useState(absence.awayRequiresApproval);
+
+  return (
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>Skipping meals</CardTitle>
+          <CardDescription>
+            Students see no way to skip anything until this is on. Notice is measured to the moment
+            the meal opens — a cut arriving after the kitchen has shopped and cooked saves nothing.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <Toggle
+            name="allowMealSkipping"
+            label="Let students skip meals"
+            hint="They mark themselves out in advance and the plate comes off the headcount."
+            checked={skipping}
+            onChange={setSkipping}
+          />
+          <Toggle
+            name="allowPartialDaySkip"
+            label="Allow single meals, not just whole days"
+            hint="Turn off if you cook per day — a lunch-only skip then saves you nothing."
+            checked={partial}
+            onChange={setPartial}
+          />
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <NumberField
+              name="cutAdvanceHours"
+              label="Notice required (hours)"
+              hint="0–720. Twelve hours means tonight's dinner must be cut by this morning."
+              defaultValue={absence.cutAdvanceHours}
+              min={0}
+              max={720}
+              dimmed={!skipping}
+            />
+            <NumberField
+              name="cutMaxDaysPerMonth"
+              label="Days a student may skip per month"
+              hint="0–31, counted per calendar month. This is what stops a subscription becoming pay-per-meal."
+              defaultValue={absence.cutMaxDaysPerMonth}
+              min={0}
+              max={31}
+              dimmed={!skipping}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Time away</CardTitle>
+          <CardDescription>
+            A planned absence of several days — going home, a field trip. Deliberately not counted
+            against the monthly allowance: a fortnight at home is not over-skipping.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <Toggle
+            name="allowAwayRequests"
+            label="Accept time-away requests"
+            hint="Gives the kitchen warning of a large drop in the headcount."
+            checked={away}
+            onChange={setAway}
+          />
+          <Toggle
+            name="awayRequiresApproval"
+            label="Require your approval"
+            hint="Off means requests are accepted as soon as they are submitted."
+            checked={approval}
+            onChange={setApproval}
+          />
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <NumberField
+              name="awayAdvanceHours"
+              label="Notice required (hours)"
+              hint="0–720. Usually longer than for a single meal — a fortnight away is worth knowing about earlier."
+              defaultValue={absence.awayAdvanceHours}
+              min={0}
+              max={720}
+              dimmed={!away}
+            />
+            <NumberField
+              name="awayMaxDays"
+              label="Longest single request (days)"
+              hint="1–400. A ceiling, so a mistyped date cannot cancel a whole term in one click."
+              defaultValue={absence.awayMaxDays}
+              min={1}
+              max={400}
+              dimmed={!away}
+            />
+          </div>
+        </CardContent>
+      </Card>
+    </>
+  );
+}
+
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
@@ -87,10 +275,12 @@ export function SettingsForm({
   slots,
   qrTokenTtlSeconds,
   qrRefreshSeconds,
+  absence,
 }: {
   slots: readonly SlotSetting[];
   qrTokenTtlSeconds: number;
   qrRefreshSeconds: number;
+  absence: AbsenceSetting;
 }) {
   const [state, formAction] = useActionState<SettingsActionState, FormData>(updateSettings, {});
 
@@ -110,6 +300,8 @@ export function SettingsForm({
           ))}
         </CardContent>
       </Card>
+
+      <AbsenceCard absence={absence} />
 
       <Card>
         <CardHeader>

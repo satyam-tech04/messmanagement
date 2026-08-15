@@ -25,11 +25,30 @@ export interface MealSlotInput {
   readonly end: string;
 }
 
+/**
+ * The mess's absence policy, as the settings screen submits it.
+ *
+ * The numbers are validated whether or not the toggle that uses them is on:
+ * they persist, and become live the instant the toggle flips, so an
+ * out-of-range value cannot be waved through as "unused today".
+ */
+export interface AbsenceSettingsInput {
+  readonly allowMealSkipping: boolean;
+  readonly allowPartialDaySkip: boolean;
+  readonly allowAwayRequests: boolean;
+  readonly awayRequiresApproval: boolean;
+  readonly cutAdvanceHours: number;
+  readonly cutMaxDaysPerMonth: number;
+  readonly awayAdvanceHours: number;
+  readonly awayMaxDays: number;
+}
+
 export interface TenantSettingsInput {
   readonly actorRole: UserRole;
   readonly mealSlots: readonly MealSlotInput[];
   readonly qrTokenTtlSeconds: number;
   readonly qrRefreshSeconds: number;
+  readonly absence: AbsenceSettingsInput;
   /**
    * Slots that **active plans** still offer.
    *
@@ -50,6 +69,54 @@ export interface TenantSettingsDraft {
   }[];
   readonly qrTokenTtlSeconds: number;
   readonly qrRefreshSeconds: number;
+  readonly absence: AbsenceSettingsInput;
+}
+
+/**
+ * Each numeric absence setting, with the range its column CHECK enforces.
+ *
+ * Kept beside the constraint names deliberately: when a migration widens a
+ * range, the two must move together or the screen starts refusing values the
+ * database would happily accept.
+ */
+const ABSENCE_RANGES = {
+  // tenant_settings_cut_advance_hours_sane
+  cutAdvanceHours: [0, 720],
+  // tenant_settings_cut_cap_sane
+  cutMaxDaysPerMonth: [0, 31],
+  // tenant_settings_away_advance_sane
+  awayAdvanceHours: [0, 720],
+  // tenant_settings_away_max_days_sane. The floor is 1, not 0: zero is not
+  // "no away periods" — `allowAwayRequests` is that — it is a setting under
+  // which every request fails with nothing the student can do about it.
+  awayMaxDays: [1, 400],
+} as const satisfies Record<string, readonly [number, number]>;
+
+const ABSENCE_LABELS: Record<keyof typeof ABSENCE_RANGES, string> = {
+  cutAdvanceHours: "The notice needed to skip a meal",
+  cutMaxDaysPerMonth: "The monthly skip allowance",
+  awayAdvanceHours: "The notice needed for time away",
+  awayMaxDays: "The longest single time-away request",
+};
+
+function parseAbsence(input: AbsenceSettingsInput): Result<AbsenceSettingsInput, DomainError> {
+  for (const key of Object.keys(ABSENCE_RANGES) as (keyof typeof ABSENCE_RANGES)[]) {
+    const [min, max] = ABSENCE_RANGES[key];
+    const value = input[key];
+    // `Number.isInteger` rejects NaN — which is what an emptied number input
+    // coerces to — and fractions, which the integer column would silently round.
+    if (!Number.isInteger(value) || value < min || value > max) {
+      return err(
+        domainError(
+          "VALIDATION_FAILED",
+          `${ABSENCE_LABELS[key]} must be a whole number between ${min} and ${max}.`,
+          { field: key },
+        ),
+      );
+    }
+  }
+
+  return ok(input);
 }
 
 /** Minutes since midnight, for interval comparison. */
@@ -180,6 +247,9 @@ export function parseTenantSettings(
     );
   }
 
+  const absence = parseAbsence(input.absence);
+  if (!absence.ok) return absence;
+
   // Sorted by time of day so the settings screen, the menu planner and the
   // student's "next meal" all agree on the order.
   const mealSlots = [...parsed].sort(
@@ -190,5 +260,6 @@ export function parseTenantSettings(
     mealSlots,
     qrTokenTtlSeconds: input.qrTokenTtlSeconds,
     qrRefreshSeconds: input.qrRefreshSeconds,
+    absence: absence.value,
   });
 }

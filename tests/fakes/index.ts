@@ -17,6 +17,8 @@ import type { MealSlot } from "@/core/domain/enums";
 import type { TenantSettings } from "@/core/domain/tenant-context";
 import type { MessCutSnapshot, SubscriberSnapshot } from "@/core/policies/headcount.policy";
 import type {
+  AbsenceRow,
+  CreateAbsenceInput,
   AttendanceRecord,
   AttendanceRepository,
   AuditLogRepository,
@@ -33,6 +35,7 @@ import type {
 } from "@/core/ports/repositories";
 import type { TokenSigner } from "@/core/ports/token-signer";
 import type { ServiceDate } from "@/core/time";
+import { toWallClockTime } from "@/core/time";
 
 export class FakeAttendanceRepository implements AttendanceRepository {
   readonly rows: AttendanceRecord[] = [];
@@ -166,6 +169,80 @@ export class FakeMessCutRepository implements MessCutRepository {
       (c) => c.studentId === studentId && c.dateFrom <= serviceDate && c.dateTo >= serviceDate,
     );
   }
+
+  /** Rows written through `create`, in insertion order. */
+  readonly rows: AbsenceRow[] = [];
+
+  /** Set to simulate the unique index rejecting a duplicate submit. */
+  failNextCreateAsDuplicate = false;
+
+  async findLiveInMonth(
+    _tenantId: string,
+    studentId: string,
+    reference: ServiceDate,
+  ): Promise<AbsenceRow[]> {
+    const month = reference.slice(0, 7);
+    return this.rows.filter(
+      (r) =>
+        r.studentId === studentId &&
+        (r.status === "PENDING" || r.status === "APPROVED" || r.status === "CREDITED") &&
+        // Overlaps the month, the same test the SQL runs.
+        r.dateFrom.slice(0, 7) <= month &&
+        r.dateTo.slice(0, 7) >= month,
+    );
+  }
+
+  async create(input: CreateAbsenceInput): Promise<AbsenceRow> {
+    const key = (r: { dateFrom: string; dateTo: string; mealSlots: readonly MealSlot[] }) =>
+      `${r.dateFrom}|${r.dateTo}|${[...r.mealSlots].join(",")}`;
+
+    // Mirrors `mess_cuts_one_live_request_idx`: a retried submit finds the row
+    // that already exists rather than adding a second one.
+    const existing = this.rows.find(
+      (r) =>
+        r.studentId === input.studentId &&
+        key(r) === key(input) &&
+        (r.status === "PENDING" || r.status === "APPROVED" || r.status === "CREDITED"),
+    );
+    if (existing) return existing;
+
+    const row: AbsenceRow = {
+      id: `cut-${this.rows.length + 1}`,
+      studentId: input.studentId,
+      dateFrom: input.dateFrom,
+      dateTo: input.dateTo,
+      mealSlots: input.mealSlots,
+      status: input.status,
+      requestedAt: new Date("2026-08-15T00:00:00Z"),
+      rejectionReason: null,
+    };
+    this.rows.push(row);
+
+    // A lost race, faithfully: the other request's row IS there, and ours is
+    // the insert the unique index rejected. Storing then throwing is what makes
+    // the recovery path — re-read, return the winner — actually get exercised.
+    if (this.failNextCreateAsDuplicate) {
+      this.failNextCreateAsDuplicate = false;
+      throw Object.assign(new Error("duplicate key value"), { code: "23505" });
+    }
+
+    return row;
+  }
+
+  async cancel(_tenantId: string, studentId: string, id: string): Promise<AbsenceRow | null> {
+    const index = this.rows.findIndex((r) => r.id === id && r.studentId === studentId);
+    if (index < 0) return null;
+    const cancelled: AbsenceRow = { ...this.rows[index]!, status: "CANCELLED" };
+    this.rows[index] = cancelled;
+    return cancelled;
+  }
+
+  async findForStudent(_tenantId: string, studentId: string, limit: number): Promise<AbsenceRow[]> {
+    return this.rows
+      .filter((r) => r.studentId === studentId)
+      .sort((a, b) => b.dateFrom.localeCompare(a.dateFrom))
+      .slice(0, limit);
+  }
 }
 
 export class FakeSubscriptionRepository implements SubscriptionRepository {
@@ -267,3 +344,40 @@ export const fakeSigner: TokenSigner = {
     return signature === this.sign(payload, secret);
   },
 };
+
+/**
+ * Tenant settings for a test, with everything but the interesting bits filled
+ * in.
+ *
+ * Five test files used to build this literal by hand, so adding one field to
+ * `TenantSettings` broke all five at once and each had to be patched
+ * identically. Defaults live here; a test overrides only what it is actually
+ * about.
+ */
+export function tenantSettings(over: Partial<TenantSettings> = {}): TenantSettings {
+  return {
+    tenantId: "11111111-1111-1111-1111-111111111111",
+    mealSlots: [
+      { slot: "LUNCH", start: toWallClockTime("12:00"), end: toWallClockTime("14:30") },
+      { slot: "DINNER", start: toWallClockTime("19:30"), end: toWallClockTime("22:00") },
+    ],
+    cutAdvanceHours: 12,
+    cutMaxDaysPerMonth: 5,
+    gracePeriodDays: 3,
+    blockOnOverdue: true,
+    allowExtras: false,
+    guestTokenPricePaise: 0,
+    extraPlatePricePaise: 0,
+    qrTokenTtlSeconds: 30,
+    qrRefreshSeconds: 15,
+    currency: "INR",
+    // Absences default off, exactly as a real mess starts out.
+    allowMealSkipping: false,
+    allowPartialDaySkip: true,
+    allowAwayRequests: false,
+    awayRequiresApproval: true,
+    awayAdvanceHours: 24,
+    awayMaxDays: 30,
+    ...over,
+  };
+}

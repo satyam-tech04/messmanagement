@@ -23,7 +23,17 @@ export interface SettingsActionState {
 const schema = z.object({
   qrTokenTtlSeconds: z.coerce.number(),
   qrRefreshSeconds: z.coerce.number(),
+  // Ranges live in the policy, beside the constraint names they mirror. Coerce
+  // only here, so an emptied field arrives as NaN and is rejected by name
+  // rather than silently becoming zero.
+  cutAdvanceHours: z.coerce.number(),
+  cutMaxDaysPerMonth: z.coerce.number(),
+  awayAdvanceHours: z.coerce.number(),
+  awayMaxDays: z.coerce.number(),
 });
+
+/** An unchecked checkbox is absent from the FormData entirely, not "off". */
+const checked = (formData: FormData, name: string): boolean => formData.get(name) === "on";
 
 export async function updateSettings(
   _prev: SettingsActionState,
@@ -35,8 +45,12 @@ export async function updateSettings(
   const parsed = schema.safeParse({
     qrTokenTtlSeconds: formData.get("qrTokenTtlSeconds"),
     qrRefreshSeconds: formData.get("qrRefreshSeconds"),
+    cutAdvanceHours: formData.get("cutAdvanceHours"),
+    cutMaxDaysPerMonth: formData.get("cutMaxDaysPerMonth"),
+    awayAdvanceHours: formData.get("awayAdvanceHours"),
+    awayMaxDays: formData.get("awayMaxDays"),
   });
-  if (!parsed.success) return { error: "Check the QR rotation values." };
+  if (!parsed.success) return { error: "Check the numbers on this page." };
 
   // Only slots the admin ticked are served. An unticked meal is removed rather
   // than kept with stale times, so the settings screen is the whole truth.
@@ -68,12 +82,24 @@ export async function updateSettings(
     slotsInUse,
     qrTokenTtlSeconds: parsed.data.qrTokenTtlSeconds,
     qrRefreshSeconds: parsed.data.qrRefreshSeconds,
+    absence: {
+      allowMealSkipping: checked(formData, "allowMealSkipping"),
+      allowPartialDaySkip: checked(formData, "allowPartialDaySkip"),
+      allowAwayRequests: checked(formData, "allowAwayRequests"),
+      awayRequiresApproval: checked(formData, "awayRequiresApproval"),
+      cutAdvanceHours: parsed.data.cutAdvanceHours,
+      cutMaxDaysPerMonth: parsed.data.cutMaxDaysPerMonth,
+      awayAdvanceHours: parsed.data.awayAdvanceHours,
+      awayMaxDays: parsed.data.awayMaxDays,
+    },
   });
   if (!draft.ok) return { error: draft.error.message };
 
   const { data: before } = await admin
     .from("tenant_settings")
-    .select("meal_slots, qr_token_ttl_seconds, qr_refresh_seconds")
+    .select(
+      "meal_slots, qr_token_ttl_seconds, qr_refresh_seconds, allow_meal_skipping, allow_partial_day_skip, allow_away_requests, away_requires_approval, cut_advance_hours, cut_max_days_per_month, away_advance_hours, away_max_days",
+    )
     .eq("tenant_id", user.tenantId)
     .maybeSingle();
 
@@ -87,6 +113,14 @@ export async function updateSettings(
       })),
       qr_token_ttl_seconds: draft.value.qrTokenTtlSeconds,
       qr_refresh_seconds: draft.value.qrRefreshSeconds,
+      allow_meal_skipping: draft.value.absence.allowMealSkipping,
+      allow_partial_day_skip: draft.value.absence.allowPartialDaySkip,
+      allow_away_requests: draft.value.absence.allowAwayRequests,
+      away_requires_approval: draft.value.absence.awayRequiresApproval,
+      cut_advance_hours: draft.value.absence.cutAdvanceHours,
+      cut_max_days_per_month: draft.value.absence.cutMaxDaysPerMonth,
+      away_advance_hours: draft.value.absence.awayAdvanceHours,
+      away_max_days: draft.value.absence.awayMaxDays,
     })
     .eq("tenant_id", user.tenantId);
 
@@ -103,6 +137,7 @@ export async function updateSettings(
       mealSlots: draft.value.mealSlots,
       qrTokenTtlSeconds: draft.value.qrTokenTtlSeconds,
       qrRefreshSeconds: draft.value.qrRefreshSeconds,
+      ...draft.value.absence,
     },
   });
 

@@ -8,6 +8,7 @@ import {
   verifyToken,
 } from "@/core/policies/qr.policy";
 import type { TokenSigner } from "@/core/ports/token-signer";
+import { tenantSettings } from "../fakes";
 import type { TenantSettings } from "@/core/domain/tenant-context";
 import { toWallClockTime, serviceDateOf } from "@/core/time";
 import { isErr, isOk, unwrap } from "@/core/result";
@@ -37,23 +38,17 @@ function hash(input: string): string {
   return (h >>> 0).toString(36);
 }
 
-const settings: TenantSettings = {
+const settings: TenantSettings = tenantSettings({
   tenantId: TENANT_A,
   mealSlots: [
     { slot: "LUNCH", start: toWallClockTime("12:00"), end: toWallClockTime("14:30") },
     { slot: "DINNER", start: toWallClockTime("19:30"), end: toWallClockTime("22:00") },
   ],
-  cutAdvanceHours: 12,
-  cutMaxDaysPerMonth: 5,
-  gracePeriodDays: 3,
-  blockOnOverdue: true,
-  allowExtras: false,
-  guestTokenPricePaise: 0,
-  extraPlatePricePaise: 0,
   qrTokenTtlSeconds: 30,
   qrRefreshSeconds: 15,
-  currency: "INR",
-};
+  cutAdvanceHours: 12,
+  cutMaxDaysPerMonth: 5,
+});
 
 // 13:00 IST on 5 July 2026 — inside the lunch window.
 const DURING_LUNCH = new Date("2026-07-05T07:30:00Z");

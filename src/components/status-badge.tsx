@@ -52,7 +52,9 @@ const STATUS_TONES: Record<string, StatusTone> = {
   DRAFT: "neutral",
   ISSUED: "info",
   VOID: "neutral",
-  // Mess cuts
+  // Mess cuts. PENDING is amber, not grey: it is waiting on the mess office,
+  // and a student needs to see that theirs has not been decided yet.
+  PENDING: "warning",
   APPROVED: "success",
   REJECTED: "danger",
   CREDITED: "info",

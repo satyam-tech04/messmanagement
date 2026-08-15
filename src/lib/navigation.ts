@@ -37,6 +37,10 @@ const ADMIN_NAV: readonly NavSection[] = [
       { label: "Menu", href: "/admin/menu", icon: "UtensilsCrossed" },
       { label: "Attendance", href: "/admin/attendance", icon: "ScanLine" },
       { label: "Headcount", href: "/admin/headcount", icon: "ChefHat" },
+      // Always shown, even when absences are off: this is where the admin sees
+      // what students have already asked for, and requests submitted while the
+      // feature was on do not disappear when it is turned off.
+      { label: "Absences", href: "/admin/absences", icon: "CalendarOff" },
     ],
   },
   {
@@ -74,27 +78,47 @@ const STAFF_NAV: readonly NavSection[] = [
   },
 ];
 
-const STUDENT_NAV: readonly NavSection[] = [
-  {
-    items: [
-      { label: "My QR", href: "/student", icon: "QrCode" },
-      { label: "Menu", href: "/student/menu", icon: "UtensilsCrossed" },
-      { label: "My plan", href: "/student/plan", icon: "ClipboardList" },
-      {
-        label: "Billing",
-        href: "/student/billing",
-        icon: "Receipt",
-        disabled: true,
-        badge: "Phase 2",
-      },
-    ],
-  },
-];
+/**
+ * Tenant toggles that change what a role can see.
+ *
+ * Passed in rather than read here, because this module is a leaf with no data
+ * access. Every field is optional and every default is `false` — a caller that
+ * forgets to pass settings shows nothing, rather than advertising a feature the
+ * mess never turned on.
+ */
+export interface NavFeatures {
+  readonly allowMealSkipping?: boolean;
+  readonly allowAwayRequests?: boolean;
+}
 
-export function navigationFor(role: UserRole): readonly NavSection[] {
+function studentNav(features: NavFeatures): readonly NavSection[] {
+  const items: NavItem[] = [
+    { label: "My QR", href: "/student", icon: "QrCode" },
+    { label: "Menu", href: "/student/menu", icon: "UtensilsCrossed" },
+    { label: "My plan", href: "/student/plan", icon: "ClipboardList" },
+  ];
+
+  // Either toggle is enough: a mess may take holiday notice without allowing
+  // single-meal skips. The page itself shows only the halves that are on.
+  if (features.allowMealSkipping || features.allowAwayRequests) {
+    items.push({ label: "Absences", href: "/student/absences", icon: "CalendarOff" });
+  }
+
+  items.push({
+    label: "Billing",
+    href: "/student/billing",
+    icon: "Receipt",
+    disabled: true,
+    badge: "Phase 2",
+  });
+
+  return [{ items }];
+}
+
+export function navigationFor(role: UserRole, features: NavFeatures = {}): readonly NavSection[] {
   switch (role) {
     case "STUDENT":
-      return STUDENT_NAV;
+      return studentNav(features);
     case "STAFF":
       return STAFF_NAV;
     case "ADMIN":

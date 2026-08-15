@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import { MealSlot, UserRole } from "@/core/domain/enums";
 import {
   parseTenantSettings,
+  type AbsenceSettingsInput,
   type TenantSettingsInput,
 } from "@/core/policies/tenant-settings.policy";
 
@@ -21,6 +22,16 @@ const valid: TenantSettingsInput = {
   qrTokenTtlSeconds: 30,
   qrRefreshSeconds: 15,
   slotsInUse: [],
+  absence: {
+    allowMealSkipping: false,
+    allowPartialDaySkip: true,
+    allowAwayRequests: false,
+    awayRequiresApproval: true,
+    cutAdvanceHours: 12,
+    cutMaxDaysPerMonth: 5,
+    awayAdvanceHours: 24,
+    awayMaxDays: 30,
+  },
 };
 
 describe("parseTenantSettings — authorization", () => {
@@ -260,5 +271,122 @@ describe("parseTenantSettings — QR rotation", () => {
     expect(
       parseTenantSettings({ ...valid, qrTokenTtlSeconds: 300, qrRefreshSeconds: 299 }).ok,
     ).toBe(true);
+  });
+});
+
+/**
+ * The absence half of the settings screen.
+ *
+ * These numbers are the mess's money policy expressed as configuration. A cap
+ * that saves wrong, or a notice period the database then rejects, means the
+ * admin sees a raw constraint violation on a screen that had just told them the
+ * change was fine.
+ */
+const absence: AbsenceSettingsInput = {
+  allowMealSkipping: true,
+  allowPartialDaySkip: true,
+  allowAwayRequests: true,
+  awayRequiresApproval: true,
+  cutAdvanceHours: 12,
+  cutMaxDaysPerMonth: 5,
+  awayAdvanceHours: 24,
+  awayMaxDays: 30,
+};
+
+const withAbsence = (over: Partial<AbsenceSettingsInput> = {}): TenantSettingsInput => ({
+  ...valid,
+  absence: { ...absence, ...over },
+});
+
+describe("parseTenantSettings — absence rules", () => {
+  it("accepts a fully-configured absence policy", () => {
+    const r = parseTenantSettings(withAbsence());
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.absence.cutMaxDaysPerMonth).toBe(5);
+  });
+
+  it("passes the toggles through unchanged", () => {
+    const r = parseTenantSettings(
+      withAbsence({ allowMealSkipping: false, awayRequiresApproval: false }),
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.absence.allowMealSkipping).toBe(false);
+      expect(r.value.absence.awayRequiresApproval).toBe(false);
+    }
+  });
+
+  it("rejects a notice period outside the range the database allows", () => {
+    // `tenant_settings_cut_advance_hours_sane` is 0–720.
+    expect(parseTenantSettings(withAbsence({ cutAdvanceHours: -1 })).ok).toBe(false);
+    expect(parseTenantSettings(withAbsence({ cutAdvanceHours: 721 })).ok).toBe(false);
+  });
+
+  it("accepts zero notice — a mess may choose to allow same-meal skips", () => {
+    expect(parseTenantSettings(withAbsence({ cutAdvanceHours: 0 })).ok).toBe(true);
+  });
+
+  it("rejects a monthly cap the database would refuse", () => {
+    // `tenant_settings_cut_cap_sane` is 0–31.
+    expect(parseTenantSettings(withAbsence({ cutMaxDaysPerMonth: -1 })).ok).toBe(false);
+    expect(parseTenantSettings(withAbsence({ cutMaxDaysPerMonth: 32 })).ok).toBe(false);
+  });
+
+  it("accepts a cap of zero — that is how a mess allows no skipping at all", () => {
+    expect(parseTenantSettings(withAbsence({ cutMaxDaysPerMonth: 0 })).ok).toBe(true);
+  });
+
+  it("accepts 31 — a mess may cap at every day of the month", () => {
+    expect(parseTenantSettings(withAbsence({ cutMaxDaysPerMonth: 31 })).ok).toBe(true);
+  });
+
+  it("rejects an away notice outside 0–720", () => {
+    expect(parseTenantSettings(withAbsence({ awayAdvanceHours: -1 })).ok).toBe(false);
+    expect(parseTenantSettings(withAbsence({ awayAdvanceHours: 721 })).ok).toBe(false);
+  });
+
+  it("rejects an away length the database would refuse", () => {
+    // `tenant_settings_away_max_days_sane` is 1–400. Zero is not "no away
+    // periods" — that is what `allowAwayRequests` is for — it is a setting under
+    // which every request fails validation with no way for the student to tell why.
+    expect(parseTenantSettings(withAbsence({ awayMaxDays: 0 })).ok).toBe(false);
+    expect(parseTenantSettings(withAbsence({ awayMaxDays: 401 })).ok).toBe(false);
+  });
+
+  it("accepts the away boundaries", () => {
+    expect(parseTenantSettings(withAbsence({ awayMaxDays: 1 })).ok).toBe(true);
+    expect(parseTenantSettings(withAbsence({ awayMaxDays: 400 })).ok).toBe(true);
+  });
+
+  it("rejects a fractional notice period rather than truncating it", () => {
+    // The column is an integer; Postgres would round, so 11.5 hours' notice
+    // would silently become 12 and the screen would show a number nobody typed.
+    expect(parseTenantSettings(withAbsence({ cutAdvanceHours: 11.5 })).ok).toBe(false);
+    expect(parseTenantSettings(withAbsence({ awayMaxDays: 2.5 })).ok).toBe(false);
+  });
+
+  it("rejects NaN, which is what an empty number input coerces to", () => {
+    expect(parseTenantSettings(withAbsence({ cutMaxDaysPerMonth: Number.NaN })).ok).toBe(false);
+  });
+
+  it("names the field it rejected, so the form can point at it", () => {
+    const r = parseTenantSettings(withAbsence({ awayMaxDays: 401 }));
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error.details?.field).toBe("awayMaxDays");
+  });
+
+  it("still validates the numbers when the feature they govern is off", () => {
+    // The values persist and become live the moment the toggle flips, so an
+    // out-of-range number cannot be waved through as "unused".
+    const r = parseTenantSettings(
+      withAbsence({ allowMealSkipping: false, cutMaxDaysPerMonth: 99 }),
+    );
+    expect(r.ok).toBe(false);
+  });
+
+  it("refuses staff here too", () => {
+    const r = parseTenantSettings({ ...withAbsence(), actorRole: UserRole.STAFF });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error.code).toBe("FORBIDDEN");
   });
 });

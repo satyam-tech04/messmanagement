@@ -19,6 +19,7 @@ import { MealSlot } from "@/core/domain/enums";
 import {
   requestAbsence,
   daysUsedInMonth,
+  earliestAbsenceDate,
   type AbsenceRequest,
   type AbsenceSettings,
 } from "@/core/policies/absence.policy";
@@ -330,5 +331,107 @@ describe("daysUsedInMonth", () => {
 
   it("is zero with no cuts at all", () => {
     expect(daysUsedInMonth([], august)).toBe(0);
+  });
+});
+
+/**
+ * The allowance is per calendar month (D-05), so a single request that crosses
+ * a month boundary has no one answer to "does this fit?".
+ *
+ * Splitting it in the policy would be worse than refusing it: the student would
+ * submit one thing and find two in their list, with only one of them refusable
+ * when the second month is already full. Refusing is explainable and leaves
+ * them in control of both halves.
+ */
+describe("requestAbsence — a skip stays inside one calendar month", () => {
+  it("refuses a skip that runs into the next month", () => {
+    const r = requestAbsence(
+      req({
+        dateFrom: toServiceDate("2026-08-30"),
+        dateTo: toServiceDate("2026-09-02"),
+      }),
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error.code).toBe("VALIDATION_FAILED");
+  });
+
+  it("accepts a skip ending on the last day of the month", () => {
+    const r = requestAbsence(
+      req({
+        dateFrom: toServiceDate("2026-08-29"),
+        dateTo: toServiceDate("2026-08-31"),
+      }),
+    );
+    expect(r.ok).toBe(true);
+  });
+
+  it("lets an AWAY period cross the boundary — it is not capped", () => {
+    // The case the rule must not break: a student going home over the end of
+    // term. Capping this is exactly what the two-kinds design avoids.
+    const r = requestAbsence(
+      req({
+        kind: "AWAY",
+        dateFrom: toServiceDate("2026-08-28"),
+        dateTo: toServiceDate("2026-09-10"),
+      }),
+    );
+    expect(r.ok).toBe(true);
+  });
+
+  it("says which months, so the student knows how to split it", () => {
+    const r = requestAbsence(
+      req({
+        dateFrom: toServiceDate("2026-08-30"),
+        dateTo: toServiceDate("2026-09-02"),
+      }),
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error.message).toMatch(/month/i);
+  });
+});
+
+/**
+ * The form sets the date input's `min` from this, so it must be the same answer
+ * the policy will give when the request arrives. Two independent calculations
+ * would drift and the student would be refused by a picker that offered them
+ * the date in the first place.
+ */
+describe("earliestAbsenceDate — what the date picker should offer first", () => {
+  const today = toServiceDate("2026-08-10");
+
+  it("is tomorrow for a 12-hour notice period", () => {
+    expect(earliestAbsenceDate(today, 12)).toBe("2026-08-11");
+  });
+
+  it("is tomorrow for exactly 24 hours", () => {
+    expect(earliestAbsenceDate(today, 24)).toBe("2026-08-11");
+  });
+
+  it("is the day after tomorrow for 25 hours", () => {
+    expect(earliestAbsenceDate(today, 25)).toBe("2026-08-12");
+  });
+
+  it("is still tomorrow with no notice required at all", () => {
+    // Zero notice does not mean "today": the day is already partly served, and
+    // offering today would let a student cut a meal they have just eaten.
+    expect(earliestAbsenceDate(today, 0)).toBe("2026-08-11");
+  });
+
+  it("crosses a month boundary correctly", () => {
+    expect(earliestAbsenceDate(toServiceDate("2026-08-31"), 12)).toBe("2026-09-01");
+  });
+
+  it("handles a week's notice", () => {
+    expect(earliestAbsenceDate(today, 168)).toBe("2026-08-17");
+  });
+
+  it("agrees with what requestAbsence accepts", () => {
+    // The contract that matters: a request on the offered date must not be
+    // refused for notice. NOW is 10:00 on 10 Aug; lunch opens at 12:00.
+    const earliest = earliestAbsenceDate(toServiceDate("2026-08-10"), 12);
+    const r = requestAbsence(
+      req({ dateFrom: earliest, dateTo: earliest, mealSlots: [MealSlot.LUNCH] }),
+    );
+    expect(r.ok).toBe(true);
   });
 });

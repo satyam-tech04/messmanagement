@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { navigationFor, roleLabel, type NavSection } from "@/lib/navigation";
+import { navigationFor, roleLabel, type NavFeatures, type NavSection } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 import type { UserRole } from "@/core/domain/enums";
 
@@ -111,16 +111,19 @@ export interface AppShellUser {
 
 export function AppShell({
   user,
+  features,
   signOutAction,
   children,
 }: {
   user: AppShellUser;
+  /** Tenant toggles that decide which optional links appear. */
+  features?: NavFeatures;
   signOutAction: () => Promise<void>;
   children: ReactNode;
 }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const sections = navigationFor(user.role);
+  const sections = navigationFor(user.role, features);
 
   const brand = (
     <div className="flex items-center gap-2.5">

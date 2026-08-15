@@ -19,6 +19,7 @@ import {
 import { toWallClockTime } from "@/core/time";
 import { isDenial, infrastructureError, illegalTransition, notFound } from "@/core/errors";
 import { andThen, err, isErr, isOk, mapResult, ok, unwrap } from "@/core/result";
+import { tenantSettings } from "../fakes";
 
 const ctx = (over: Partial<TenantContext> = {}): TenantContext => ({
   tenantId: "tenant-a",
@@ -97,23 +98,15 @@ describe("meal slots", () => {
 });
 
 describe("tenant settings lookup", () => {
-  const settings: TenantSettings = {
+  const settings: TenantSettings = tenantSettings({
     tenantId: "tenant-a",
     mealSlots: [
       { slot: "LUNCH", start: toWallClockTime("12:00"), end: toWallClockTime("14:30") },
       { slot: "DINNER", start: toWallClockTime("19:30"), end: toWallClockTime("22:00") },
     ],
-    cutAdvanceHours: 12,
-    cutMaxDaysPerMonth: 5,
-    gracePeriodDays: 3,
-    blockOnOverdue: true,
-    allowExtras: false,
-    guestTokenPricePaise: 0,
-    extraPlatePricePaise: 0,
     qrTokenTtlSeconds: 30,
     qrRefreshSeconds: 15,
-    currency: "INR",
-  };
+  });
 
   it("finds a served slot", () => {
     expect(findMealSlotConfig(settings, "LUNCH")?.start).toBe("12:00");

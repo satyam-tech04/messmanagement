@@ -46,5 +46,11 @@
     "state": "applied",
     "appliedTo": "yenxlcrtlmnfotfqqabo",
     "appliedAt": "2026-08-15"
+  },
+  "20260815000009_absence_idempotency.sql": {
+    "sha256": "c8793a11605d69e8bc4a05737d4b79e5e32a1fc451ddff9ca6ecdc6e9a32faf9",
+    "state": "applied",
+    "appliedTo": "yenxlcrtlmnfotfqqabo",
+    "appliedAt": "2026-08-15"
   }
 }

@@ -41,6 +41,13 @@ export interface TenantSettings {
   readonly mealSlots: readonly MealSlotConfig[];
   readonly cutAdvanceHours: number;
   readonly cutMaxDaysPerMonth: number;
+  /** Absences (migration 008). All default off — see absence.policy.ts. */
+  readonly allowMealSkipping: boolean;
+  readonly allowPartialDaySkip: boolean;
+  readonly allowAwayRequests: boolean;
+  readonly awayRequiresApproval: boolean;
+  readonly awayAdvanceHours: number;
+  readonly awayMaxDays: number;
   readonly gracePeriodDays: number;
   readonly blockOnOverdue: boolean;
   readonly allowExtras: boolean;
