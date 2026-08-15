@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Plus, Users } from "lucide-react";
+import { Download, FileUp, Plus, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -110,10 +110,23 @@ export default async function StudentsPage(props: {
         title="Students"
         description="Everyone enrolled in the mess. Add a student to issue their login and QR access."
         action={
-          <Button render={<Link href="/admin/students/new" />}>
-            <Plus className="size-4" aria-hidden="true" />
-            Add student
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* A real anchor for the export: it is a route handler returning a
+                file, and client navigation would try to render the CSV. */}
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+            <Button variant="outline" size="sm" render={<a href="/admin/students/export" />}>
+              <Download className="size-4" aria-hidden="true" />
+              Export
+            </Button>
+            <Button variant="outline" size="sm" render={<Link href="/admin/students/import" />}>
+              <FileUp className="size-4" aria-hidden="true" />
+              Import
+            </Button>
+            <Button render={<Link href="/admin/students/new" />}>
+              <Plus className="size-4" aria-hidden="true" />
+              Add student
+            </Button>
+          </div>
         }
       />
 

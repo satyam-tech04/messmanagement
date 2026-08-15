@@ -50,6 +50,9 @@ const STATUS_TONES: Record<string, StatusTone> = {
   // student's own list of finished plans. LAPSED is amber because it is a live
   // problem with an action attached — nobody can be served until it is renewed.
   COVERED: "success",
+  // Import preview: what each row will do when committed.
+  NEW: "success",
+  UPDATE: "info",
   LAPSED: "warning",
   "NO PLAN": "neutral",
   // Invoices (Phase 2)

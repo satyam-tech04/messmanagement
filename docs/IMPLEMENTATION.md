@@ -69,10 +69,10 @@ the pilot runs on it:
 1. **Turn absences on for the pilot tenant.** They ship **off**, by design — Settings →
    _Skipping meals_ / _Time away_. Until then the student nav shows no Absences link and
    `/student/absences` 404s, which is the intended behaviour, not a bug.
-2. **Bulk import, export and reporting** — the pilot has been on paper for over two weeks and
-   several hundred students need loading from a spreadsheet. Full plan, including the exact
-   CSV column spec: [IMPORT-EXPORT.md](IMPORT-EXPORT.md). Build the renewals-due report and
-   the students export before the import itself, so the two file formats cannot drift.
+2. **Reporting, and the remaining exports** — student import and export are built
+   (`/admin/students/import`, `/admin/students/export`). Still to do: a one-time password
+   download for imported students, the renewals-due report, and the attendance / absence /
+   headcount exports. Full plan: [IMPORT-EXPORT.md](IMPORT-EXPORT.md).
 3. **Gaps 9–14 from the review**: audit-log viewer, student attendance history, plans empty
    states, cross-tenant roll-number login, email notifications.
 4. **The deferred cleanup list** below — the repo is still public, and there is a general

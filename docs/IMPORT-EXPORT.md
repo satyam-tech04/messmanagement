@@ -1,6 +1,7 @@
 # Import, export and reporting
 
-Status: **planned, not built.** Written 2026-08-15.
+Status: **student import and export are built** (2026-08-15). Attendance, absence and
+headcount exports, and the reporting section, are still planned.
 
 ## Why this exists
 
@@ -190,12 +191,18 @@ carries `price_paise_snapshot` and `payment_reference` so those reports need no 
 
 ## 4. Build order
 
-1. **Renewals-due report** — smallest, and immediately useful on live data today.
-2. **Students export** — proves the CSV writer, and gives a real template for the import.
-3. **Student import** — upload, validate, preview, batched commit, password download.
-4. **Subscriptions in the import** — the plan/price/date columns.
-5. **Remaining exports** — attendance, absences, headcount, subscriptions.
-6. **Remaining reports** — attendance summary, meal trends, waste, absence patterns.
+1. ~~**Students export**~~ — done. `/admin/students/export`, columns from `IMPORT_COLUMNS`.
+2. ~~**Student import**~~ — done. Upload → preview → batched commit, at
+   `/admin/students/import`.
+3. ~~**Subscriptions in the import**~~ — done, including backdated start dates and a
+   per-row paid amount.
+4. **Password delivery for imported students** — the bulk _form_ shows passwords as it
+   creates them; the _import_ does not, so imported students currently need a password reset
+   each before they can sign in. A one-time download of the generated credentials at the end
+   of a commit is the missing piece.
+5. **Renewals-due report** — immediately useful on live data.
+6. **Remaining exports** — attendance, absences, headcount, subscriptions.
+7. **Remaining reports** — attendance summary, meal trends, waste, absence patterns.
 
 Ordering 2 before 3 is deliberate: the export defines the exact column names and formats the
 import must accept, so the two cannot drift apart, and the admin gets a file to start from.
