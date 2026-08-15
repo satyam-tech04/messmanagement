@@ -14,6 +14,7 @@ import { parseTenantSettings } from "@/core/policies/tenant-settings.policy";
 import { createAdminClient } from "@/infra/supabase/admin";
 import { getSessionUser } from "@/infra/auth/session";
 import { SupabaseAuditLogRepository } from "@/infra/supabase/repositories";
+import { invalidateTenantCache } from "@/infra/supabase/repositories/tenant.repository";
 
 export interface SettingsActionState {
   readonly error?: string;
@@ -141,6 +142,11 @@ export async function updateSettings(
     },
   });
 
+  // Settings are cached in memory for 30s to keep QR issuance off the database
+  // (see tenant.repository.ts). Dropping this instance's copy makes the admin's
+  // own next page load truthful; other instances catch up within the TTL.
+  invalidateTenantCache(user.tenantId);
+
   // Meal times feed the menu planner, the QR screen and the scanner.
   revalidatePath("/admin/settings");
   revalidatePath("/admin/menu");
@@ -148,5 +154,5 @@ export async function updateSettings(
   revalidatePath("/student");
   revalidatePath("/staff");
 
-  return { success: "Settings saved. Meal times apply to the next scan." };
+  return { success: "Settings saved. Meal times apply within about 30 seconds." };
 }

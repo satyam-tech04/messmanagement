@@ -291,7 +291,8 @@ export function SettingsForm({
           <CardTitle>Meal times</CardTitle>
           <CardDescription>
             A QR code is only accepted inside its meal&apos;s window. Untick a meal to stop serving
-            it. Windows may not overlap — a student could otherwise be served twice.
+            it. Windows may not overlap — a student could otherwise be served twice. Changes reach
+            the counter within about 30 seconds.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-2">

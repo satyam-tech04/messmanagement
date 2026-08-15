@@ -161,6 +161,22 @@ export function QrDisplay({ timeZone }: { timeZone: string }) {
     let cancelled = false;
 
     async function cycle() {
+      // Nobody is looking, so nothing needs minting. A student who opens their
+      // code and pockets the phone while queuing was, until this check,
+      // fetching a new token every fifteen seconds for the whole meal — and
+      // each one costs seven database round trips including a write. Across a
+      // few hundred students that was the largest source of load in the system,
+      // all of it for codes nobody would ever see.
+      //
+      // Stopping is safe because `onWake` below mints a fresh one the instant
+      // the screen comes back, which is also *more* correct than what the timer
+      // did: a code minted while hidden would usually have expired by the time
+      // it was looked at.
+      if (document.visibilityState === "hidden") {
+        timerRef.current = null;
+        return;
+      }
+
       const next = await fetchToken();
       if (cancelled) return;
       timerRef.current = setTimeout(() => void cycle(), (next ?? 15) * 1000);
@@ -169,7 +185,8 @@ export function QrDisplay({ timeZone }: { timeZone: string }) {
     void cycle();
 
     // A phone asleep in a pocket wakes with an expired code on screen; refresh
-    // the moment it comes back rather than showing something already dead.
+    // the moment it comes back rather than showing something already dead. This
+    // is also what restarts the loop after `cycle` parked it.
     function onWake() {
       if (document.visibilityState !== "visible") return;
       if (timerRef.current) clearTimeout(timerRef.current);
@@ -187,12 +204,14 @@ export function QrDisplay({ timeZone }: { timeZone: string }) {
     };
   }, [fetchToken]);
 
-  // Countdown ticker, independent of the fetch loop.
+  // Countdown ticker, independent of the fetch loop. Purely local — it never
+  // touches the network — but it is paused with the screen anyway so a
+  // backgrounded tab does no work at all.
   useEffect(() => {
-    const tick = setInterval(
-      () => setSecondsLeft((s) => (s === null ? null : Math.max(0, s - 1))),
-      1000,
-    );
+    const tick = setInterval(() => {
+      if (document.visibilityState === "hidden") return;
+      setSecondsLeft((s) => (s === null ? null : Math.max(0, s - 1)));
+    }, 1000);
     return () => clearInterval(tick);
   }, []);
 
