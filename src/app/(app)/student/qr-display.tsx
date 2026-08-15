@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Clock,
   Loader2,
+  Pointer,
   QrCode,
   RefreshCw,
   ShieldOff,
@@ -365,10 +366,39 @@ export function QrDisplay({ timeZone, counter }: { timeZone: string; counter: Co
           className={cn(
             "group border-primary/40 hover:border-primary hover:bg-primary/5 relative flex aspect-square w-full max-w-[300px] flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed transition-colors",
             "focus-visible:ring-primary/50 focus-visible:ring-4 focus-visible:outline-none",
+            "active:scale-[0.98] active:transition-transform",
           )}
         >
-          <span className="bg-primary/10 text-primary group-hover:bg-primary/15 flex size-16 items-center justify-center rounded-2xl transition-colors">
-            <QrCode className="size-8" aria-hidden="true" />
+          {/* The tap hint.
+              A student holding up a phone at a counter for the first time needs
+              to know this panel is a button, not a picture of one. Motion is
+              what carries that — expanding rings read as "touch target" in a
+              way no amount of dashed border does, and the finger says which
+              gesture. Both stop under prefers-reduced-motion — handled in
+              globals.css, because a `motion-safe:` variant on a custom class
+              compiles to nothing and the hint would never animate at all. */}
+          <span className="relative flex size-16 items-center justify-center">
+            <span
+              aria-hidden="true"
+              className="border-primary/50 tap-hint-ripple absolute inset-0 rounded-2xl border-2"
+            />
+            <span
+              aria-hidden="true"
+              className="border-primary/40 tap-hint-ripple-delayed absolute inset-0 rounded-2xl border-2"
+            />
+
+            <span className="bg-primary/10 text-primary group-hover:bg-primary/15 relative flex size-16 items-center justify-center rounded-2xl transition-colors">
+              <QrCode className="size-8" aria-hidden="true" />
+            </span>
+
+            {/* Offset to the lower right so it points AT the icon rather than
+                covering it, and drawn with a light stroke so it reads as a
+                hint layered over the target, not part of it. */}
+            <Pointer
+              aria-hidden="true"
+              className="text-primary fill-background tap-hint-finger absolute -right-3 -bottom-3 size-7 drop-shadow-sm"
+              strokeWidth={2}
+            />
           </span>
           <span className="text-lg font-semibold">
             {wasShown ? "Show my code again" : "Tap to show my code"}

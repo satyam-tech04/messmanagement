@@ -162,3 +162,72 @@
     letter-spacing: -0.02em;
   }
 }
+
+/*
+ * The tap hint on the student's QR screen.
+ *
+ * A student holding up a phone at a counter for the first time needs to know
+ * the panel is a button, not a picture. Motion is what carries that — a static
+ * icon reads as decoration.
+ *
+ * Reduced motion is honoured at the bottom of this block, NOT with a
+ * `motion-safe:` variant in the markup — Tailwind variants only decorate
+ * Tailwind utilities, so `motion-safe:tap-hint-finger` compiles to nothing at
+ * all and the hint silently never animates. Verified by grepping the built CSS.
+ *
+ * An animation that cannot be turned off is an accessibility failure, and this
+ * one loops forever by design.
+ */
+@keyframes tap-nudge {
+  0%,
+  70%,
+  100% {
+    transform: translate(0, 0) rotate(-8deg);
+  }
+  /* Down and back, like a finger meeting glass — short, then a long pause so
+     it reads as a gesture rather than a jitter. */
+  80% {
+    transform: translate(-2px, -6px) rotate(-14deg);
+  }
+  90% {
+    transform: translate(0, 0) rotate(-8deg);
+  }
+}
+
+@keyframes tap-ripple {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+.tap-hint-finger {
+  animation: tap-nudge 2.4s ease-in-out infinite;
+}
+
+.tap-hint-ripple {
+  animation: tap-ripple 2.4s ease-out infinite;
+}
+
+/* Staggered, so the rings read as one gesture repeating rather than a pulse. */
+.tap-hint-ripple-delayed {
+  animation: tap-ripple 2.4s ease-out infinite;
+  animation-delay: 0.6s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The finger keeps pointing; only the movement stops. The rings are hidden
+     entirely, since a static ripple reads as a border rather than a gesture. */
+  .tap-hint-finger {
+    animation: none;
+  }
+
+  .tap-hint-ripple,
+  .tap-hint-ripple-delayed {
+    display: none;
+  }
+}
