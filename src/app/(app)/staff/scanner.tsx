@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { BrowserMultiFormatReader } from "@zxing/browser";
 import {
   AlertTriangle,
   Camera,
@@ -15,6 +14,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { shouldSubmitToken } from "@/lib/scan-gate";
 import {
   refineScanAction,
   scanOutcomeFor,
@@ -22,6 +22,7 @@ import {
   type ScanDetails,
   type ScanOutcome,
 } from "@/lib/scan-outcome";
+import { startQrReader, type Backend, type ReaderControls } from "./qr-reader";
 import {
   clearExpiredScans,
   enqueueScan,
@@ -53,10 +54,17 @@ interface Result {
   readonly at: number;
 }
 
-/** How long a result stays on screen before the scanner re-arms. */
-const RESULT_MS = 2600;
-/** Ignore the same token re-read by the camera within this window. */
-const DEDUPE_MS = 3000;
+/**
+ * How long a result stays on screen.
+ *
+ * A success is one glance — a green panel and a face — so it clears fast and
+ * gives the viewfinder back for the next student. A denial has to be *read*
+ * ("counter opens at 19:30"), and staff need time to say it out loud, so it
+ * stays up more than twice as long. One shared timeout would have to serve the
+ * slower case, and the queue would pay for it on every student.
+ */
+const SUCCESS_MS = 1100;
+const DENIAL_MS = 2600;
 
 const TONE_PANEL: Record<string, string> = {
   success: "bg-emerald-500 text-white",
@@ -103,7 +111,7 @@ function beep(tone: string): void {
 
 export function Scanner({ deviceId, timeZone }: { deviceId: string; timeZone: string }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const controlsRef = useRef<{ stop: () => void } | null>(null);
+  const controlsRef = useRef<ReaderControls | null>(null);
   const lastScanRef = useRef<{ token: string; at: number } | null>(null);
   const busyRef = useRef(false);
 
@@ -114,6 +122,7 @@ export function Scanner({ deviceId, timeZone }: { deviceId: string; timeZone: st
   const [pending, setPending] = useState(0);
   const [stale, setStale] = useState(0);
   const [servedCount, setServedCount] = useState(0);
+  const [backend, setBackend] = useState<Backend | null>(null);
 
   const show = useCallback(
     (response: VerifyResponse) => {
@@ -163,20 +172,38 @@ export function Scanner({ deviceId, timeZone }: { deviceId: string; timeZone: st
 
   const onToken = useCallback(
     (token: string) => {
-      const last = lastScanRef.current;
-      // The camera reads the same code many times a second; without this every
-      // successful scan is immediately followed by an ALREADY_SERVED.
-      if (last && last.token === token && Date.now() - last.at < DEDUPE_MS) return;
-      lastScanRef.current = { token, at: Date.now() };
+      const now = Date.now();
+      if (
+        !shouldSubmitToken({
+          token,
+          last: lastScanRef.current,
+          now,
+          busy: busyRef.current,
+        })
+      ) {
+        return;
+      }
+      // Recorded only now that it is genuinely being sent. Marking it before
+      // the busy check would remember a read we dropped, and suppress the
+      // camera's retry a few milliseconds later — losing the scan silently.
+      lastScanRef.current = { token, at: now };
       void submit({ mode: "QR", token, deviceId });
     },
     [submit, deviceId],
   );
 
   // --- Camera ---
+  //
+  // `onToken` is read through a ref rather than listed as a dependency: it
+  // changes identity on every render, and restarting the camera mid-service
+  // would black the viewfinder out between students.
+  const onTokenRef = useRef(onToken);
+  useEffect(() => {
+    onTokenRef.current = onToken;
+  }, [onToken]);
+
   useEffect(() => {
     let cancelled = false;
-    const reader = new BrowserMultiFormatReader();
 
     async function start() {
       try {
@@ -184,20 +211,15 @@ export function Scanner({ deviceId, timeZone }: { deviceId: string; timeZone: st
           setCameraState("unavailable");
           return;
         }
-        const controls = await reader.decodeFromConstraints(
-          // Rear camera, and a resolution high enough to read a phone screen at
-          // arm's length without pushing decode time up.
-          { video: { facingMode: "environment", width: { ideal: 1280 } } },
-          videoRef.current!,
-          (decoded) => {
-            if (decoded && !cancelled) onToken(decoded.getText());
-          },
-        );
+        const { controls, backend: used } = await startQrReader(videoRef.current!, (token) => {
+          if (!cancelled) onTokenRef.current(token);
+        });
         if (cancelled) {
           controls.stop();
           return;
         }
         controlsRef.current = controls;
+        setBackend(used);
         setCameraState("on");
       } catch {
         if (!cancelled) setCameraState("denied");
@@ -209,12 +231,12 @@ export function Scanner({ deviceId, timeZone }: { deviceId: string; timeZone: st
       cancelled = true;
       controlsRef.current?.stop();
     };
-  }, [onToken]);
+  }, []);
 
   // --- Result auto-dismiss ---
   useEffect(() => {
     if (!result) return;
-    const timer = setTimeout(() => setResult(null), RESULT_MS);
+    const timer = setTimeout(() => setResult(null), result.response.ok ? SUCCESS_MS : DENIAL_MS);
     return () => clearTimeout(timer);
   }, [result]);
 
@@ -413,6 +435,14 @@ export function Scanner({ deviceId, timeZone }: { deviceId: string; timeZone: st
       <p className="text-muted-foreground flex items-center justify-center gap-2 text-xs">
         <Camera className="size-3.5" aria-hidden="true" />
         Codes rotate every few seconds — a screenshot will not scan.
+        {/* Which decoder won matters when a tablet feels slow: "software" means
+            this device has no native barcode support and is doing the work in
+            JavaScript. Without it, diagnosing a slow counter is guesswork. */}
+        {backend ? (
+          <span className="opacity-60">
+            · {backend === "native" ? "hardware decoder" : "software decoder"}
+          </span>
+        ) : null}
       </p>
     </div>
   );

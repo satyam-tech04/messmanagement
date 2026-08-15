@@ -113,12 +113,27 @@ export function QrDisplay({ timeZone }: { timeZone: string }) {
 
       const data = (await response.json()) as TokenResponse;
 
-      // Highest error correction: the code is read off a lit phone screen at an
-      // angle, often with a fingerprint smudge across it.
+      // Error correction level M, not H.
+      //
+      // ECC exists for *physical* damage — creases, dirt, print wear. This code
+      // lives for a few seconds on a backlit screen, where none of that
+      // applies. What H bought instead was density: measured on a real token it
+      // produced an 81x81 grid where M produces 61x61. At the 280 px the code
+      // is displayed, that is 3.4 px per module against 4.1 — a quarter more
+      // module for the camera to resolve, which is what decides whether it
+      // locks on at arm's length or the student has to lean in.
+      //
+      // `margin: 4`, not 1. The QR specification mandates a four-module quiet
+      // zone and decoders rely on it to find the symbol's edges; a margin of 1
+      // is out of spec, and a scanner that cannot locate the finder pattern
+      // does not decode slowly, it does not decode at all.
+      //
+      // 640 rather than 512 so a high-DPI phone renders the 280 CSS px element
+      // without upscaling a smaller bitmap and softening every module edge.
       const dataUrl = await QRCode.toDataURL(data.token, {
-        errorCorrectionLevel: "H",
-        margin: 1,
-        width: 512,
+        errorCorrectionLevel: "M",
+        margin: 4,
+        width: 640,
       });
 
       setState({ kind: "ready", data, dataUrl });
