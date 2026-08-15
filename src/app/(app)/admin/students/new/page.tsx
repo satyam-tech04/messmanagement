@@ -5,7 +5,10 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { requireSessionUser } from "@/infra/auth/session";
 import { createClient } from "@/infra/supabase/server";
+import { formatPaise, toPaise } from "@/core/money";
 import { StudentForm, type PlanOption } from "./student-form";
+import { BulkStudentForm, type BulkPlanOption } from "./bulk-form";
+import { AddStudentTabs } from "./add-student-tabs";
 
 export const metadata: Metadata = { title: "Add student · Mess OS" };
 
@@ -27,19 +30,28 @@ export default async function NewStudentPage() {
     mealSlots: p.included_meal_slots,
   }));
 
+  const bulkOptions: BulkPlanOption[] = (plans ?? []).map((p) => ({
+    id: p.id,
+    name: p.name,
+    priceLabel: formatPaise(toPaise(p.price_paise)),
+  }));
+
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="mx-auto max-w-5xl space-y-6">
       <Button variant="ghost" size="sm" className="-ml-2" render={<Link href="/admin/students" />}>
         <ChevronLeft className="size-4" aria-hidden="true" />
         Back to students
       </Button>
 
       <PageHeader
-        title="Add student"
-        description="Creates their login and, optionally, an active meal plan."
+        title="Add students"
+        description="Creates their logins and, optionally, an active meal plan."
       />
 
-      <StudentForm plans={options} />
+      <AddStudentTabs
+        single={<StudentForm plans={options} />}
+        bulk={<BulkStudentForm plans={bulkOptions} />}
+      />
     </div>
   );
 }

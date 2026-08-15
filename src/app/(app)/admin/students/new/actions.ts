@@ -11,14 +11,18 @@
  */
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { isValidRollNumber, normalizeRollNumber, syntheticEmailFor } from "@/core/domain/identity";
-import { subscriptionPeriodFor } from "@/core/policies/student-admin.policy";
-import { serviceDateOf } from "@/core/time";
+import { isValidRollNumber, normalizeRollNumber } from "@/core/domain/identity";
+// Only the validator and its types — a "use server" module may export nothing
+// but async functions, so the UI imports MAX_BATCH_SIZE from the policy direct.
+import {
+  validateStudentBatch,
+  type BatchRowError,
+  type StudentDraft,
+} from "@/core/policies/student-batch.policy";
 import { createAdminClient } from "@/infra/supabase/admin";
 import { createClient } from "@/infra/supabase/server";
 import { getSessionUser } from "@/infra/auth/session";
-import { SupabaseAuditLogRepository } from "@/infra/supabase/repositories";
-import { generateTemporaryPassword } from "@/lib/password";
+import { createOneStudent } from "./create-one-student";
 
 const schema = z.object({
   rollNumber: z
@@ -101,122 +105,26 @@ export async function createStudent(
     };
   }
 
-  const loginEmail = syntheticEmailFor(user.tenantSlug, roll);
-  const temporaryPassword = generateTemporaryPassword();
+  const result = await createOneStudent(
+    admin,
+    {
+      tenantId: user.tenantId,
+      tenantSlug: user.tenantSlug,
+      timezone: user.timezone,
+      actorProfileId: user.actorProfileId,
+    },
+    {
+      rollNumber: input.rollNumber,
+      fullName: input.fullName,
+      phone: input.phone || undefined,
+      email: input.email || undefined,
+      block: input.block || undefined,
+      roomNumber: input.roomNumber || undefined,
+      planId: input.planId || undefined,
+    },
+  );
 
-  // --- 1. Auth user ---
-  const { data: created, error: authError } = await admin.auth.admin.createUser({
-    email: loginEmail,
-    password: temporaryPassword,
-    // No mailbox exists behind a .invalid address, so confirmation must be
-    // implicit — otherwise the student could never sign in.
-    email_confirm: true,
-    user_metadata: { full_name: input.fullName, roll_number: roll },
-  });
-
-  if (authError || !created.user) {
-    return { error: `Could not create the login: ${authError?.message ?? "unknown error"}` };
-  }
-  const userId = created.user.id;
-
-  /** Removes the orphaned auth user when a later step fails. */
-  const rollback = async (message: string): Promise<CreateStudentState> => {
-    await admin.auth.admin.deleteUser(userId).catch(() => {});
-    return { error: message };
-  };
-
-  // --- 2. Profile ---
-  const { error: profileError } = await admin.from("profiles").insert({
-    id: userId,
-    tenant_id: user.tenantId,
-    role: "STUDENT",
-    full_name: input.fullName,
-    phone: input.phone || null,
-    email: input.email || null,
-    status: "ACTIVE",
-    // The admin knows this password, so it must be changed before the account
-    // is genuinely the student's.
-    must_change_password: true,
-  });
-  if (profileError) return rollback(`Could not create the profile: ${profileError.message}`);
-
-  // --- 3. Student ---
-  const { data: student, error: studentError } = await admin
-    .from("students")
-    .insert({
-      tenant_id: user.tenantId,
-      profile_id: userId,
-      roll_number: input.rollNumber.trim(),
-      block: input.block || null,
-      room_number: input.roomNumber || null,
-      status: "ACTIVE",
-      // Set explicitly rather than relying on the column's `default current_date`,
-      // which is the database's UTC day: a student added at 02:00 IST would
-      // otherwise be recorded as having joined the previous day (rule 9).
-      joined_at: serviceDateOf(user.timezone, new Date()),
-    })
-    .select("id")
-    .single();
-
-  if (studentError || !student) {
-    return rollback(`Could not create the student: ${studentError?.message}`);
-  }
-
-  // --- 4. Optional subscription, with the price snapshotted (§4.2) ---
-  if (input.planId) {
-    const { data: plan } = await admin
-      .from("plans")
-      .select("price_paise, included_meal_slots, duration_days")
-      .eq("tenant_id", user.tenantId)
-      .eq("id", input.planId)
-      .maybeSingle();
-
-    if (plan) {
-      // Derived in the tenant's timezone, never from toISOString() — for an IST
-      // hostel that shifts the date back a day for most of the working day and
-      // ends the plan early (rule 9).
-      const period = subscriptionPeriodFor({
-        timeZone: user.timezone,
-        now: new Date(),
-        durationDays: plan.duration_days,
-      });
-
-      const { error: subscriptionError } = await admin.from("subscriptions").insert({
-        tenant_id: user.tenantId,
-        student_id: student.id,
-        plan_id: input.planId,
-        // Frozen now. A later plan price change must never rewrite history.
-        price_paise_snapshot: plan.price_paise,
-        included_meal_slots_snapshot: plan.included_meal_slots,
-        start_date: period.startDate,
-        end_date: period.endDate,
-        status: "ACTIVE",
-      });
-
-      // The student exists either way; surfacing this beats silently creating an
-      // account with no plan and leaving the admin to discover it at the counter.
-      if (subscriptionError) {
-        return {
-          created: {
-            rollNumber: input.rollNumber.trim(),
-            fullName: input.fullName,
-            temporaryPassword,
-            planWarning: `The login was created, but the plan could not be assigned: ${subscriptionError.message}. Assign it from the student's page.`,
-          },
-        };
-      }
-    }
-  }
-
-  // Creating a login is exactly the kind of action that becomes a dispute.
-  await new SupabaseAuditLogRepository(admin).write({
-    tenantId: user.tenantId,
-    actorProfileId: user.actorProfileId,
-    action: "STUDENT_CREATED",
-    entityType: "student",
-    entityId: student.id,
-    after: { rollNumber: roll, fullName: input.fullName, planAssigned: Boolean(input.planId) },
-  });
+  if (!result.ok) return { error: result.error };
 
   revalidatePath("/admin/students");
 
@@ -225,9 +133,137 @@ export async function createStudent(
   // recovering it.
   return {
     created: {
-      rollNumber: input.rollNumber.trim(),
-      fullName: input.fullName,
-      temporaryPassword,
+      rollNumber: result.rollNumber,
+      fullName: result.fullName,
+      temporaryPassword: result.temporaryPassword,
+      planWarning: result.planWarning,
     },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Bulk entry — several students typed into one form, saved together.
+// ---------------------------------------------------------------------------
+
+export interface BulkCreatedRow {
+  readonly rollNumber: string;
+  readonly fullName: string;
+  readonly temporaryPassword: string;
+  readonly planWarning?: string;
+}
+
+export interface BulkCreateState {
+  readonly error?: string;
+  /** Keyed by row index, so the form can highlight the exact cell. */
+  readonly rowErrors?: readonly BatchRowError[];
+  readonly created?: readonly BulkCreatedRow[];
+  /** Rows whose write failed after validation passed. */
+  readonly failed?: readonly { readonly rollNumber: string; readonly error: string }[];
+}
+
+/** Reads `row-<i>-<field>` inputs back into an ordered list of drafts. */
+function readRows(formData: FormData): StudentDraft[] {
+  const rows: StudentDraft[] = [];
+  for (let i = 0; ; i++) {
+    if (!formData.has(`row-${i}-rollNumber`)) break;
+    rows.push({
+      rollNumber: String(formData.get(`row-${i}-rollNumber`) ?? ""),
+      fullName: String(formData.get(`row-${i}-fullName`) ?? ""),
+      phone: String(formData.get(`row-${i}-phone`) ?? ""),
+      email: String(formData.get(`row-${i}-email`) ?? ""),
+      block: String(formData.get(`row-${i}-block`) ?? ""),
+      roomNumber: String(formData.get(`row-${i}-roomNumber`) ?? ""),
+    });
+  }
+  return rows;
+}
+
+export async function createStudentsBulk(
+  _prev: BulkCreateState,
+  formData: FormData,
+): Promise<BulkCreateState> {
+  const user = await getSessionUser();
+  if (!user) return { error: "Your session has expired. Sign in again." };
+  if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
+    return { error: "Only an admin can add students." };
+  }
+
+  const rows = readRows(formData);
+  // One plan for the whole batch. Everyone typed into a form at once is
+  // normally an intake joining the same plan on the same day, and a per-row
+  // plan column would make the form unusably wide for the rare exception —
+  // which is what the student's own page is for.
+  const planId = String(formData.get("planId") ?? "");
+
+  const supabase = await createClient();
+  // Every roll number in the mess, not just the ones being added: the batch
+  // must be checked against what exists AND against itself, and one text column
+  // for a few hundred students is a trivial payload.
+  const { data: enrolled, error: readError } = await supabase
+    .from("students")
+    .select("roll_number")
+    .eq("tenant_id", user.tenantId);
+
+  if (readError) {
+    // Fail closed. Creating logins without knowing which roll numbers are taken
+    // risks a duplicate that only surfaces at the counter.
+    return { error: `Could not check existing roll numbers: ${readError.message}` };
+  }
+
+  const validation = validateStudentBatch(
+    rows,
+    (enrolled ?? []).map((r) => r.roll_number),
+  );
+
+  if (!validation.ok) {
+    const formLevel = validation.errors.find((e) => e.field === "form");
+    return {
+      error: formLevel?.message ?? "Check the highlighted rows.",
+      rowErrors: validation.errors,
+    };
+  }
+
+  const admin = createAdminClient();
+  const actor = {
+    tenantId: user.tenantId,
+    tenantSlug: user.tenantSlug,
+    timezone: user.timezone,
+    actorProfileId: user.actorProfileId,
+  };
+
+  const created: BulkCreatedRow[] = [];
+  const failed: { rollNumber: string; error: string }[] = [];
+
+  // Sequential, not Promise.all. These are Auth API calls against a rate-limited
+  // endpoint, and firing 25 at once is the reliable way to have some rejected.
+  // Every row is attempted even after one fails: the successes are real students
+  // who now exist, and the admin needs the full picture in one pass.
+  for (const draft of validation.valid) {
+    const result = await createOneStudent(admin, actor, {
+      ...draft,
+      planId: planId || undefined,
+    });
+
+    if (result.ok) {
+      created.push({
+        rollNumber: result.rollNumber,
+        fullName: result.fullName,
+        temporaryPassword: result.temporaryPassword,
+        planWarning: result.planWarning,
+      });
+    } else {
+      failed.push({ rollNumber: result.rollNumber, error: result.error });
+    }
+  }
+
+  revalidatePath("/admin/students");
+
+  return {
+    created,
+    failed: failed.length > 0 ? failed : undefined,
+    error:
+      failed.length > 0
+        ? `${created.length} added, ${failed.length} could not be created. Those rows were left out — fix and add them again.`
+        : undefined,
   };
 }
