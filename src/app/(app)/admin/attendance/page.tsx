@@ -18,11 +18,12 @@ import { addDays, serviceDateOf, toServiceDate } from "@/core/time";
 import { requireSessionUser } from "@/infra/auth/session";
 import { createClient } from "@/infra/supabase/server";
 import { formatDateTime, formatServiceDate } from "@/lib/format";
+import { ReverseAttendanceButton } from "./reverse-button";
 import { firstRelated } from "@/infra/supabase/mappers";
 
 export const metadata: Metadata = { title: "Attendance · Mess OS" };
 
-const COLUMNS = ["Roll number", "Name", "Meal", "Method", "Scanned at", "Reason"];
+const COLUMNS = ["Roll number", "Name", "Meal", "Method", "Scanned at", "Reason", ""];
 const VALID_SLOTS = ["BREAKFAST", "LUNCH", "SNACKS", "DINNER"] as const;
 const VALID_METHODS = ["QR", "MANUAL", "RFID"] as const;
 
@@ -48,6 +49,7 @@ export default async function AttendancePage(props: {
     .from("attendance")
     .select(
       `id, service_date, meal_slot, method, scanned_at, override_reason,
+       reversed_at, reversal_reason,
        students!inner ( roll_number, profiles!inner ( full_name ) )`,
       { count: "exact" },
     )
@@ -70,10 +72,15 @@ export default async function AttendancePage(props: {
       method: r.method,
       scannedAt: r.scanned_at,
       reason: r.override_reason,
+      reversedAt: r.reversed_at,
+      reversalReason: r.reversal_reason,
     };
   });
 
-  const manualCount = rows.filter((r) => r.method === "MANUAL").length;
+  // A corrected meal never happened, so it must not be counted as served.
+  const liveRows = rows.filter((r) => !r.reversedAt);
+  const manualCount = liveRows.filter((r) => r.method === "MANUAL").length;
+  const correctedCount = rows.filter((r) => r.reversedAt).length;
   const hasFilters = Boolean(slot || method);
 
   const linkFor = (next: Partial<{ date: string; slot: string; method: string }>) => {
@@ -120,7 +127,7 @@ export default async function AttendancePage(props: {
       />
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard label="Meals served" value={count ?? 0} icon="UtensilsCrossed" />
+        <StatCard label="Meals served" value={liveRows.length} icon="UtensilsCrossed" />
         <StatCard
           label="Manual entries"
           value={manualCount}
@@ -128,7 +135,13 @@ export default async function AttendancePage(props: {
           icon="Keyboard"
           tone={manualCount > 0 ? "warning" : "default"}
         />
-        <StatCard label="Service date" value={formatServiceDate(date)} icon="CalendarDays" />
+        <StatCard
+          label="Corrected"
+          value={correctedCount}
+          hint={correctedCount > 0 ? "Kept, but not counted" : "None on this day"}
+          icon="Undo2"
+          tone={correctedCount > 0 ? "warning" : "default"}
+        />
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -194,7 +207,7 @@ export default async function AttendancePage(props: {
             </TableHeader>
             <TableBody>
               {rows.map((row) => (
-                <TableRow key={row.id}>
+                <TableRow key={row.id} className={row.reversedAt ? "opacity-55" : undefined}>
                   <TableCell className="font-mono text-sm font-medium">{row.rollNumber}</TableCell>
                   <TableCell>{row.fullName}</TableCell>
                   <TableCell className="text-sm capitalize">{row.mealSlot.toLowerCase()}</TableCell>
@@ -207,7 +220,23 @@ export default async function AttendancePage(props: {
                   {/* Only manual entries carry one, and it is the whole reason
                       they are auditable. */}
                   <TableCell className="text-muted-foreground max-w-xs truncate text-sm">
-                    {row.reason ?? "—"}
+                    {row.reversedAt ? (
+                      <span className="text-amber-700 dark:text-amber-400">
+                        Corrected — {row.reversalReason}
+                      </span>
+                    ) : (
+                      (row.reason ?? "—")
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {row.reversedAt ? null : (
+                      <ReverseAttendanceButton
+                        attendanceId={row.id}
+                        rollNumber={row.rollNumber}
+                        fullName={row.fullName}
+                        mealLabel={row.mealSlot.charAt(0) + row.mealSlot.slice(1).toLowerCase()}
+                      />
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

@@ -107,7 +107,7 @@ export default async function StudentDetailPage(props: PageProps<"/admin/student
   // have to go somewhere else to find out.
   const { data: attendance } = await supabase
     .from("attendance")
-    .select("id, service_date, meal_slot, method, scanned_at")
+    .select("id, service_date, meal_slot, method, scanned_at, reversed_at, reversal_reason")
     .eq("tenant_id", user.tenantId)
     .eq("student_id", student.id)
     .order("scanned_at", { ascending: false })

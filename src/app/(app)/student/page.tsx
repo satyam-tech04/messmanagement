@@ -35,7 +35,9 @@ export default async function StudentPage() {
       .from("menus")
       .select("meal_slot, items")
       .eq("tenant_id", user.tenantId)
-      .eq("service_date", today),
+      .eq("service_date", today)
+      // A reversed meal never happened.
+      .is("reversed_at", null),
     supabase
       .from("attendance")
       .select("meal_slot")

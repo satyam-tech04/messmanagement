@@ -42,7 +42,6 @@ const EXPECTED_TABLES = [
 const POLICYLESS_BY_DESIGN = new Set(["tenant_secrets", "rate_limits"]);
 
 const REQUIRED_CONSTRAINTS = [
-  ["attendance", "attendance_tenant_student_date_slot_key"],
   ["menus", "menus_tenant_date_slot_key"],
   ["headcount_snapshots", "headcount_tenant_date_slot_key"],
   ["students", "students_profile_key"],
@@ -140,6 +139,28 @@ const { rows: partial } = await client.query(
 partial.length
   ? pass("subscriptions_one_active_per_student (partial unique)")
   : fail("subscriptions_one_active_per_student — MISSING");
+
+// Attendance idempotency moved from a plain constraint to a partial unique
+// index when reversals landed (migration 006). The guarantee is identical for
+// live rows; a reversed row must stop blocking, because a meal recorded in
+// error means the student has not eaten. Assert the property, not just a name.
+const { rows: attendanceIdx } = await client.query(
+  `select indexdef from pg_indexes
+    where schemaname='public' and indexname='attendance_one_live_per_student_meal'`,
+);
+if (!attendanceIdx.length) {
+  fail("attendance_one_live_per_student_meal — MISSING (scans are no longer idempotent)");
+} else {
+  const def = attendanceIdx[0].indexdef;
+  const unique = def.includes("CREATE UNIQUE INDEX");
+  const scoped = def.includes("reversed_at IS NULL");
+  const columns = ["tenant_id", "student_id", "service_date", "meal_slot"].every((c) =>
+    def.includes(c),
+  );
+  unique && scoped && columns
+    ? pass("attendance_one_live_per_student_meal — unique over live rows only")
+    : fail(`attendance idempotency index is wrong shape: ${def}`);
+}
 
 // --- Security helpers + auth hook ----------------------------------------
 console.log("\nSecurity functions");

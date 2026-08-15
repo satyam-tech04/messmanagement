@@ -35,7 +35,9 @@ export default async function AdminDashboardPage() {
       .from("attendance")
       .select("meal_slot", { count: "exact" })
       .eq("tenant_id", user.tenantId)
-      .eq("service_date", today),
+      .eq("service_date", today)
+      // A reversed meal never happened.
+      .is("reversed_at", null),
   ]);
 
   const rows = students.data ?? [];

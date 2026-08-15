@@ -28,5 +28,11 @@
     "state": "applied",
     "appliedTo": "yenxlcrtlmnfotfqqabo",
     "appliedAt": "2026-07-25"
+  },
+  "20260815000006_attendance_reversal.sql": {
+    "sha256": "23f349af8db856df8380f41e6c427b34e59231b4511241104eea6e8264591677",
+    "state": "applied",
+    "appliedTo": "yenxlcrtlmnfotfqqabo",
+    "appliedAt": "2026-08-15"
   }
 }

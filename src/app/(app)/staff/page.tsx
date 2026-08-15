@@ -24,7 +24,9 @@ export default async function StaffPage() {
     .from("attendance")
     .select("meal_slot, method")
     .eq("tenant_id", user.tenantId)
-    .eq("service_date", today);
+    .eq("service_date", today)
+    // A reversed meal never happened.
+    .is("reversed_at", null);
 
   const rows = served ?? [];
   const lunch = rows.filter((r) => r.meal_slot === "LUNCH").length;
