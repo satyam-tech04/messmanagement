@@ -12,6 +12,7 @@
 import "server-only";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { persistentCookieOptions } from "../auth/session-lifetime";
 import { publicEnv } from "@/lib/env";
 import type { Database } from "./database.types";
 
@@ -29,7 +30,9 @@ export async function createClient() {
         setAll(cookiesToSet, headers) {
           try {
             for (const { name, value, options } of cookiesToSet) {
-              cookieStore.set(name, value, options);
+              // Persistent, so a closed browser or a rebooted counter tablet
+              // does not sign anyone out. See session-lifetime.ts.
+              cookieStore.set(name, value, persistentCookieOptions(value, options));
             }
             // Responses that set auth cookies must never be cached by a CDN,
             // or one user's session token can be served to another. The

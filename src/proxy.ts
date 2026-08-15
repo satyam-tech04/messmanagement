@@ -21,6 +21,7 @@
  * RLS is the third layer beneath both (§5.1). Deliberately three layers.
  */
 import { createServerClient } from "@supabase/ssr";
+import { persistentCookieOptions } from "./infra/auth/session-lifetime";
 import { NextResponse, type NextRequest } from "next/server";
 
 /** Reachable without a session. Everything else requires one. */
@@ -59,7 +60,7 @@ export async function proxy(request: NextRequest) {
           }
           response = NextResponse.next({ request });
           for (const { name, value, options } of cookiesToSet) {
-            response.cookies.set(name, value, options);
+            response.cookies.set(name, value, persistentCookieOptions(value, options));
           }
           // Never let a CDN cache a response that sets auth cookies, or one
           // user's session token can be served to another.
