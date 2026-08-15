@@ -13,6 +13,7 @@ it carries current state, next steps in order, and the traps already discovered.
 - Phase tracker and current status: [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md)
 - Resolved + open product decisions: [docs/DECISIONS.md](docs/DECISIONS.md)
 - Runbook (env, migrations, deploy): [docs/RUNBOOK.md](docs/RUNBOOK.md)
+- Bulk import / export / reporting plan: [docs/IMPORT-EXPORT.md](docs/IMPORT-EXPORT.md)
 - **UI standard (read before building any screen): [docs/DESIGN.md](docs/DESIGN.md)**
 
 **Live-client context:** a real hostel with 300–1000 students will use this three times a

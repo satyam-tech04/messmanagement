@@ -69,13 +69,17 @@ the pilot runs on it:
 1. **Turn absences on for the pilot tenant.** They ship **off**, by design — Settings →
    _Skipping meals_ / _Time away_. Until then the student nav shows no Absences link and
    `/student/absences` 404s, which is the intended behaviour, not a bug.
-2. **Gaps 9–14 from the review**: audit-log viewer, student attendance history, bulk student
-   import, plans empty states, cross-tenant roll-number login, email notifications.
-3. **The deferred cleanup list** below — the repo is still public, and there is a general
+2. **Bulk import, export and reporting** — the pilot has been on paper for over two weeks and
+   several hundred students need loading from a spreadsheet. Full plan, including the exact
+   CSV column spec: [IMPORT-EXPORT.md](IMPORT-EXPORT.md). Build the renewals-due report and
+   the students export before the import itself, so the two file formats cannot drift.
+3. **Gaps 9–14 from the review**: audit-log viewer, student attendance history, plans empty
+   states, cross-tenant roll-number login, email notifications.
+4. **The deferred cleanup list** below — the repo is still public, and there is a general
    tidy-up pass outstanding.
-4. **Widen the pilot's meal windows temporarily** if the client wants to test outside the
+5. **Widen the pilot's meal windows temporarily** if the client wants to test outside the
    configured IST windows. Scans are correctly refused outside them.
-5. **Phase 2 (money)** — D-05 and D-06 are now settled (see DECISIONS.md); the remaining
+6. **Phase 2 (money)** — D-05 and D-06 are now settled (see DECISIONS.md); the remaining
    blockers are the ledger and Razorpay, not product questions.
 
 ### Deferred to the end, by the user's instruction
