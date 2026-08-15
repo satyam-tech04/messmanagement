@@ -171,7 +171,7 @@ function CredentialsIssued({ created }: { created: NonNullable<CreateStudentStat
   );
 }
 
-export function StudentForm({ plans }: { plans: readonly PlanOption[] }) {
+export function StudentForm({ plans, today }: { plans: readonly PlanOption[]; today: string }) {
   const [state, formAction] = useActionState<CreateStudentState, FormData>(createStudent, {});
   const [planId, setPlanId] = useState("");
 
@@ -310,6 +310,28 @@ export function StudentForm({ plans }: { plans: readonly PlanOption[] }) {
               ))}
             </div>
           )}
+
+          {/* Only meaningful once a plan is chosen. Shown then, because the
+              mess has usually been feeding the student for days before anyone
+              enters them — and recording today would push the end date out by
+              exactly that many days, which is meals given away. */}
+          {planId ? (
+            <div className="mt-4 max-w-xs space-y-2">
+              <Label htmlFor="planStartDate">Plan started on</Label>
+              <Input
+                id="planStartDate"
+                name="planStartDate"
+                type="date"
+                defaultValue={today}
+                max={today}
+                className="tabular-nums"
+              />
+              <p className="text-muted-foreground text-xs">
+                Backdate this if they have already been eating. The end date is counted from here,
+                so leaving it as today would extend their plan.
+              </p>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
 

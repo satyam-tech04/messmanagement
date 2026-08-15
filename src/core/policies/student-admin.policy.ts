@@ -8,7 +8,7 @@
 import { canTransitionStudentStatus, type StudentStatus, type UserRole } from "@/core/domain/enums";
 import { domainError, forbidden, illegalTransition, type DomainError } from "@/core/errors";
 import { err, ok, type Result } from "@/core/result";
-import { addDays, serviceDateOf, type ServiceDate } from "@/core/time";
+import { addDays, compareServiceDates, serviceDateOf, type ServiceDate } from "@/core/time";
 
 export interface StatusChangeRequest {
   readonly actorRole: UserRole;
@@ -97,4 +97,63 @@ export function subscriptionPeriodFor(request: SubscriptionPeriodRequest): Subsc
 
   const startDate = request.startDate ?? serviceDateOf(timeZone, now);
   return { startDate, endDate: addDays(startDate, durationDays - 1) };
+}
+
+/**
+ * Bounds on when a subscription may start.
+ *
+ * Backdating is a legitimate and necessary operation — a mess that ran on paper
+ * for a fortnight is entering students whose plans began on the 1st, and
+ * recording those as starting today would push every end date out by two weeks.
+ * That is the mess giving away a fortnight of meals per student, and it makes
+ * every report over the backdated period claim they were not subscribed.
+ *
+ * But an unbounded date field is a footgun, so two limits:
+ *
+ *   - **Not so far back that the period has already ended.** The bound falls
+ *     out of the plan itself rather than being an arbitrary number of days, and
+ *     it catches the mistake that matters: entering a paying student in a state
+ *     where they cannot be served today, which is never what was intended.
+ *   - **Not more than a year ahead.** A date picker makes a mistyped year easy,
+ *     and 2027-for-2026 creates a plan nobody can use and no report explains.
+ */
+const MAX_FUTURE_START_DAYS = 365;
+
+export interface SubscriptionStartRequest {
+  readonly startDate: ServiceDate;
+  /** Today in the tenant's timezone — never `new Date()` here (rule 9). */
+  readonly today: ServiceDate;
+  readonly durationDays: number;
+}
+
+export function validateSubscriptionStart(
+  request: SubscriptionStartRequest,
+): Result<SubscriptionPeriod, DomainError> {
+  const { startDate, today, durationDays } = request;
+
+  if (!Number.isInteger(durationDays) || durationDays < 1) {
+    return err(domainError("VALIDATION_FAILED", "That plan has no usable duration."));
+  }
+
+  const endDate = addDays(startDate, durationDays - 1);
+
+  if (compareServiceDates(endDate, today) < 0) {
+    return err(
+      domainError(
+        "VALIDATION_FAILED",
+        `A ${durationDays}-day plan starting ${startDate} would have ended on ${endDate}, before today. Check the start date — as entered, this student could not be served.`,
+        { startDate, endDate },
+      ),
+    );
+  }
+
+  if (compareServiceDates(startDate, addDays(today, MAX_FUTURE_START_DAYS)) > 0) {
+    return err(
+      domainError("VALIDATION_FAILED", `${startDate} is more than a year away. Check the year.`, {
+        startDate,
+      }),
+    );
+  }
+
+  return ok({ startDate, endDate });
 }

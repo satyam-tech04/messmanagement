@@ -9,6 +9,7 @@ import { StudentStatus, UserRole } from "@/core/domain/enums";
 import {
   changeStudentStatus,
   subscriptionPeriodFor,
+  validateSubscriptionStart,
   type StatusChangeRequest,
 } from "@/core/policies/student-admin.policy";
 import { toServiceDate } from "@/core/time";
@@ -189,5 +190,120 @@ describe("subscriptionPeriodFor — dates derive in the tenant's timezone (rule 
     });
     expect(period.startDate).toBe("2026-07-01");
     expect(period.endDate).toBe("2026-07-30");
+  });
+});
+
+/**
+ * Backdating a plan to when the student actually started eating.
+ *
+ * The real case: the mess has been running for a fortnight on paper, and a
+ * student being entered today paid for a period that began on the 1st. Recording
+ * it as starting today pushes the end date out by the same fortnight — the mess
+ * silently gives away two weeks of meals per student, and every report over the
+ * backdated period says they were not subscribed.
+ *
+ * The opposite mistake is a mistyped year. Both are guarded here, and the bound
+ * on backdating falls out of the plan itself: backdate further than its own
+ * duration and the period has already ended, which cannot be what was meant —
+ * the student would be entered unable to eat today.
+ */
+describe("validateSubscriptionStart", () => {
+  const today = toServiceDate("2026-08-15");
+
+  it("accepts today", () => {
+    const r = validateSubscriptionStart({ startDate: today, today, durationDays: 30 });
+    expect(r.ok).toBe(true);
+  });
+
+  it("accepts the fortnight-ago case this exists for", () => {
+    const r = validateSubscriptionStart({
+      startDate: toServiceDate("2026-08-01"),
+      today,
+      durationDays: 30,
+    });
+    expect(r.ok).toBe(true);
+  });
+
+  it("accepts a start date far enough back that the period ends today", () => {
+    // A 30-day plan starting 17 Jul runs to 15 Aug inclusive — its last day.
+    const r = validateSubscriptionStart({
+      startDate: toServiceDate("2026-07-17"),
+      today,
+      durationDays: 30,
+    });
+    expect(r.ok).toBe(true);
+  });
+
+  it("refuses a backdate whose period has already ended", () => {
+    // One day further back and the plan finished yesterday. Creating it would
+    // enter a student who cannot be served, which is never the intent when
+    // someone is adding a paying student.
+    const r = validateSubscriptionStart({
+      startDate: toServiceDate("2026-07-16"),
+      today,
+      durationDays: 30,
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error.code).toBe("VALIDATION_FAILED");
+  });
+
+  it("says when the plan would have ended, so the mistake is obvious", () => {
+    const r = validateSubscriptionStart({
+      startDate: toServiceDate("2026-01-01"),
+      today,
+      durationDays: 30,
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error.message).toMatch(/2026-01-30|already ended|ended/i);
+  });
+
+  it("accepts a future start — a plan may be scheduled", () => {
+    const r = validateSubscriptionStart({
+      startDate: toServiceDate("2026-09-01"),
+      today,
+      durationDays: 30,
+    });
+    expect(r.ok).toBe(true);
+  });
+
+  it("refuses a start date more than a year ahead", () => {
+    // Catches a mistyped year, which a date picker makes easy: 2027 instead of
+    // 2026 creates a plan nobody can use and that no report will explain.
+    const r = validateSubscriptionStart({
+      startDate: toServiceDate("2027-09-01"),
+      today,
+      durationDays: 30,
+    });
+    expect(r.ok).toBe(false);
+  });
+
+  it("accepts a start date just inside a year ahead", () => {
+    const r = validateSubscriptionStart({
+      startDate: toServiceDate("2027-08-15"),
+      today,
+      durationDays: 30,
+    });
+    expect(r.ok).toBe(true);
+  });
+
+  it("scales the allowed backdate with the plan's own duration", () => {
+    // A 90-day plan can legitimately be backdated much further than a 30-day
+    // one, because its period still covers today.
+    const start = toServiceDate("2026-06-01");
+    expect(validateSubscriptionStart({ startDate: start, today, durationDays: 30 }).ok).toBe(false);
+    expect(validateSubscriptionStart({ startDate: start, today, durationDays: 90 }).ok).toBe(true);
+  });
+
+  it("returns the period it validated, so the caller cannot recompute it differently", () => {
+    const r = validateSubscriptionStart({
+      startDate: toServiceDate("2026-08-01"),
+      today,
+      durationDays: 30,
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.startDate).toBe("2026-08-01");
+      expect(r.value.endDate).toBe("2026-08-30");
+    }
   });
 });

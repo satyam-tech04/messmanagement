@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/page-header";
 import { requireSessionUser } from "@/infra/auth/session";
 import { createClient } from "@/infra/supabase/server";
 import { formatPaise, toPaise } from "@/core/money";
+import { serviceDateOf } from "@/core/time";
 import { StudentForm, type PlanOption } from "./student-form";
 import { BulkStudentForm, type BulkPlanOption } from "./bulk-form";
 import { AddStudentTabs } from "./add-student-tabs";
@@ -15,6 +16,8 @@ export const metadata: Metadata = { title: "Add student · Mess OS" };
 export default async function NewStudentPage() {
   const user = await requireSessionUser();
   const supabase = await createClient();
+  // The tenant's day, never the browser's or the server's (rule 9).
+  const today = serviceDateOf(user.timezone, new Date());
 
   const { data: plans } = await supabase
     .from("plans")
@@ -49,8 +52,8 @@ export default async function NewStudentPage() {
       />
 
       <AddStudentTabs
-        single={<StudentForm plans={options} />}
-        bulk={<BulkStudentForm plans={bulkOptions} />}
+        single={<StudentForm plans={options} today={today} />}
+        bulk={<BulkStudentForm plans={bulkOptions} today={today} />}
       />
     </div>
   );

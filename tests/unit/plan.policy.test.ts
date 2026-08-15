@@ -304,3 +304,99 @@ describe("activateSubscription", () => {
     if (r.ok) expect(r.value.perMealPaise).toBe(0);
   });
 });
+
+/**
+ * Backdating an activation.
+ *
+ * The mess ran on paper for a fortnight, so a student being signed up today may
+ * have started eating on the 1st. Recording today pushes the end date out by the
+ * same fortnight — meals given away, and every report over the backdated period
+ * claims they were not subscribed.
+ *
+ * The date field was already there and already unbounded, which is the other
+ * half of the problem: nothing stopped a mistyped year creating a plan that
+ * ended before it was entered, leaving a paying student unable to be served
+ * with no explanation on screen.
+ */
+describe("activateSubscription — when the plan starts", () => {
+  const NOW = new Date("2026-08-15T06:00:00Z"); // 11:30 IST
+
+  function request(over: Partial<ActivationRequest> = {}): ActivationRequest {
+    return {
+      actorRole: UserRole.ADMIN,
+      studentStatus: StudentStatus.ACTIVE,
+      hasActiveSubscription: false,
+      plan: {
+        id: "11111111-1111-1111-1111-111111111111",
+        isActive: true,
+        pricePaise: toPaise(520000),
+        durationDays: 30,
+        mealSlots: [MealSlot.LUNCH, MealSlot.DINNER],
+      },
+      timeZone: "Asia/Kolkata",
+      now: NOW,
+      ...over,
+    };
+  }
+
+  it("starts today when no date is given", () => {
+    const r = activateSubscription(request());
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.startDate).toBe("2026-08-15");
+  });
+
+  it("uses the tenant's day, not UTC's", () => {
+    // 19:00 UTC on the 15th is already the 16th in Kolkata.
+    const r = activateSubscription(request({ now: new Date("2026-08-15T19:00:00Z") }));
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.startDate).toBe("2026-08-16");
+  });
+
+  it("accepts the backdate this exists for, and ends 30 days from THEN", () => {
+    const r = activateSubscription(request({ startDate: toServiceDate("2026-08-01") }));
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.startDate).toBe("2026-08-01");
+      // Not 2026-09-13, which is what starting today would have produced.
+      expect(r.value.endDate).toBe("2026-08-30");
+    }
+  });
+
+  it("refuses a backdate whose plan would already have ended", () => {
+    // A mistyped year, or a date from a previous term. As entered, the student
+    // could not be served today — never the intent when assigning a plan.
+    const r = activateSubscription(request({ startDate: toServiceDate("2026-01-01") }));
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error.code).toBe("VALIDATION_FAILED");
+  });
+
+  it("still accepts a backdate whose last day is today", () => {
+    const r = activateSubscription(request({ startDate: toServiceDate("2026-07-17") }));
+    expect(r.ok).toBe(true);
+  });
+
+  it("refuses a start date more than a year ahead", () => {
+    const r = activateSubscription(request({ startDate: toServiceDate("2028-01-01") }));
+    expect(r.ok).toBe(false);
+  });
+
+  it("allows a longer plan to be backdated further", () => {
+    // The bound comes from the plan's own duration, not an arbitrary number of
+    // days: a 90-day plan started in June still covers today.
+    const start = toServiceDate("2026-06-01");
+    expect(activateSubscription(request({ startDate: start })).ok).toBe(false);
+    const ninety = request({
+      startDate: start,
+      plan: { ...request().plan, durationDays: 90 },
+    });
+    expect(activateSubscription(ninety).ok).toBe(true);
+  });
+
+  it("checks authorization before the date, so an unauthorized actor learns nothing", () => {
+    const r = activateSubscription(
+      request({ actorRole: UserRole.STAFF, startDate: toServiceDate("2020-01-01") }),
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error.code).toBe("FORBIDDEN");
+  });
+});

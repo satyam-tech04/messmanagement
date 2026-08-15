@@ -22,8 +22,8 @@ import {
 import { domainError, forbidden, type DomainError } from "@/core/errors";
 import { perMealPaise, rupeesToPaise, type Paise } from "@/core/money";
 import { err, ok, type Result } from "@/core/result";
-import { subscriptionPeriodFor } from "@/core/policies/student-admin.policy";
-import type { ServiceDate } from "@/core/time";
+import { validateSubscriptionStart } from "@/core/policies/student-admin.policy";
+import { serviceDateOf, type ServiceDate } from "@/core/time";
 
 /** Matches the 1–400 day CHECK constraint on `plans.duration_days`. */
 const MAX_DURATION_DAYS = 400;
@@ -226,12 +226,21 @@ export function activateSubscription(
     );
   }
 
-  const period = subscriptionPeriodFor({
-    timeZone: request.timeZone,
-    now: request.now,
+  // Backdating is legitimate and necessary — a mess entering students a
+  // fortnight after it opened must record when they actually started eating, or
+  // every end date is pushed out by that fortnight. But the field was
+  // previously unbounded, so a mistyped year could create a plan that ended
+  // before it was entered, leaving a paying student unservable with nothing on
+  // screen to explain it. `validateSubscriptionStart` bounds it from the plan's
+  // own duration, so a longer plan may legitimately be backdated further.
+  const today = serviceDateOf(request.timeZone, request.now);
+  const checked = validateSubscriptionStart({
+    startDate: request.startDate ?? today,
+    today,
     durationDays: plan.durationDays,
-    ...(request.startDate ? { startDate: request.startDate } : {}),
   });
+  if (!checked.ok) return checked;
+  const period = checked.value;
 
   // Copied, not referenced: a later mutation of the plan object must not reach
   // back into a subscription that has already been agreed.

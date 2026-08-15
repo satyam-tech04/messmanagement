@@ -41,6 +41,11 @@ const schema = z.object({
   block: z.string().trim().max(40).optional().or(z.literal("")),
   roomNumber: z.string().trim().max(40).optional().or(z.literal("")),
   planId: z.string().uuid().optional().or(z.literal("")),
+  planStartDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Enter a valid start date")
+    .optional()
+    .or(z.literal("")),
 });
 
 export interface CreateStudentState {
@@ -73,6 +78,7 @@ export async function createStudent(
     block: formData.get("block") ?? "",
     roomNumber: formData.get("roomNumber") ?? "",
     planId: formData.get("planId") ?? "",
+    planStartDate: formData.get("planStartDate") ?? "",
   });
 
   if (!parsed.success) {
@@ -121,6 +127,7 @@ export async function createStudent(
       block: input.block || undefined,
       roomNumber: input.roomNumber || undefined,
       planId: input.planId || undefined,
+      planStartDate: input.planStartDate || undefined,
     },
   );
 
@@ -194,6 +201,10 @@ export async function createStudentsBulk(
   // plan column would make the form unusably wide for the rare exception —
   // which is what the student's own page is for.
   const planId = String(formData.get("planId") ?? "");
+  // One start date for the batch, matching the one plan. An intake entered
+  // together normally began eating on the same day, and that day is often not
+  // today — the mess has been serving them since before it had this system.
+  const planStartDate = String(formData.get("planStartDate") ?? "");
 
   const supabase = await createClient();
   // Every roll number in the mess, not just the ones being added: the batch
@@ -242,6 +253,7 @@ export async function createStudentsBulk(
     const result = await createOneStudent(admin, actor, {
       ...draft,
       planId: planId || undefined,
+      planStartDate: planStartDate || undefined,
     });
 
     if (result.ok) {

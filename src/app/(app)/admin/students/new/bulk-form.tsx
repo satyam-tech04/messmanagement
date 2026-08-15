@@ -158,9 +158,16 @@ function CredentialsPanel({ rows }: { rows: NonNullable<BulkCreateState["created
   );
 }
 
-export function BulkStudentForm({ plans }: { plans: readonly BulkPlanOption[] }) {
+export function BulkStudentForm({
+  plans,
+  today,
+}: {
+  plans: readonly BulkPlanOption[];
+  today: string;
+}) {
   const [state, formAction] = useActionState<BulkCreateState, FormData>(createStudentsBulk, {});
   const [rowCount, setRowCount] = useState(STARTING_ROWS);
+  const [planId, setPlanId] = useState("");
 
   const errorFor = (index: number) => state.rowErrors?.find((e) => e.index === index);
 
@@ -212,8 +219,9 @@ export function BulkStudentForm({ plans }: { plans: readonly BulkPlanOption[] })
               <select
                 id="planId"
                 name="planId"
+                value={planId}
+                onChange={(e) => setPlanId(e.target.value)}
                 className="border-input bg-background ring-offset-background focus-visible:ring-ring h-10 w-full max-w-md rounded-md border px-3 text-sm focus-visible:ring-2 focus-visible:outline-none"
-                defaultValue=""
               >
                 <option value="">No plan — assign later</option>
                 {plans.map((p) => (
@@ -230,6 +238,28 @@ export function BulkStudentForm({ plans }: { plans: readonly BulkPlanOption[] })
                 Applies to every student below. To give someone a different plan, add them without
                 one and assign it from their page.
               </p>
+
+              {/* One date for the batch, matching the one plan. An intake typed
+                  in together normally started eating on the same day — and that
+                  day is usually before today, because the mess was serving them
+                  long before anyone got round to entering them. */}
+              {planId ? (
+                <div className="max-w-xs space-y-2 pt-2">
+                  <Label htmlFor="planStartDate">Plan started on</Label>
+                  <Input
+                    id="planStartDate"
+                    name="planStartDate"
+                    type="date"
+                    defaultValue={today}
+                    max={today}
+                    className="tabular-nums"
+                  />
+                  <p className="text-muted-foreground text-xs">
+                    Backdate this if they have already been eating. End dates are counted from here,
+                    so leaving it as today would extend everyone&apos;s plan.
+                  </p>
+                </div>
+              ) : null}
             </div>
           ) : null}
 

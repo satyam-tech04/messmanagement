@@ -13,8 +13,8 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { normalizeRollNumber, syntheticEmailFor } from "@/core/domain/identity";
-import { subscriptionPeriodFor } from "@/core/policies/student-admin.policy";
-import { serviceDateOf } from "@/core/time";
+import { validateSubscriptionStart } from "@/core/policies/student-admin.policy";
+import { serviceDateOf, toServiceDate } from "@/core/time";
 import type { Database } from "@/infra/supabase/database.types";
 import { SupabaseAuditLogRepository } from "@/infra/supabase/repositories";
 import { generateTemporaryPassword } from "@/lib/password";
@@ -27,6 +27,15 @@ export interface CreateOneInput {
   readonly block?: string;
   readonly roomNumber?: string;
   readonly planId?: string;
+  /**
+   * When the plan actually began.
+   *
+   * Backdated when the student has already been eating — a mess entering
+   * students a fortnight after it opened must record the real start, or every
+   * end date is pushed out by that fortnight and the mess gives the meals away.
+   * Omitted means today.
+   */
+  readonly planStartDate?: string;
 }
 
 export interface CreateOneActor {
@@ -131,14 +140,31 @@ export async function createOneStudent(
       .maybeSingle();
 
     if (plan) {
-      // Derived in the tenant's timezone, never from toISOString() — for an IST
+      // Today in the tenant's timezone, never from toISOString() — for an IST
       // hostel that shifts the date back a day for most of the working day and
-      // ends the plan early (rule 9).
-      const period = subscriptionPeriodFor({
-        timeZone: actor.timezone,
-        now: new Date(),
+      // would end the plan early (rule 9).
+      const today = serviceDateOf(actor.timezone, new Date());
+      const requested = input.planStartDate ? toServiceDate(input.planStartDate) : today;
+
+      // Bounded rather than trusted: a backdate far enough that the period has
+      // already ended would create a paying student who cannot be served.
+      const checked = validateSubscriptionStart({
+        startDate: requested,
+        today,
         durationDays: plan.duration_days,
       });
+
+      if (!checked.ok) {
+        return {
+          ok: true,
+          studentId: student.id,
+          rollNumber: input.rollNumber.trim(),
+          fullName: input.fullName,
+          temporaryPassword,
+          planWarning: `${checked.error.message} The login was created; assign the plan from their page.`,
+        };
+      }
+      const period = checked.value;
 
       const { error: subscriptionError } = await admin.from("subscriptions").insert({
         tenant_id: actor.tenantId,
