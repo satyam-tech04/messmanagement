@@ -2,7 +2,16 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
-import { AlertCircle, CheckCircle2, Loader2, RefreshCw, ShieldOff, WifiOff } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  Loader2,
+  QrCode,
+  RefreshCw,
+  ShieldOff,
+  WifiOff,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -28,7 +37,17 @@ interface DenialResponse {
   };
 }
 
+/** What the server already knows about the counter, so a shut one costs nothing. */
+export type CounterState =
+  | { readonly state: "OPEN"; readonly mealSlot: string; readonly closesAt: string }
+  | { readonly state: "CLOSED"; readonly mealSlot: string; readonly opensAt: string }
+  | { readonly state: "NONE" };
+
 type State =
+  /** Nothing fetched yet, and nothing will be until the student asks. */
+  | { readonly kind: "hidden" }
+  /** Shown for five minutes, then put away again. */
+  | { readonly kind: "expired" }
   | { readonly kind: "loading" }
   | { readonly kind: "ready"; readonly data: TokenResponse; readonly dataUrl: string }
   | { readonly kind: "denied"; readonly code: string; readonly message: string }
@@ -70,8 +89,22 @@ function timeOnly(iso: string, timeZone: string): string {
  * changes every few seconds and a server round trip per redraw would double the
  * traffic for no benefit.
  */
-export function QrDisplay({ timeZone }: { timeZone: string }) {
-  const [state, setState] = useState<State>({ kind: "loading" });
+/**
+ * How long a revealed code stays on screen.
+ *
+ * Long enough to cross a mess hall and queue, short enough that a phone left on
+ * a table stops minting codes. A student who is still waiting taps once more —
+ * which is also the moment they are closest to the counter, so the code they
+ * end up showing is the freshest one.
+ */
+const VISIBLE_MS = 5 * 60 * 1000;
+
+export function QrDisplay({ timeZone, counter }: { timeZone: string; counter: CounterState }) {
+  // Starts hidden, always. Opening this page — to check the menu, or their plan
+  // — now costs zero requests, and the rotation only ever runs for a student
+  // who is actually about to be served.
+  const [state, setState] = useState<State>({ kind: "hidden" });
+  const [revealedAt, setRevealedAt] = useState<number | null>(null);
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -158,6 +191,9 @@ export function QrDisplay({ timeZone }: { timeZone: string }) {
    * `cancelled` flag stops everything on unmount.
    */
   useEffect(() => {
+    // Nothing has been asked for yet, so nothing runs.
+    if (revealedAt === null) return;
+
     let cancelled = false;
 
     async function cycle() {
@@ -177,9 +213,18 @@ export function QrDisplay({ timeZone }: { timeZone: string }) {
         return;
       }
 
+      // Put the code away rather than rotating it forever. The student can
+      // bring it straight back, and until they do this page is inert.
+      if (Date.now() - revealedAt! > VISIBLE_MS) {
+        setState({ kind: "expired" });
+        setSecondsLeft(null);
+        timerRef.current = null;
+        return;
+      }
+
       const next = await fetchToken();
       if (cancelled) return;
-      timerRef.current = setTimeout(() => void cycle(), (next ?? 15) * 1000);
+      timerRef.current = setTimeout(() => void cycle(), (next ?? 25) * 1000);
     }
 
     void cycle();
@@ -202,7 +247,12 @@ export function QrDisplay({ timeZone }: { timeZone: string }) {
       document.removeEventListener("visibilitychange", onWake);
       window.removeEventListener("online", onWake);
     };
-  }, [fetchToken]);
+  }, [fetchToken, revealedAt]);
+
+  const reveal = useCallback(() => {
+    setRevealedAt(Date.now());
+    setState({ kind: "loading" });
+  }, []);
 
   // Countdown ticker, independent of the fetch loop. Purely local — it never
   // touches the network — but it is paused with the screen anyway so a
@@ -214,6 +264,69 @@ export function QrDisplay({ timeZone }: { timeZone: string }) {
     }, 1000);
     return () => clearInterval(tick);
   }, []);
+
+  // --- Counter shut: nothing is fetched, nothing rotates ---------------------
+  //
+  // The server resolved this before the page rendered, so a student who opens
+  // the app between meals costs exactly zero requests. Rotating a code to guard
+  // against sharing at a counter nobody can walk up to protects nothing.
+  if (counter.state === "CLOSED" && state.kind === "hidden") {
+    return (
+      <CounterClosed mealSlot={counter.mealSlot} opensAt={counter.opensAt} timeZone={timeZone} />
+    );
+  }
+
+  if (counter.state === "NONE" && state.kind === "hidden") {
+    return (
+      <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed px-6 py-12 text-center">
+        <Clock className="text-muted-foreground size-9" aria-hidden="true" />
+        <p className="text-muted-foreground max-w-xs text-sm">
+          This mess has no meal times set up yet. Your code will appear here once it does.
+        </p>
+      </div>
+    );
+  }
+
+  // --- The reveal ------------------------------------------------------------
+  //
+  // Deliberately looks like the thing it becomes: same size, same rounded
+  // square, in the same place, so tapping it swaps a code in rather than
+  // shifting the page. The dotted border and the icon read as "something goes
+  // here", which is what makes it obvious without a label explaining the label.
+  if (state.kind === "hidden" || state.kind === "expired") {
+    const wasShown = state.kind === "expired";
+    return (
+      <div className="flex flex-col items-center gap-4">
+        <button
+          type="button"
+          onClick={reveal}
+          className={cn(
+            "group border-primary/40 hover:border-primary hover:bg-primary/5 relative flex aspect-square w-full max-w-[300px] flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed transition-colors",
+            "focus-visible:ring-primary/50 focus-visible:ring-4 focus-visible:outline-none",
+          )}
+        >
+          <span className="bg-primary/10 text-primary group-hover:bg-primary/15 flex size-16 items-center justify-center rounded-2xl transition-colors">
+            <QrCode className="size-8" aria-hidden="true" />
+          </span>
+          <span className="text-lg font-semibold">
+            {wasShown ? "Show my code again" : "Tap to show my code"}
+          </span>
+          <span className="text-muted-foreground max-w-[15rem] text-sm">
+            {wasShown
+              ? "Hidden after five minutes to keep it private."
+              : "Your code stays hidden until you need it."}
+          </span>
+        </button>
+
+        {/* States the value plainly rather than as a warning: it is a feature,
+            and a student who understands why will not be annoyed by it. */}
+        <p className="text-muted-foreground max-w-xs text-center text-xs">
+          Tap when you reach the counter. The code changes every few seconds, so a screenshot cannot
+          be passed on.
+        </p>
+      </div>
+    );
+  }
 
   if (state.kind === "loading") {
     return (
@@ -373,6 +486,63 @@ export function QrDisplay({ timeZone }: { timeZone: string }) {
 
       <p className="text-muted-foreground max-w-xs text-center text-xs">
         This code changes every few seconds. A screenshot will not work at the counter.
+      </p>
+    </div>
+  );
+}
+
+/**
+ * Between meals.
+ *
+ * Counts down locally — a `setInterval` over a number already in props, with no
+ * network at all — and reloads the page the moment the counter opens so the
+ * reveal button appears without the student wondering whether to refresh.
+ */
+function CounterClosed({
+  mealSlot,
+  opensAt,
+  timeZone,
+}: {
+  mealSlot: string;
+  opensAt: string;
+  timeZone: string;
+}) {
+  const [remaining, setRemaining] = useState(() => Date.parse(opensAt) - Date.now());
+
+  useEffect(() => {
+    const tick = setInterval(() => {
+      const left = Date.parse(opensAt) - Date.now();
+      setRemaining(left);
+      // The server decides what happens next; this only asks it to look again,
+      // once, at the moment the window opens.
+      if (left <= 0) window.location.reload();
+    }, 1000);
+    return () => clearInterval(tick);
+  }, [opensAt]);
+
+  const hours = Math.floor(Math.max(0, remaining) / 3_600_000);
+  const minutes = Math.floor((Math.max(0, remaining) % 3_600_000) / 60_000);
+
+  return (
+    <div className="bg-muted/30 flex flex-col items-center gap-4 rounded-2xl border px-6 py-12 text-center">
+      <span className="bg-background flex size-16 items-center justify-center rounded-2xl border shadow-sm">
+        <Clock className="text-muted-foreground size-8" aria-hidden="true" />
+      </span>
+
+      <div className="space-y-1">
+        <h2 className="text-xl font-semibold">{slotLabel(mealSlot)} opens at</h2>
+        <p className="text-3xl font-bold tabular-nums">{timeOnly(opensAt, timeZone)}</p>
+      </div>
+
+      {/* The countdown is what makes it feel alive without any request. */}
+      <p className="text-muted-foreground text-sm">
+        {remaining > 0
+          ? `in ${hours > 0 ? `${hours}h ` : ""}${minutes}m`
+          : "opening now — one moment"}
+      </p>
+
+      <p className="text-muted-foreground max-w-[16rem] text-xs">
+        Your code appears here automatically when the counter opens. Nothing to do until then.
       </p>
     </div>
   );

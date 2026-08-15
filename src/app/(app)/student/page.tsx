@@ -7,6 +7,9 @@ import { StatusBadge } from "@/components/status-badge";
 import { requireSessionUser } from "@/infra/auth/session";
 import { createClient } from "@/infra/supabase/server";
 import { serviceDateOf } from "@/core/time";
+import { resolveServiceState } from "@/core/policies/menu.policy";
+import { createAdminClient } from "@/infra/supabase/admin";
+import { SupabaseTenantRepository } from "@/infra/supabase/repositories";
 import { formatServiceDate } from "@/lib/format";
 import { QrDisplay } from "./qr-display";
 
@@ -47,6 +50,19 @@ export default async function StudentPage() {
       .is("reversed_at", null),
   ]);
 
+  // Resolved HERE, on the server, so a student whose counter is shut costs
+  // nothing at all: no token is minted, no rotation starts, and the page can
+  // say "dinner opens at 19:30" from data it already had to load. The settings
+  // read is cached (see tenant.repository.ts), so this is usually free.
+  const settings = await new SupabaseTenantRepository(supabase, createAdminClient()).getSettings(
+    user.tenantId,
+  );
+  const serviceState = settings
+    ? resolveServiceState({ timeZone: user.timezone, now: new Date(), slots: settings.mealSlots })
+    : null;
+  const current = serviceState?.current ?? null;
+  const upcoming = serviceState?.next ?? null;
+
   const student = studentRes.data;
   const subscription = subRes.data;
   const eatenSlots = new Set((attendanceRes.data ?? []).map((a) => a.meal_slot));
@@ -76,7 +92,24 @@ export default async function StudentPage() {
           {/* Renders its own denial states — a blocked student or one without a
               plan is told why here, rather than finding out at the counter. */}
           <div className="w-full max-w-sm">
-            <QrDisplay timeZone={user.timezone} />
+            <QrDisplay
+              timeZone={user.timezone}
+              counter={
+                current
+                  ? {
+                      state: "OPEN",
+                      mealSlot: current.slot,
+                      closesAt: current.closesAt.toISOString(),
+                    }
+                  : upcoming
+                    ? {
+                        state: "CLOSED",
+                        mealSlot: upcoming.slot,
+                        opensAt: upcoming.opensAt.toISOString(),
+                      }
+                    : { state: "NONE" }
+              }
+            />
           </div>
         </CardContent>
       </Card>
