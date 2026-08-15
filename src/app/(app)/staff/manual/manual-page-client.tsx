@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import {
   refineScanAction,
   scanOutcomeFor,
+  scanTitleFor,
   type ScanDetails,
   type ScanOutcome,
 } from "@/lib/scan-outcome";
@@ -22,6 +23,7 @@ interface VerifyResponse {
   readonly fullName?: string;
   readonly auditFailed?: boolean;
   readonly details?: ScanDetails;
+  readonly mealSlot?: string;
 }
 
 const TONE_PANEL: Record<string, string> = {
@@ -58,6 +60,7 @@ export function ManualPageClient({
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{
     outcome: ScanOutcome;
+    title: string;
     action: string;
     response: VerifyResponse;
   } | null>(null);
@@ -79,8 +82,11 @@ export function ManualPageClient({
         }),
       });
       const data = (await response.json()) as VerifyResponse;
+      const slot =
+        data.mealSlot ?? (typeof data.details?.slot === "string" ? data.details.slot : undefined);
       setResult({
         outcome: scanOutcomeFor(data.ok ? "SERVED" : data.code),
+        title: scanTitleFor(data.ok ? "SERVED" : data.code, slot),
         action: refineScanAction(data.code, data.details ?? null, timeZone),
         response: data,
       });
@@ -93,6 +99,7 @@ export function ManualPageClient({
     } catch {
       setResult({
         outcome: scanOutcomeFor("INFRASTRUCTURE_ERROR"),
+        title: scanOutcomeFor("INFRASTRUCTURE_ERROR").title,
         action: scanOutcomeFor("INFRASTRUCTURE_ERROR").action,
         response: { ok: false, code: "INFRASTRUCTURE_ERROR" },
       });
@@ -213,7 +220,7 @@ export function ManualPageClient({
             )}
           </div>
 
-          <p className="text-lg font-semibold">{result.outcome.title}</p>
+          <p className="text-lg font-semibold">{result.title}</p>
 
           {result.response.ok ? (
             <p className="text-sm">

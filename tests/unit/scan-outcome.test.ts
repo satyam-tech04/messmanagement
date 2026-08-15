@@ -6,7 +6,12 @@
  * member should do next — those are two different sentences and both matter.
  */
 import { describe, expect, it } from "vitest";
-import { ALL_SCAN_OUTCOMES, refineScanAction, scanOutcomeFor } from "@/lib/scan-outcome";
+import {
+  ALL_SCAN_OUTCOMES,
+  refineScanAction,
+  scanOutcomeFor,
+  scanTitleFor,
+} from "@/lib/scan-outcome";
 
 describe("scanOutcomeFor — coverage", () => {
   const codes = [
@@ -196,5 +201,32 @@ describe("refineScanAction — telling staff when the counter opens", () => {
         scanOutcomeFor(code).action,
       );
     }
+  });
+});
+
+describe("scanTitleFor — name the meal that was served", () => {
+  it("says which meal, so staff and student both see it confirmed", () => {
+    // "Served" alone leaves staff unsure whether the right meal was recorded,
+    // especially when a window has just been changed.
+    expect(scanTitleFor("SERVED", "BREAKFAST")).toBe("Breakfast served!");
+    expect(scanTitleFor("SERVED", "DINNER")).toBe("Dinner served!");
+  });
+
+  it("names the meal on a duplicate too", () => {
+    expect(scanTitleFor("ALREADY_SERVED", "LUNCH")).toBe("Lunch already served");
+  });
+
+  it("falls back to the plain title when the meal is unknown", () => {
+    expect(scanTitleFor("SERVED", undefined)).toBe(scanOutcomeFor("SERVED").title);
+    expect(scanTitleFor("ALREADY_SERVED", null)).toBe(scanOutcomeFor("ALREADY_SERVED").title);
+  });
+
+  it("leaves other outcomes alone — a blocked student is not about a meal", () => {
+    expect(scanTitleFor("BLOCKED_UNPAID", "LUNCH")).toBe(scanOutcomeFor("BLOCKED_UNPAID").title);
+    expect(scanTitleFor("EXPIRED_TOKEN", "LUNCH")).toBe(scanOutcomeFor("EXPIRED_TOKEN").title);
+  });
+
+  it("ignores a junk slot rather than rendering it raw", () => {
+    expect(scanTitleFor("SERVED", "NOT_A_MEAL")).toBe(scanOutcomeFor("SERVED").title);
   });
 });

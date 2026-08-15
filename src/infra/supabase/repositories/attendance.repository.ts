@@ -118,4 +118,34 @@ export class SupabaseAttendanceRepository implements AttendanceRepository {
     if (error) throw new Error(`attendance count failed: ${error.message}`);
     return count ?? 0;
   }
+
+  async findForStudentMeal(
+    tenantId: string,
+    studentId: string,
+    serviceDate: ServiceDate,
+    mealSlot: MealSlot,
+  ): Promise<AttendanceRecord | null> {
+    // Hits the same unique key the write relies on, so this is an index lookup
+    // on the scan path's budget.
+    const { data, error } = await this.db
+      .from("attendance")
+      .select("id, student_id, service_date, meal_slot, scanned_at, method")
+      .eq("tenant_id", tenantId)
+      .eq("student_id", studentId)
+      .eq("service_date", serviceDate)
+      .eq("meal_slot", mealSlot)
+      .maybeSingle();
+
+    if (error) throw new Error(`attendance lookup failed: ${error.message}`);
+    if (!data) return null;
+
+    return {
+      id: data.id,
+      studentId: data.student_id,
+      serviceDate: toServiceDate(data.service_date),
+      mealSlot: data.meal_slot,
+      scannedAt: new Date(data.scanned_at),
+      method: data.method,
+    };
+  }
 }

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
-import { AlertCircle, Loader2, RefreshCw, ShieldOff, WifiOff } from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2, RefreshCw, ShieldOff, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,13 +21,22 @@ interface TokenResponse {
 }
 
 interface DenialResponse {
-  readonly error: { readonly code: string; readonly message: string };
+  readonly error: {
+    readonly code: string;
+    readonly message: string;
+    readonly details?: Readonly<Record<string, string | number | boolean | null>> | null;
+  };
 }
 
 type State =
   | { readonly kind: "loading" }
   | { readonly kind: "ready"; readonly data: TokenResponse; readonly dataUrl: string }
   | { readonly kind: "denied"; readonly code: string; readonly message: string }
+  | {
+      readonly kind: "served";
+      readonly mealSlot: string;
+      readonly servedAt: string | null;
+    }
   | { readonly kind: "offline" };
 
 function slotLabel(slot: string): string {
@@ -73,6 +82,23 @@ export function QrDisplay({ timeZone }: { timeZone: string }) {
 
       if (!response.ok) {
         const body = (await response.json()) as DenialResponse;
+
+        // Being fed is not a failure. Render it as a receipt so the student can
+        // put their phone away, rather than a red panel that reads as a fault.
+        if (body.error?.code === "ALREADY_SERVED") {
+          const slot = body.error.details?.slot;
+          const at = body.error.details?.servedAt;
+          setState({
+            kind: "served",
+            mealSlot: typeof slot === "string" ? slot : "This meal",
+            servedAt: typeof at === "string" ? at : null,
+          });
+          setSecondsLeft(null);
+          // Re-poll gently: once the next meal's window comes round, a fresh
+          // code should appear without the student reloading.
+          return 60;
+        }
+
         setState({
           kind: "denied",
           code: body.error?.code ?? "UNKNOWN",
@@ -179,6 +205,33 @@ export function QrDisplay({ timeZone }: { timeZone: string }) {
           <RefreshCw className="size-4" aria-hidden="true" />
           Try again
         </Button>
+      </div>
+    );
+  }
+
+  if (state.kind === "served") {
+    return (
+      <div
+        role="status"
+        className="flex flex-col items-center gap-4 rounded-2xl border border-emerald-500/40 bg-emerald-50 px-6 py-12 text-center dark:bg-emerald-950/30"
+      >
+        <CheckCircle2
+          className="size-12 text-emerald-600 dark:text-emerald-400"
+          aria-hidden="true"
+        />
+        <div className="space-y-1.5">
+          <h2 className="text-xl font-semibold text-emerald-900 dark:text-emerald-200">
+            {slotLabel(state.mealSlot)} served!
+          </h2>
+          <p className="text-sm text-emerald-800 dark:text-emerald-300">
+            {state.servedAt
+              ? `Recorded at ${timeOnly(state.servedAt, timeZone)}. Enjoy your meal.`
+              : "Recorded. Enjoy your meal."}
+          </p>
+        </div>
+        <p className="max-w-xs text-xs text-emerald-800/80 dark:text-emerald-300/80">
+          Your code for the next meal will appear here automatically.
+        </p>
       </div>
     );
   }

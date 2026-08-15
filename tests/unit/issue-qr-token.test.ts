@@ -16,6 +16,7 @@ import type { StudentForVerification } from "@/core/ports/repositories";
 import { toServiceDate, toWallClockTime } from "@/core/time";
 import { isErr, isOk, unwrap } from "@/core/result";
 import {
+  FakeAttendanceRepository,
   FakeMessCutRepository,
   FakeStudentRepository,
   FakeTenantRepository,
@@ -81,6 +82,7 @@ const student = (over: Partial<StudentForVerification> = {}): StudentForVerifica
 let tenants: FakeTenantRepository;
 let students: FakeStudentRepository;
 let messCuts: FakeMessCutRepository;
+let attendance: FakeAttendanceRepository;
 let deps: IssueQrTokenDeps;
 
 function build(now: Date): IssueQrTokenDeps {
@@ -88,6 +90,7 @@ function build(now: Date): IssueQrTokenDeps {
     tenants,
     students,
     messCuts,
+    attendance,
     signer: fakeSigner,
     now: () => now,
     nonce: () => "fixed-nonce",
@@ -108,6 +111,7 @@ beforeEach(() => {
   tenants = tenantRepo();
   students = new FakeStudentRepository([student()]);
   messCuts = new FakeMessCutRepository([]);
+  attendance = new FakeAttendanceRepository();
   deps = build(DURING_LUNCH);
 });
 
@@ -293,5 +297,88 @@ describe("issueQrToken — the token itself", () => {
     const result = await issueQrToken(studentCtx, build(DURING_LUNCH));
     expect(isOk(result)).toBe(true);
     if (isOk(result)) expect(JSON.stringify(unwrap(result))).not.toContain(SECRET);
+  });
+});
+
+describe("issueQrToken — once the student has eaten", () => {
+  it("stops issuing a code for a meal already served", async () => {
+    // Otherwise the phone keeps showing a live code after they have eaten, the
+    // student holds it up again, and the counter refuses them in front of the
+    // queue for something they did nothing wrong in.
+    attendance.rows.push({
+      id: "a1",
+      studentId: STUDENT,
+      serviceDate: toServiceDate("2026-07-15"),
+      mealSlot: "LUNCH",
+      scannedAt: new Date("2026-07-15T07:05:00Z"),
+      method: "QR",
+    });
+
+    const result = await issueQrToken(studentCtx, build(DURING_LUNCH));
+    expect(isErr(result)).toBe(true);
+    if (isErr(result)) expect(result.error.code).toBe("ALREADY_SERVED");
+  });
+
+  it("says which meal, and when, so the screen can confirm it", async () => {
+    const servedAt = new Date("2026-07-15T07:05:00Z");
+    attendance.rows.push({
+      id: "a1",
+      studentId: STUDENT,
+      serviceDate: toServiceDate("2026-07-15"),
+      mealSlot: "LUNCH",
+      scannedAt: servedAt,
+      method: "QR",
+    });
+
+    const result = await issueQrToken(studentCtx, build(DURING_LUNCH));
+    if (isErr(result)) {
+      expect(result.error.details?.slot).toBe("LUNCH");
+      expect(result.error.details?.servedAt).toBe(servedAt.toISOString());
+    }
+  });
+
+  it("still issues for a different meal on the same day", async () => {
+    // Lunch eaten, dinner still to come. Between the windows the code should
+    // target dinner as normal.
+    attendance.rows.push({
+      id: "a1",
+      studentId: STUDENT,
+      serviceDate: toServiceDate("2026-07-15"),
+      mealSlot: "LUNCH",
+      scannedAt: new Date("2026-07-15T07:05:00Z"),
+      method: "QR",
+    });
+
+    const result = await issueQrToken(studentCtx, build(BETWEEN_MEALS));
+    expect(isOk(result)).toBe(true);
+    if (isOk(result)) expect(unwrap(result).mealSlot).toBe("DINNER");
+  });
+
+  it("is unaffected by another student having eaten", async () => {
+    attendance.rows.push({
+      id: "a1",
+      studentId: "someone-else",
+      serviceDate: toServiceDate("2026-07-15"),
+      mealSlot: "LUNCH",
+      scannedAt: new Date("2026-07-15T07:05:00Z"),
+      method: "QR",
+    });
+
+    const result = await issueQrToken(studentCtx, build(DURING_LUNCH));
+    expect(isOk(result)).toBe(true);
+  });
+
+  it("is unaffected by the same meal on a different day", async () => {
+    attendance.rows.push({
+      id: "a1",
+      studentId: STUDENT,
+      serviceDate: toServiceDate("2026-07-14"),
+      mealSlot: "LUNCH",
+      scannedAt: new Date("2026-07-14T07:05:00Z"),
+      method: "QR",
+    });
+
+    const result = await issueQrToken(studentCtx, build(DURING_LUNCH));
+    expect(isOk(result)).toBe(true);
   });
 });

@@ -79,6 +79,19 @@ export interface AttendanceRepository {
   record(input: RecordAttendanceInput): Promise<RecordAttendanceOutcome>;
 
   countForMeal(tenantId: string, serviceDate: ServiceDate, mealSlot: MealSlot): Promise<number>;
+
+  /**
+   * Whether this student has already been served this meal today.
+   *
+   * Read at issuance so the student's phone can say "breakfast served" instead
+   * of continuing to show a live code for a meal they have already eaten.
+   */
+  findForStudentMeal(
+    tenantId: string,
+    studentId: string,
+    serviceDate: ServiceDate,
+    mealSlot: MealSlot,
+  ): Promise<AttendanceRecord | null>;
 }
 
 export interface StudentRepository {

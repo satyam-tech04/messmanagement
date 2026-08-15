@@ -71,6 +71,20 @@ export class FakeAttendanceRepository implements AttendanceRepository {
     return { created: true, record };
   }
 
+  async findForStudentMeal(
+    tenantId: string,
+    studentId: string,
+    serviceDate: ServiceDate,
+    mealSlot: MealSlot,
+  ): Promise<AttendanceRecord | null> {
+    return (
+      this.rows.find(
+        (r) =>
+          r.studentId === studentId && r.serviceDate === serviceDate && r.mealSlot === mealSlot,
+      ) ?? null
+    );
+  }
+
   async countForMeal(
     tenantId: string,
     serviceDate: ServiceDate,

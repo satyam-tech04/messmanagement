@@ -267,3 +267,29 @@ export function refineScanAction(
 
   return `Not being served yet — ${slot} opens ${when}. Ask them to come back then.`;
 }
+
+/** The four meals, for turning a slot into readable words. */
+const MEAL_LABELS: Readonly<Record<string, string>> = {
+  BREAKFAST: "Breakfast",
+  LUNCH: "Lunch",
+  SNACKS: "Snacks",
+  DINNER: "Dinner",
+};
+
+/**
+ * Names the meal in the headline for the two outcomes that are about a meal.
+ *
+ * "Served" alone does not tell staff *what* was recorded — which matters most
+ * right after a meal window has been changed, when they are least sure the
+ * system agrees with them. The student sees the same words on their own phone,
+ * so both ends of the counter are confirming the same thing.
+ */
+export function scanTitleFor(code: string, mealSlot: string | null | undefined): string {
+  const base = scanOutcomeFor(code).title;
+  if (code !== "SERVED" && code !== "ALREADY_SERVED") return base;
+
+  const label = mealSlot ? MEAL_LABELS[mealSlot] : undefined;
+  if (!label) return base;
+
+  return code === "SERVED" ? `${label} served!` : `${label} already served`;
+}

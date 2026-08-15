@@ -170,6 +170,7 @@ try {
     tenants: repos.tenants,
     students: repos.students,
     messCuts: repos.messCuts,
+    attendance: repos.attendance,
     signer: hmacTokenSigner,
     now: () => new Date(),
     nonce: () => randomUUID(),

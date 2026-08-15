@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import {
   refineScanAction,
   scanOutcomeFor,
+  scanTitleFor,
   type ScanDetails,
   type ScanOutcome,
 } from "@/lib/scan-outcome";
@@ -28,6 +29,8 @@ interface VerifyResponse {
 
 interface Result {
   readonly outcome: ScanOutcome;
+  /** Names the meal, e.g. "Breakfast served!". */
+  readonly title: string;
   /** Sharpened with the server's detail, e.g. when the counter opens. */
   readonly action: string;
   readonly response: VerifyResponse;
@@ -97,9 +100,14 @@ export function Scanner({ deviceId, timeZone }: { deviceId: string; timeZone: st
 
   const show = useCallback(
     (response: VerifyResponse) => {
-      const outcome = scanOutcomeFor(response.ok ? "SERVED" : response.code);
+      const code = response.ok ? "SERVED" : response.code;
+      const outcome = scanOutcomeFor(code);
       const action = refineScanAction(response.code, response.details ?? null, timeZone);
-      setResult({ outcome, action, response, at: Date.now() });
+      // The slot comes back on success; on a duplicate it is in the details.
+      const slot =
+        response.mealSlot ??
+        (typeof response.details?.slot === "string" ? response.details.slot : undefined);
+      setResult({ outcome, title: scanTitleFor(code, slot), action, response, at: Date.now() });
       beep(outcome.tone);
       if (response.ok) setServedCount((c) => c + 1);
     },
@@ -308,7 +316,7 @@ export function Scanner({ deviceId, timeZone }: { deviceId: string; timeZone: st
               <X className="size-14" strokeWidth={3} aria-hidden="true" />
             )}
 
-            <p className="text-2xl font-bold">{result.outcome.title}</p>
+            <p className="text-2xl font-bold">{result.title}</p>
 
             {result.response.ok ? (
               <>

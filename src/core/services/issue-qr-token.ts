@@ -21,7 +21,12 @@ import { domainError, forbidden, infrastructureError, type DomainError } from ".
 import { checkMealEligibility } from "../policies/eligibility.policy";
 import { resolveServiceState } from "../policies/menu.policy";
 import { issueToken } from "../policies/qr.policy";
-import type { MessCutRepository, StudentRepository, TenantRepository } from "../ports/repositories";
+import type {
+  AttendanceRepository,
+  MessCutRepository,
+  StudentRepository,
+  TenantRepository,
+} from "../ports/repositories";
 import type { TokenSigner } from "../ports/token-signer";
 import { err, isErr, ok, type Result } from "../result";
 import type { ServiceDate } from "../time";
@@ -30,6 +35,7 @@ export interface IssueQrTokenDeps {
   readonly tenants: TenantRepository;
   readonly students: StudentRepository;
   readonly messCuts: MessCutRepository;
+  readonly attendance: AttendanceRepository;
   readonly signer: TokenSigner;
   readonly now: () => Date;
   /** Injected so tests are deterministic; production passes a CSPRNG. */
@@ -100,6 +106,26 @@ export async function issueQrToken(
     cuts,
   });
   if (isErr(eligible)) return eligible;
+
+  // Already eaten? Stop showing a live code. Otherwise the phone keeps
+  // displaying one after the meal, the student holds it up again, and the
+  // counter refuses them publicly for doing nothing wrong. The screen renders
+  // this as a confirmation, not a failure.
+  const served = await deps.attendance.findForStudentMeal(
+    ctx.tenantId,
+    studentId,
+    target.serviceDate,
+    target.slot,
+  );
+  if (served) {
+    return err(
+      domainError("ALREADY_SERVED", `${target.slot.toLowerCase()} already served today.`, {
+        slot: target.slot,
+        servedAt: served.scannedAt.toISOString(),
+        method: served.method,
+      }),
+    );
+  }
 
   const issued = issueToken({
     tenantId: ctx.tenantId,

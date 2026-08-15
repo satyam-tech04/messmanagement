@@ -26,6 +26,8 @@ const DENIAL_STATUS: Record<string, number> = {
   NO_ACTIVE_PLAN: 403,
   ON_MESS_CUT: 403,
   SLOT_NOT_SERVED: 409,
+  // Not a fault — the student has eaten. The screen renders it as a receipt.
+  ALREADY_SERVED: 409,
   NOT_FOUND: 404,
   INFRASTRUCTURE_ERROR: 503,
 };
@@ -76,6 +78,7 @@ export async function GET() {
       tenants: repos.tenants,
       students: repos.students,
       messCuts: repos.messCuts,
+      attendance: repos.attendance,
       signer: hmacTokenSigner,
       now: () => new Date(),
       nonce: () => randomBytes(9).toString("base64url"),
@@ -85,7 +88,7 @@ export async function GET() {
   if (isErr(result)) {
     const { code, message } = result.error;
     return NextResponse.json(
-      { error: { code, message } },
+      { error: { code, message, details: result.error.details ?? null } },
       { status: DENIAL_STATUS[code] ?? 400, headers: { "Cache-Control": "no-store" } },
     );
   }
