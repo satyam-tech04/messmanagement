@@ -214,3 +214,56 @@ const UNKNOWN: ScanOutcome = {
 export function scanOutcomeFor(code: string): ScanOutcome {
   return ALL_SCAN_OUTCOMES[code] ?? UNKNOWN;
 }
+
+/** Structured context the server attaches to a denial. Never contains PII. */
+export type ScanDetails = Readonly<Record<string, string | number | boolean | null>> | null;
+
+/**
+ * Sharpens the "what to do next" line using the detail the server sent.
+ *
+ * "Counter closed" is true but useless with a queue building: the one fact that
+ * resolves it is *when to send the student back*. The verifier already computes
+ * the meal's opening instant, so the scanner should say it rather than make
+ * staff work it out from a printed timetable.
+ *
+ * Falls back to the standard wording whenever the detail is missing or
+ * unparseable — a malformed timestamp must never render "Invalid Date" on the
+ * one screen staff rely on.
+ */
+export function refineScanAction(
+  code: string,
+  details: ScanDetails,
+  timeZone: string,
+  now: Date = new Date(),
+): string {
+  const base = scanOutcomeFor(code).action;
+  if (code !== "OUTSIDE_MEAL_HOURS" || !details) return base;
+
+  const raw = details.opensAt;
+  if (typeof raw !== "string") return base;
+
+  const opensAt = new Date(raw);
+  if (Number.isNaN(opensAt.getTime())) return base;
+
+  const dayOf = (d: Date) =>
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(d);
+
+  const time = new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(opensAt);
+
+  const slot = typeof details.slot === "string" ? details.slot.toLowerCase() : "this meal";
+  // Both dates are rendered in the tenant's zone before comparing, so a meal
+  // opening after midnight UTC is still "today" for an IST hostel.
+  const when = dayOf(opensAt) === dayOf(now) ? `at ${time}` : `tomorrow at ${time}`;
+
+  return `Not being served yet — ${slot} opens ${when}. Ask them to come back then.`;
+}

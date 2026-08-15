@@ -25,6 +25,7 @@ import { createRepositories } from "../src/infra/supabase/repositories";
 import { isErr, isOk } from "../src/core/result";
 import { addDays, serviceDateOf, toServiceDate } from "../src/core/time";
 import { syntheticEmailFor } from "../src/core/domain/identity";
+import type { MealSlot } from "../src/core/domain/enums";
 
 let failures = 0;
 const pass = (m: string) => console.log(`  \x1b[32m✔\x1b[0m ${m}`);
@@ -82,12 +83,31 @@ const { data: student } = await admin
   .select("id")
   .single();
 
+// A throwaway plan of its own, covering every slot the mess serves.
+//
+// Picking whichever plan happened to be active made this script depend on test
+// data: an admin editing the seeded plan to dinner-only made four checks fail
+// while the system was behaving perfectly.
+const { data: liveSettings } = await admin
+  .from("tenant_settings")
+  .select("meal_slots")
+  .eq("tenant_id", tenant.id)
+  .single();
+
+const servedSlots = (liveSettings!.meal_slots as Array<{ slot: MealSlot }>).map((s) => s.slot);
+
 const { data: plan } = await admin
   .from("plans")
+  .insert({
+    tenant_id: tenant.id,
+    name: `zz-verify-${ROLL}`,
+    duration_type: "MONTHLY",
+    duration_days: 30,
+    price_paise: 100000,
+    included_meal_slots: servedSlots,
+    is_active: true,
+  })
   .select("id, price_paise, duration_days, included_meal_slots")
-  .eq("tenant_id", tenant.id)
-  .eq("is_active", true)
-  .limit(1)
   .single();
 
 await admin.from("subscriptions").insert({
@@ -113,9 +133,15 @@ async function cleanup() {
     .eq("tenant_id", tenant!.id)
     .eq("service_date", today);
   await admin.from("students").delete().eq("id", student!.id);
+  await admin.from("plans").delete().eq("id", plan!.id);
   await admin.from("profiles").delete().eq("id", userId);
   await admin.auth.admin.deleteUser(userId).catch(() => {});
 }
+
+// Whichever meals this mess actually serves — never hard-coded, so the script
+// works for a tenant that serves breakfast and snacks instead.
+const PRIMARY = servedSlots[0]!;
+const SECONDARY = servedSlots[1] ?? servedSlots[0]!;
 
 try {
   const studentCtx = {
@@ -250,7 +276,7 @@ try {
   );
   const blockedScan = await verifyManualAttendance(
     staffCtx,
-    { rollNumber: ROLL, mealSlot: "LUNCH", reason: "probe", deviceId: "probe" },
+    { rollNumber: ROLL, mealSlot: PRIMARY, reason: "probe", deviceId: "probe" },
     verifyDeps,
   );
   check(
@@ -263,14 +289,14 @@ try {
   console.log("\nAttendance idempotency (§2.5)");
   const first = await verifyManualAttendance(
     staffCtx,
-    { rollNumber: ROLL, mealSlot: "LUNCH", reason: "exit-criteria probe", deviceId: "probe" },
+    { rollNumber: ROLL, mealSlot: PRIMARY, reason: "exit-criteria probe", deviceId: "probe" },
     verifyDeps,
   );
   check(isOk(first), "a student in good standing is served");
 
   const second = await verifyManualAttendance(
     staffCtx,
-    { rollNumber: ROLL, mealSlot: "LUNCH", reason: "probe again", deviceId: "probe" },
+    { rollNumber: ROLL, mealSlot: PRIMARY, reason: "probe again", deviceId: "probe" },
     verifyDeps,
   );
   check(
@@ -281,17 +307,17 @@ try {
   const [a, b, c] = await Promise.all([
     verifyManualAttendance(
       staffCtx,
-      { rollNumber: ROLL, mealSlot: "DINNER", reason: "concurrent a", deviceId: "a" },
+      { rollNumber: ROLL, mealSlot: SECONDARY, reason: "concurrent a", deviceId: "a" },
       verifyDeps,
     ),
     verifyManualAttendance(
       staffCtx,
-      { rollNumber: ROLL, mealSlot: "DINNER", reason: "concurrent b", deviceId: "b" },
+      { rollNumber: ROLL, mealSlot: SECONDARY, reason: "concurrent b", deviceId: "b" },
       verifyDeps,
     ),
     verifyManualAttendance(
       staffCtx,
-      { rollNumber: ROLL, mealSlot: "DINNER", reason: "concurrent c", deviceId: "c" },
+      { rollNumber: ROLL, mealSlot: SECONDARY, reason: "concurrent c", deviceId: "c" },
       verifyDeps,
     ),
   ]);
@@ -348,14 +374,14 @@ try {
   );
 
   await snapshotHeadcount(tenant.id, toServiceDate(today), snapDeps, { lock: true });
-  const lockedRow = await repos.headcountSnapshots.find(tenant.id, toServiceDate(today), "LUNCH");
+  const lockedRow = await repos.headcountSnapshots.find(tenant.id, toServiceDate(today), PRIMARY);
   const lockedValue = lockedRow?.projectedCount ?? -1;
 
   // Genuinely change what the projection would be — cancelling this student's
   // subscription removes a plate — then re-run. The locked figure must ignore it.
   await admin.from("subscriptions").update({ status: "CANCELLED" }).eq("student_id", student!.id);
   await snapshotHeadcount(tenant.id, toServiceDate(today), snapDeps, { lock: true });
-  const afterRow = await repos.headcountSnapshots.find(tenant.id, toServiceDate(today), "LUNCH");
+  const afterRow = await repos.headcountSnapshots.find(tenant.id, toServiceDate(today), PRIMARY);
   check(
     afterRow?.projectedCount === lockedValue,
     "a locked count never moves — the kitchen has already bought for it",
@@ -373,7 +399,7 @@ try {
     const foreignStaffCtx = { ...staffCtx, tenantId: other.id, tenantSlug: other.slug };
     const leak = await verifyManualAttendance(
       foreignStaffCtx,
-      { rollNumber: ROLL, mealSlot: "LUNCH", reason: "cross-tenant probe", deviceId: "probe" },
+      { rollNumber: ROLL, mealSlot: PRIMARY, reason: "cross-tenant probe", deviceId: "probe" },
       verifyDeps,
     );
     check(isErr(leak), "another mess cannot serve this student by roll number");

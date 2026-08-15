@@ -7,7 +7,7 @@ import {
 import { issueToken } from "@/core/policies/qr.policy";
 import type { TenantContext, TenantSettings } from "@/core/domain/tenant-context";
 import type { StudentForVerification } from "@/core/ports/repositories";
-import { toWallClockTime, toServiceDate } from "@/core/time";
+import { toWallClockTime, toServiceDate, serviceDateOf } from "@/core/time";
 import { isErr, isOk, unwrap } from "@/core/result";
 import {
   FakeAttendanceRepository,
@@ -103,6 +103,7 @@ function mintToken(at: Date = DURING_LUNCH, slot: "LUNCH" | "DINNER" = "LUNCH"):
       tenantId: TENANT,
       studentId: STUDENT,
       mealSlot: slot,
+      serviceDate: serviceDateOf(IST, at),
       settings,
       now: at,
       timezone: IST,
@@ -324,6 +325,7 @@ describe("verifyQrAttendance — authorization and tenancy", () => {
         tenantId: OTHER_TENANT,
         studentId: STUDENT,
         mealSlot: "LUNCH",
+        serviceDate: serviceDateOf(IST, DURING_LUNCH),
         settings,
         now: DURING_LUNCH,
         timezone: IST,

@@ -15,7 +15,7 @@ import {
 import { issueToken } from "@/core/policies/qr.policy";
 import type { TenantContext, TenantSettings } from "@/core/domain/tenant-context";
 import type { StudentForVerification } from "@/core/ports/repositories";
-import { toServiceDate, toWallClockTime } from "@/core/time";
+import { toServiceDate, toWallClockTime, serviceDateOf } from "@/core/time";
 import { isErr, isOk, unwrap } from "@/core/result";
 import {
   FakeAttendanceRepository,
@@ -82,6 +82,7 @@ function mintToken(at: Date = DURING_LUNCH): string {
     tenantId: TENANT,
     studentId: STUDENT,
     mealSlot: "LUNCH",
+    serviceDate: serviceDateOf(IST, at),
     settings,
     now: at,
     timezone: IST,
@@ -261,6 +262,7 @@ describe("offline queue replay", () => {
       tenantId: TENANT,
       studentId: "other",
       mealSlot: "LUNCH",
+      serviceDate: serviceDateOf(IST, DURING_LUNCH),
       settings,
       now: DURING_LUNCH,
       timezone: IST,

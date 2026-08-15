@@ -105,6 +105,10 @@ export async function issueQrToken(
     tenantId: ctx.tenantId,
     studentId,
     mealSlot: target.slot,
+    // The meal's own date, from resolveServiceState — which attributes a
+    // midnight-crossing dinner to the day it started, and tomorrow's lunch to
+    // tomorrow.
+    serviceDate: target.serviceDate,
     settings,
     now,
     timezone: ctx.timezone,

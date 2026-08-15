@@ -59,6 +59,15 @@ export interface IssueTokenInput {
   readonly tenantId: string;
   readonly studentId: string;
   readonly mealSlot: MealSlot;
+  /**
+   * The service date **of the meal this token is for** — required, not derived.
+   *
+   * It is not always today. After the last window closes the next meal is
+   * tomorrow's, and a dinner running past midnight belongs to the day it
+   * started. Inferring this from the clock silently produced tokens whose meal
+   * and date disagreed, which refused students at a counter that was open.
+   */
+  readonly serviceDate: ServiceDate;
   readonly settings: TenantSettings;
   readonly now: Date;
   readonly timezone: string;
@@ -142,13 +151,12 @@ export function issueToken(input: IssueTokenInput): Result<IssuedToken, DomainEr
     );
   }
 
-  const serviceDate = serviceDateOf(input.timezone, input.now);
   const payload: QrTokenPayload = {
     v: QR_TOKEN_VERSION,
     t: input.tenantId,
     s: input.studentId,
     m: input.mealSlot,
-    d: serviceDate,
+    d: input.serviceDate,
     iat: input.now.getTime(),
     n: input.nonce,
   };
@@ -160,7 +168,7 @@ export function issueToken(input: IssueTokenInput): Result<IssuedToken, DomainEr
     token: `${encoded}.${signature}`,
     expiresAt: new Date(input.now.getTime() + input.settings.qrTokenTtlSeconds * 1000),
     refreshSeconds: input.settings.qrRefreshSeconds,
-    serviceDate,
+    serviceDate: input.serviceDate,
   });
 }
 

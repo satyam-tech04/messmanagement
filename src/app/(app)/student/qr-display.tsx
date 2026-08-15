@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { AlertCircle, Loader2, RefreshCw, ShieldOff, WifiOff } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -33,8 +34,16 @@ function slotLabel(slot: string): string {
   return slot.charAt(0) + slot.slice(1).toLowerCase();
 }
 
-function timeOnly(iso: string): string {
+/**
+ * Meal times are the mess's, not the phone's.
+ *
+ * Without an explicit zone this renders in whatever the device is set to, so a
+ * student whose phone is on another timezone would be told the counter opens at
+ * a time it does not.
+ */
+function timeOnly(iso: string, timeZone: string): string {
   return new Intl.DateTimeFormat("en-GB", {
+    timeZone,
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
@@ -52,7 +61,7 @@ function timeOnly(iso: string): string {
  * changes every few seconds and a server round trip per redraw would double the
  * traffic for no benefit.
  */
-export function QrDisplay() {
+export function QrDisplay({ timeZone }: { timeZone: string }) {
   const [state, setState] = useState<State>({ kind: "loading" });
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -218,14 +227,17 @@ export function QrDisplay() {
         {data.isOpenNow ? (
           <>
             <strong>{slotLabel(data.mealSlot)}</strong> is being served — closes{" "}
-            <span className="tabular-nums">{timeOnly(data.closesAt)}</span>
+            <span className="tabular-nums">{timeOnly(data.closesAt, timeZone)}</span>
           </>
         ) : (
           <>
             Next: <strong>{slotLabel(data.mealSlot)}</strong> at{" "}
-            <span className="tabular-nums">{timeOnly(data.opensAt)}</span>
+            <span className="tabular-nums">{timeOnly(data.opensAt, timeZone)}</span>
+            {/* Explicit, because "your code is ready" read as "this will scan
+                now" and students were queueing to be refused. */}
             <span className="text-muted-foreground mt-0.5 block text-xs">
-              Your code is ready — show it when the counter opens.
+              This code will not scan until{" "}
+              <span className="tabular-nums">{timeOnly(data.opensAt, timeZone)}</span>.
             </span>
           </>
         )}
@@ -233,7 +245,12 @@ export function QrDisplay() {
 
       {/* White background always, in both themes: a dark-mode inverted QR is
           unreadable by most scanner apps. */}
-      <div className="rounded-2xl border bg-white p-4 shadow-sm">
+      <div
+        className={cn(
+          "relative rounded-2xl border bg-white p-4 shadow-sm transition-opacity",
+          data.isOpenNow ? "" : "opacity-60",
+        )}
+      >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={dataUrl}

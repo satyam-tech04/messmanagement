@@ -6,7 +6,7 @@
  * member should do next — those are two different sentences and both matter.
  */
 import { describe, expect, it } from "vitest";
-import { ALL_SCAN_OUTCOMES, scanOutcomeFor } from "@/lib/scan-outcome";
+import { ALL_SCAN_OUTCOMES, refineScanAction, scanOutcomeFor } from "@/lib/scan-outcome";
 
 describe("scanOutcomeFor — coverage", () => {
   const codes = [
@@ -141,5 +141,60 @@ describe("scanOutcomeFor — distinctness", () => {
     ].map((c) => scanOutcomeFor(c).title);
 
     expect(new Set(titles).size).toBe(titles.length);
+  });
+});
+
+describe("refineScanAction — telling staff when the counter opens", () => {
+  const tz = "Asia/Kolkata";
+
+  it("names the opening time instead of a bare 'not being served'", () => {
+    // "Counter closed" leaves staff guessing. With a queue behind them they
+    // need the one fact that resolves it: when to send the student back.
+    const action = refineScanAction(
+      "OUTSIDE_MEAL_HOURS",
+      { slot: "DINNER", opensAt: "2026-08-02T14:00:00Z" },
+      tz,
+    );
+    expect(action).toContain("19:30");
+    expect(action.toLowerCase()).toContain("dinner");
+  });
+
+  it("uses 24-hour time, so 19:30 cannot be read as morning", () => {
+    const action = refineScanAction(
+      "OUTSIDE_MEAL_HOURS",
+      { slot: "DINNER", opensAt: "2026-08-02T14:00:00Z" },
+      tz,
+    );
+    expect(action).not.toMatch(/[ap]m/i);
+  });
+
+  it("says tomorrow when the next sitting is not today", () => {
+    // Scanned at 22:30, the next lunch is tomorrow. "Opens at 12:00" alone
+    // would have staff tell the student to wait ninety minutes.
+    const action = refineScanAction(
+      "OUTSIDE_MEAL_HOURS",
+      { slot: "LUNCH", opensAt: "2026-08-03T06:30:00Z" },
+      tz,
+      new Date("2026-08-02T17:00:00Z"),
+    );
+    expect(action.toLowerCase()).toContain("tomorrow");
+  });
+
+  it("falls back to the standard wording when no opening time is given", () => {
+    const action = refineScanAction("OUTSIDE_MEAL_HOURS", null, tz);
+    expect(action).toBe(scanOutcomeFor("OUTSIDE_MEAL_HOURS").action);
+  });
+
+  it("ignores malformed details rather than rendering 'Invalid Date'", () => {
+    const action = refineScanAction("OUTSIDE_MEAL_HOURS", { opensAt: "not-a-date" }, tz);
+    expect(action).toBe(scanOutcomeFor("OUTSIDE_MEAL_HOURS").action);
+  });
+
+  it("leaves every other outcome's wording untouched", () => {
+    for (const code of ["ALREADY_SERVED", "BLOCKED_UNPAID", "NO_ACTIVE_PLAN", "EXPIRED_TOKEN"]) {
+      expect(refineScanAction(code, { opensAt: "2026-08-02T14:00:00Z" }, tz)).toBe(
+        scanOutcomeFor(code).action,
+      );
+    }
   });
 });

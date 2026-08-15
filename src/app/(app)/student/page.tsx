@@ -72,7 +72,7 @@ export default async function StudentPage() {
           {/* Renders its own denial states — a blocked student or one without a
               plan is told why here, rather than finding out at the counter. */}
           <div className="w-full max-w-sm">
-            <QrDisplay />
+            <QrDisplay timeZone={user.timezone} />
           </div>
         </CardContent>
       </Card>

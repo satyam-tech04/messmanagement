@@ -7,7 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { scanOutcomeFor, type ScanOutcome } from "@/lib/scan-outcome";
+import {
+  refineScanAction,
+  scanOutcomeFor,
+  type ScanDetails,
+  type ScanOutcome,
+} from "@/lib/scan-outcome";
 
 interface VerifyResponse {
   readonly ok: boolean;
@@ -16,6 +21,7 @@ interface VerifyResponse {
   readonly rollNumber?: string;
   readonly fullName?: string;
   readonly auditFailed?: boolean;
+  readonly details?: ScanDetails;
 }
 
 const TONE_PANEL: Record<string, string> = {
@@ -40,17 +46,21 @@ const TONE_PANEL: Record<string, string> = {
 export function ManualPageClient({
   deviceId,
   servedSlots,
+  timeZone,
 }: {
   deviceId: string;
   servedSlots: readonly { slot: string; label: string; window: string }[];
+  timeZone: string;
 }) {
   const [rollNumber, setRollNumber] = useState("");
   const [mealSlot, setMealSlot] = useState(servedSlots[0]?.slot ?? "LUNCH");
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<{ outcome: ScanOutcome; response: VerifyResponse } | null>(
-    null,
-  );
+  const [result, setResult] = useState<{
+    outcome: ScanOutcome;
+    action: string;
+    response: VerifyResponse;
+  } | null>(null);
 
   const canSubmit = rollNumber.trim().length > 0 && reason.trim().length >= 3 && !busy;
 
@@ -69,7 +79,11 @@ export function ManualPageClient({
         }),
       });
       const data = (await response.json()) as VerifyResponse;
-      setResult({ outcome: scanOutcomeFor(data.ok ? "SERVED" : data.code), response: data });
+      setResult({
+        outcome: scanOutcomeFor(data.ok ? "SERVED" : data.code),
+        action: refineScanAction(data.code, data.details ?? null, timeZone),
+        response: data,
+      });
       if (data.ok) {
         // Clear only on success, so a refused entry can be corrected and retried
         // without retyping everything.
@@ -79,12 +93,13 @@ export function ManualPageClient({
     } catch {
       setResult({
         outcome: scanOutcomeFor("INFRASTRUCTURE_ERROR"),
+        action: scanOutcomeFor("INFRASTRUCTURE_ERROR").action,
         response: { ok: false, code: "INFRASTRUCTURE_ERROR" },
       });
     } finally {
       setBusy(false);
     }
-  }, [rollNumber, mealSlot, reason, deviceId]);
+  }, [rollNumber, mealSlot, reason, deviceId, timeZone]);
 
   return (
     <div className="space-y-5">
@@ -210,11 +225,11 @@ export function ManualPageClient({
             </p>
           ) : (
             <p className="text-muted-foreground text-sm">
-              {result.response.message ?? result.outcome.action}
+              {result.response.message ?? result.action}
             </p>
           )}
 
-          <p className="text-sm font-medium">{result.outcome.action}</p>
+          <p className="text-sm font-medium">{result.action}</p>
 
           {result.response.auditFailed ? (
             <p className="flex items-start justify-center gap-1.5 text-xs">

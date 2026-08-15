@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { hmacTokenSigner } from "@/infra/crypto/hmac-signer";
 import { issueToken, verifyToken } from "@/core/policies/qr.policy";
 import type { TenantSettings } from "@/core/domain/tenant-context";
-import { toWallClockTime } from "@/core/time";
+import { toWallClockTime, serviceDateOf } from "@/core/time";
 import { isErr, isOk, unwrap } from "@/core/result";
 
 const SECRET = "a-tenant-signing-secret-of-at-least-32-chars";
@@ -96,6 +96,7 @@ describe("hmacTokenSigner wired into the real QR policy", () => {
         tenantId,
         studentId: "student-1",
         mealSlot: "LUNCH",
+        serviceDate: serviceDateOf(IST, DURING_LUNCH),
         settings,
         now: DURING_LUNCH,
         timezone: IST,
@@ -141,6 +142,7 @@ describe("hmacTokenSigner wired into the real QR policy", () => {
         tenantId: "tenant-a",
         studentId: "someone-else",
         mealSlot: "LUNCH",
+        serviceDate: serviceDateOf(IST, DURING_LUNCH),
         settings,
         now: DURING_LUNCH,
         timezone: IST,

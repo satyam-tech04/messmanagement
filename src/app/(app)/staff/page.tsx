@@ -52,7 +52,7 @@ export default async function StaffPage() {
         />
       </div>
 
-      <Scanner deviceId={deviceId} />
+      <Scanner deviceId={deviceId} timeZone={user.timezone} />
     </div>
   );
 }

@@ -5,7 +5,12 @@ import { BrowserMultiFormatReader } from "@zxing/browser";
 import { Camera, CameraOff, Check, CloudOff, Keyboard, Loader2, RefreshCw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { scanOutcomeFor, type ScanOutcome } from "@/lib/scan-outcome";
+import {
+  refineScanAction,
+  scanOutcomeFor,
+  type ScanDetails,
+  type ScanOutcome,
+} from "@/lib/scan-outcome";
 import { enqueueScan, flushScanQueue, queuedScans } from "./scan-queue";
 import { ManualEntryDialog } from "./manual-entry";
 
@@ -18,10 +23,13 @@ interface VerifyResponse {
   readonly photoUrl?: string | null;
   readonly mealSlot?: string;
   readonly auditFailed?: boolean;
+  readonly details?: ScanDetails;
 }
 
 interface Result {
   readonly outcome: ScanOutcome;
+  /** Sharpened with the server's detail, e.g. when the counter opens. */
+  readonly action: string;
   readonly response: VerifyResponse;
   readonly at: number;
 }
@@ -74,7 +82,7 @@ function beep(tone: string): void {
   }
 }
 
-export function Scanner({ deviceId }: { deviceId: string }) {
+export function Scanner({ deviceId, timeZone }: { deviceId: string; timeZone: string }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const controlsRef = useRef<{ stop: () => void } | null>(null);
   const lastScanRef = useRef<{ token: string; at: number } | null>(null);
@@ -87,12 +95,16 @@ export function Scanner({ deviceId }: { deviceId: string }) {
   const [pending, setPending] = useState(0);
   const [servedCount, setServedCount] = useState(0);
 
-  const show = useCallback((response: VerifyResponse) => {
-    const outcome = scanOutcomeFor(response.ok ? "SERVED" : response.code);
-    setResult({ outcome, response, at: Date.now() });
-    beep(outcome.tone);
-    if (response.ok) setServedCount((c) => c + 1);
-  }, []);
+  const show = useCallback(
+    (response: VerifyResponse) => {
+      const outcome = scanOutcomeFor(response.ok ? "SERVED" : response.code);
+      const action = refineScanAction(response.code, response.details ?? null, timeZone);
+      setResult({ outcome, action, response, at: Date.now() });
+      beep(outcome.tone);
+      if (response.ok) setServedCount((c) => c + 1);
+    },
+    [timeZone],
+  );
 
   const submit = useCallback(
     async (body: Record<string, unknown>) => {
@@ -321,11 +333,11 @@ export function Scanner({ deviceId }: { deviceId: string }) {
               </>
             ) : (
               <p className="max-w-xs text-sm opacity-95">
-                {result.response.message ?? result.outcome.action}
+                {result.response.message ?? result.action}
               </p>
             )}
 
-            <p className="max-w-xs text-sm font-medium opacity-90">{result.outcome.action}</p>
+            <p className="max-w-xs text-sm font-medium opacity-90">{result.action}</p>
 
             <div className="flex gap-2 pt-1">
               <Button variant="secondary" size="sm" onClick={() => setResult(null)}>

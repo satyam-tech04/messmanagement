@@ -44,6 +44,7 @@ export default async function ManualEntryPage() {
       ) : (
         <ManualPageClient
           deviceId={deviceId}
+          timeZone={user.timezone}
           servedSlots={settings.mealSlots.map((s) => ({
             slot: s.slot,
             label: s.slot.charAt(0) + s.slot.slice(1).toLowerCase(),
