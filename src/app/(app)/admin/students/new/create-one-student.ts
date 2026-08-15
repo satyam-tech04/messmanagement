@@ -17,7 +17,7 @@ import { validateSubscriptionStart } from "@/core/policies/student-admin.policy"
 import { serviceDateOf, toServiceDate } from "@/core/time";
 import type { Database } from "@/infra/supabase/database.types";
 import { SupabaseAuditLogRepository } from "@/infra/supabase/repositories";
-import { generateTemporaryPassword } from "@/lib/password";
+import { generateTemporaryPassword, temporaryPasswordFromPhone } from "@/lib/password";
 
 export interface CreateOneInput {
   readonly rollNumber: string;
@@ -52,6 +52,12 @@ export type CreateOneResult =
       readonly rollNumber: string;
       readonly fullName: string;
       readonly temporaryPassword: string;
+      /**
+       * False when no usable mobile number was on file, so this student's
+       * password was generated and must be handed over individually. Usually a
+       * handful out of an intake, which is what makes the exception affordable.
+       */
+      readonly passwordIsPhone: boolean;
       /** Set when the student exists but the plan could not be attached. */
       readonly planWarning?: string;
     }
@@ -64,7 +70,16 @@ export async function createOneStudent(
 ): Promise<CreateOneResult> {
   const roll = normalizeRollNumber(input.rollNumber);
   const loginEmail = syntheticEmailFor(actor.tenantSlug, roll);
-  const temporaryPassword = generateTemporaryPassword();
+
+  // The student's own mobile number is their first password — the same rule for
+  // every registration path, so what an admin announces is true however that
+  // student got into the system. It needs no distribution, which is the only
+  // way several hundred imported students can ever log in.
+  //
+  // `must_change_password` below is what makes this safe: the guessable
+  // password exists only between registration and their first meal.
+  const fromPhone = temporaryPasswordFromPhone(input.phone);
+  const temporaryPassword = fromPhone ?? generateTemporaryPassword();
 
   // --- 1. Auth user ---
   const { data: created, error: authError } = await admin.auth.admin.createUser({
@@ -161,6 +176,7 @@ export async function createOneStudent(
           rollNumber: input.rollNumber.trim(),
           fullName: input.fullName,
           temporaryPassword,
+          passwordIsPhone: fromPhone !== null,
           planWarning: `${checked.error.message} The login was created; assign the plan from their page.`,
         };
       }
@@ -202,6 +218,7 @@ export async function createOneStudent(
     rollNumber: input.rollNumber.trim(),
     fullName: input.fullName,
     temporaryPassword,
+    passwordIsPhone: fromPhone !== null,
     planWarning,
   };
 }

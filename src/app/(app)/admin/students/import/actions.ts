@@ -137,6 +137,18 @@ export interface CommitBatchResult {
   readonly created: number;
   readonly updated: number;
   readonly failures: readonly { rollNumber: string; error: string }[];
+  /**
+   * Only the students with no usable mobile number on file.
+   *
+   * Everyone else logs in with their own number and needs nothing handed over,
+   * which is the entire point — a few hundred passwords cannot be distributed.
+   * These few can, so they are the only ones returned.
+   */
+  readonly needsPassword: readonly {
+    rollNumber: string;
+    fullName: string;
+    temporaryPassword: string;
+  }[];
 }
 
 const batchSchema = z.object({
@@ -157,7 +169,12 @@ export async function commitImportBatch(
 ): Promise<CommitBatchResult> {
   const user = await getSessionUser();
   if (!user || (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN")) {
-    return { created: 0, updated: 0, failures: [{ rollNumber: "—", error: "Not authorised." }] };
+    return {
+      created: 0,
+      updated: 0,
+      failures: [{ rollNumber: "—", error: "Not authorised." }],
+      needsPassword: [],
+    };
   }
 
   const parsed = batchSchema.safeParse({
@@ -165,7 +182,12 @@ export async function commitImportBatch(
     offset: formData.get("offset"),
   });
   if (!parsed.success) {
-    return { created: 0, updated: 0, failures: [{ rollNumber: "—", error: "Bad batch." }] };
+    return {
+      created: 0,
+      updated: 0,
+      failures: [{ rollNumber: "—", error: "Bad batch." }],
+      needsPassword: [],
+    };
   }
 
   const batch = JSON.parse(parsed.data.rows) as ImportRow[];
@@ -180,6 +202,7 @@ export async function commitImportBatch(
   let created = 0;
   let updated = 0;
   const failures: { rollNumber: string; error: string }[] = [];
+  const needsPassword: { rollNumber: string; fullName: string; temporaryPassword: string }[] = [];
 
   // Sequential: these are rate-limited Auth calls, and firing twenty at once is
   // the reliable way to have some rejected.
@@ -201,6 +224,15 @@ export async function commitImportBatch(
           continue;
         }
         created++;
+        // Everyone with a mobile number logs in with it and needs nothing
+        // handed over. Only the exceptions are carried back to the screen.
+        if (!result.passwordIsPhone) {
+          needsPassword.push({
+            rollNumber: result.rollNumber,
+            fullName: result.fullName,
+            temporaryPassword: result.temporaryPassword,
+          });
+        }
 
         // `createOneStudent` prices from the plan's list price; the file may
         // carry a discount, and what the student actually paid is the number a
@@ -271,5 +303,5 @@ export async function commitImportBatch(
   });
 
   revalidatePath("/admin/students");
-  return { created, updated, failures };
+  return { created, updated, failures, needsPassword };
 }

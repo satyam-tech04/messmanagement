@@ -122,22 +122,41 @@ function CredentialsIssued({ created }: { created: NonNullable<CreateStudentStat
           </div>
           <div className="flex items-center justify-between gap-4 px-4 py-3">
             <dt className="text-muted-foreground text-sm">Temporary password</dt>
-            <dd className="font-mono text-sm font-medium tracking-wide">
-              {created.temporaryPassword}
+            <dd className="text-right">
+              <span className="font-mono text-sm font-medium tracking-wide">
+                {created.temporaryPassword}
+              </span>
+              {/* Saying where it came from saves the admin writing down a
+                  number the student already carries. */}
+              {created.passwordIsPhone ? (
+                <span className="text-muted-foreground block text-xs">their mobile number</span>
+              ) : null}
             </dd>
           </div>
         </dl>
 
-        {/* Shown once and never recoverable — the admin must be told that
-            plainly, or they will close the page and raise a support ticket. */}
-        <div className="flex items-start gap-2.5 rounded-lg border border-amber-500/30 bg-amber-50 px-3.5 py-3 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-          <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-          <span>
-            This password is shown <strong>once</strong>. It cannot be retrieved later — if it is
-            lost, reset it from the student&apos;s page. The student must change it when they first
-            sign in.
-          </span>
-        </div>
+        {/* Two genuinely different situations, so two different messages.
+            Telling an admin to "write this down" when the password is the
+            student's own phone number is noise they will learn to ignore. */}
+        {created.passwordIsPhone ? (
+          <div className="flex items-start gap-2.5 rounded-lg border border-sky-500/30 bg-sky-50 px-3.5 py-3 text-sm text-sky-900 dark:bg-sky-950/40 dark:text-sky-200">
+            <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            <span>
+              Nothing to write down — just tell them to sign in with their{" "}
+              <strong>roll number</strong> and their <strong>10-digit mobile number</strong>. They
+              will be asked to set their own password straight away.
+            </span>
+          </div>
+        ) : (
+          <div className="flex items-start gap-2.5 rounded-lg border border-amber-500/30 bg-amber-50 px-3.5 py-3 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+            <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            <span>
+              No mobile number was given, so this password was generated and is shown{" "}
+              <strong>once</strong>. It cannot be retrieved later — if it is lost, reset it from the
+              student&apos;s page. The student must change it when they first sign in.
+            </span>
+          </div>
+        )}
 
         <div className="flex flex-wrap gap-2">
           <Button

@@ -104,9 +104,10 @@ function CredentialsPanel({ rows }: { rows: NonNullable<BulkCreateState["created
           {rows.length} {rows.length === 1 ? "student" : "students"} added
         </CardTitle>
         <CardDescription>
-          These passwords are shown <strong>once</strong> and are not stored anywhere you can read
-          them back. Copy them now — after this you can only reset a password, not recover it. Each
-          student must change theirs at first sign-in.
+          Anyone with a mobile number on file logs in with{" "}
+          <strong>their own 10-digit number</strong> — nothing to hand over, just tell them. The
+          rest were given a generated password, shown <strong>once</strong> below and not stored
+          anywhere you can read back. Everyone must set their own password at first sign-in.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -133,6 +134,17 @@ function CredentialsPanel({ rows }: { rows: NonNullable<BulkCreateState["created
                   </td>
                   <td className="px-3 py-2 font-mono font-semibold select-all">
                     {r.temporaryPassword}
+                    {/* Naming the source matters: an admin who reads "their
+                        mobile number" knows they need not write it down. */}
+                    {r.passwordIsPhone ? (
+                      <span className="text-muted-foreground block font-sans text-xs font-normal">
+                        their mobile number
+                      </span>
+                    ) : (
+                      <span className="block font-sans text-xs font-normal text-amber-700 dark:text-amber-400">
+                        no mobile on file — hand this over
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))}

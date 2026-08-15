@@ -15,7 +15,16 @@
  */
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { AlertCircle, Check, Download, FileUp, Loader2, Upload, UserPlus } from "lucide-react";
+import {
+  AlertCircle,
+  Check,
+  Copy,
+  Download,
+  FileUp,
+  Loader2,
+  Upload,
+  UserPlus,
+} from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,7 +49,63 @@ interface Progress {
   readonly created: number;
   readonly updated: number;
   readonly failures: readonly { rollNumber: string; error: string }[];
+  readonly needsPassword: readonly {
+    rollNumber: string;
+    fullName: string;
+    temporaryPassword: string;
+  }[];
   readonly finished: boolean;
+}
+
+/**
+ * The whole of onboarding, in one message.
+ *
+ * This exists because nothing needs distributing: every student's first
+ * password is a number they already know, so the entire hostel can be onboarded
+ * by pasting this into a group. Written out verbatim and copyable, rather than
+ * described, so the admin cannot accidentally announce a rule that differs from
+ * the one the system actually applies.
+ */
+function BroadcastMessage() {
+  const [copied, setCopied] = useState(false);
+  const url = typeof window === "undefined" ? "" : window.location.origin;
+
+  const message = [
+    `Mess app is live. Log in here: ${url}/login`,
+    ``,
+    `Username: your roll number`,
+    `Password: your 10-digit mobile number`,
+    ``,
+    `You will be asked to set your own password straight away. Do this today.`,
+  ].join("\n");
+
+  return (
+    <div className="rounded-lg border px-3.5 py-3">
+      <p className="mb-2 text-sm font-medium">Send this to your students</p>
+      <pre className="bg-muted text-foreground overflow-x-auto rounded-md px-3 py-2.5 font-sans text-sm whitespace-pre-wrap">
+        {message}
+      </pre>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="mt-2"
+        onClick={() => {
+          void navigator.clipboard.writeText(message).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+          });
+        }}
+      >
+        {copied ? (
+          <Check className="size-4" aria-hidden="true" />
+        ) : (
+          <Copy className="size-4" aria-hidden="true" />
+        )}
+        {copied ? "Copied" : "Copy message"}
+      </Button>
+    </div>
+  );
 }
 
 function PreviewButton() {
@@ -78,12 +143,14 @@ export function ImportClient({ planNames }: { planNames: readonly string[] }) {
       created: 0,
       updated: 0,
       failures: [],
+      needsPassword: [],
       finished: false,
     });
 
     let created = 0;
     let updated = 0;
     const failures: { rollNumber: string; error: string }[] = [];
+    const needsPassword: { rollNumber: string; fullName: string; temporaryPassword: string }[] = [];
 
     for (let offset = 0; offset < rows.length; offset += IMPORT_BATCH_SIZE) {
       const batch = rows.slice(offset, offset + IMPORT_BATCH_SIZE);
@@ -97,6 +164,7 @@ export function ImportClient({ planNames }: { planNames: readonly string[] }) {
       created += result.created;
       updated += result.updated;
       failures.push(...result.failures);
+      needsPassword.push(...result.needsPassword);
 
       setProgress({
         done: Math.min(offset + IMPORT_BATCH_SIZE, rows.length),
@@ -104,6 +172,7 @@ export function ImportClient({ planNames }: { planNames: readonly string[] }) {
         created,
         updated,
         failures: [...failures],
+        needsPassword: [...needsPassword],
         finished: false,
       });
     }
@@ -114,6 +183,7 @@ export function ImportClient({ planNames }: { planNames: readonly string[] }) {
       created,
       updated,
       failures,
+      needsPassword,
       finished: true,
     });
   }
@@ -150,19 +220,37 @@ export function ImportClient({ planNames }: { planNames: readonly string[] }) {
               </div>
             ) : null}
 
-            {/* New students each got a generated password that is not stored
-                readably. The roster export does not contain them, so this says
-                plainly what the next step is rather than leaving the admin to
-                discover nobody can log in. */}
-            {progress.created > 0 ? (
-              <p className="text-muted-foreground text-sm">
-                Imported students cannot sign in until they have a password. Open each student and
-                use <strong>Reset password</strong>, or add them through{" "}
-                <Link href="/admin/students/new" className="underline">
-                  Add students
-                </Link>{" "}
-                instead, which shows passwords as it creates them.
-              </p>
+            {/* The whole onboarding, in one message the admin can broadcast.
+                Nothing needs distributing because every student's password is a
+                number they already know. */}
+            {progress.created > 0 ? <BroadcastMessage /> : null}
+
+            {/* The exceptions: no mobile number on file, so these few DO have to
+                be handed over. Shown once — nothing stores them readably. */}
+            {progress.needsPassword.length > 0 ? (
+              <div className="rounded-lg border border-amber-500/40 bg-amber-50 px-3.5 py-3 text-sm dark:bg-amber-950/30">
+                <p className="mb-2 font-medium text-amber-900 dark:text-amber-200">
+                  {progress.needsPassword.length} student
+                  {progress.needsPassword.length === 1 ? " has" : "s have"} no mobile number on file
+                </p>
+                <p className="mb-2 text-amber-900/80 dark:text-amber-200/80">
+                  They cannot use the rule above. Give these out individually — they are shown once
+                  and are not stored anywhere you can read back.
+                </p>
+                <table className="w-full text-sm">
+                  <tbody className="divide-border divide-y">
+                    {progress.needsPassword.map((n) => (
+                      <tr key={n.rollNumber}>
+                        <td className="py-1.5 font-mono">{n.rollNumber}</td>
+                        <td className="py-1.5">{n.fullName}</td>
+                        <td className="py-1.5 font-mono font-semibold select-all">
+                          {n.temporaryPassword}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             ) : null}
 
             <div className="flex gap-2">

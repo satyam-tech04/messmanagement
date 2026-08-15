@@ -56,6 +56,7 @@ export interface CreateStudentState {
     readonly rollNumber: string;
     readonly fullName: string;
     readonly temporaryPassword: string;
+    readonly passwordIsPhone: boolean;
     /** Set when the student was created but the plan assignment failed. */
     readonly planWarning?: string;
   };
@@ -144,6 +145,7 @@ export async function createStudent(
       rollNumber: result.rollNumber,
       fullName: result.fullName,
       temporaryPassword: result.temporaryPassword,
+      passwordIsPhone: result.passwordIsPhone,
       planWarning: result.planWarning,
     },
   };
@@ -157,6 +159,8 @@ export interface BulkCreatedRow {
   readonly rollNumber: string;
   readonly fullName: string;
   readonly temporaryPassword: string;
+  /** False when there was no mobile number, so this one must be handed over. */
+  readonly passwordIsPhone: boolean;
   readonly planWarning?: string;
 }
 
@@ -283,6 +287,7 @@ export async function createStudentsBulk(
         rollNumber: result.rollNumber,
         fullName: result.fullName,
         temporaryPassword: result.temporaryPassword,
+        passwordIsPhone: result.passwordIsPhone,
         planWarning: result.planWarning,
       });
     } else {
