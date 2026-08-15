@@ -70,9 +70,10 @@ the pilot runs on it:
    _Skipping meals_ / _Time away_. Until then the student nav shows no Absences link and
    `/student/absences` 404s, which is the intended behaviour, not a bug.
 2. **Reporting, and the remaining exports** — student import and export are built
-   (`/admin/students/import`, `/admin/students/export`). Still to do: a one-time password
-   download for imported students, the renewals-due report, and the attendance / absence /
-   headcount exports. Full plan: [IMPORT-EXPORT.md](IMPORT-EXPORT.md).
+   (`/admin/students/import`, `/admin/students/export`), as are the subscriptions and revenue
+   exports under `/admin/reports`. Password delivery is solved — a student's first password is
+   their own mobile number. Still to do: the renewals-due report, and the attendance /
+   absence / headcount exports. Full plan: [IMPORT-EXPORT.md](IMPORT-EXPORT.md).
 3. **Gaps 9–14 from the review**: audit-log viewer, student attendance history, plans empty
    states, cross-tenant roll-number login, email notifications.
 4. **The deferred cleanup list** below — the repo is still public, and there is a general

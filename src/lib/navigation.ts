@@ -44,6 +44,10 @@ const ADMIN_NAV: readonly NavSection[] = [
     ],
   },
   {
+    heading: "Insight",
+    items: [{ label: "Reports", href: "/admin/reports", icon: "FileSpreadsheet" }],
+  },
+  {
     heading: "Finance",
     items: [
       {
