@@ -64,7 +64,7 @@ function ErrorBar({ state }: { state: PlanActionState }) {
 }
 
 /** Shared body for create and edit, so the two forms cannot drift apart. */
-function PlanFields({ plan }: { plan?: PlanRow }) {
+function PlanFields({ plan, servedSlots }: { plan?: PlanRow; servedSlots: readonly string[] }) {
   const [durationType, setDurationType] = useState<"MONTHLY" | "QUARTERLY">(
     plan?.durationType ?? "MONTHLY",
   );
@@ -160,29 +160,42 @@ function PlanFields({ plan }: { plan?: PlanRow }) {
       <fieldset className="space-y-2">
         <legend className="text-sm font-medium">Meals included</legend>
         <div className="grid grid-cols-2 gap-2">
-          {MEAL_SLOTS.map((slot) => (
-            <label
-              key={slot.value}
-              className="hover:bg-muted/50 flex cursor-pointer items-center gap-2.5 rounded-lg border px-3.5 py-2.5 text-sm"
-            >
-              <Checkbox
-                name="mealSlots"
-                value={slot.value}
-                defaultChecked={plan?.mealSlots.includes(slot.value)}
-              />
-              {slot.label}
-            </label>
-          ))}
+          {MEAL_SLOTS.map((slot) => {
+            // A meal with no window cannot be claimed, so offering it would let
+            // the admin promise something the counter will always refuse.
+            const served = servedSlots.includes(slot.value);
+            return (
+              <label
+                key={slot.value}
+                className={cn(
+                  "flex items-center gap-2.5 rounded-lg border px-3.5 py-2.5 text-sm",
+                  served ? "hover:bg-muted/50 cursor-pointer" : "cursor-not-allowed opacity-50",
+                )}
+              >
+                <Checkbox
+                  name="mealSlots"
+                  value={slot.value}
+                  disabled={!served}
+                  defaultChecked={served && plan?.mealSlots.includes(slot.value)}
+                />
+                <span className="flex-1">{slot.label}</span>
+                {served ? null : (
+                  <span className="text-muted-foreground text-[10px]">not served</span>
+                )}
+              </label>
+            );
+          })}
         </div>
         <p className="text-muted-foreground text-xs">
-          Only these meals can be claimed at the counter under this plan.
+          Greyed-out meals have no times set. Add them under Settings first if this plan should
+          cover them.
         </p>
       </fieldset>
     </div>
   );
 }
 
-export function CreatePlanDialog() {
+export function CreatePlanDialog({ servedSlots }: { servedSlots: readonly string[] }) {
   const [state, formAction] = useActionState<PlanActionState, FormData>(createPlan, {});
   const [open, setOpen] = useState(false);
 
@@ -206,7 +219,7 @@ export function CreatePlanDialog() {
             </DialogDescription>
           </DialogHeader>
 
-          <PlanFields />
+          <PlanFields servedSlots={servedSlots} />
           <ErrorBar state={state} />
 
           <DialogFooter className="pt-4">
@@ -221,7 +234,13 @@ export function CreatePlanDialog() {
   );
 }
 
-export function EditPlanDialog({ plan }: { plan: PlanRow }) {
+export function EditPlanDialog({
+  plan,
+  servedSlots,
+}: {
+  plan: PlanRow;
+  servedSlots: readonly string[];
+}) {
   const [state, formAction] = useActionState<PlanActionState, FormData>(
     updatePlan.bind(null, plan.id),
     {},
@@ -253,7 +272,7 @@ export function EditPlanDialog({ plan }: { plan: PlanRow }) {
             </DialogDescription>
           </DialogHeader>
 
-          <PlanFields plan={plan} />
+          <PlanFields plan={plan} servedSlots={servedSlots} />
           <ErrorBar state={state} />
 
           <DialogFooter className="pt-4">

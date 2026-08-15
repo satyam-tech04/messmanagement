@@ -24,6 +24,7 @@ const validDraft: PlanDraftInput = {
   durationType: "MONTHLY",
   durationDays: 30,
   mealSlots: [MealSlot.LUNCH, MealSlot.DINNER],
+  servedSlots: [MealSlot.LUNCH, MealSlot.DINNER],
 };
 
 describe("parsePlanDraft — authorization", () => {
@@ -122,11 +123,66 @@ describe("parsePlanDraft — name, duration and slots", () => {
     const r = parsePlanDraft({
       ...validDraft,
       mealSlots: [MealSlot.DINNER, MealSlot.BREAKFAST, MealSlot.LUNCH],
+      // This mess serves breakfast too, so the test exercises ordering rather
+      // than tripping the "meal not served here" rule.
+      servedSlots: [MealSlot.BREAKFAST, MealSlot.LUNCH, MealSlot.DINNER],
     });
     expect(r.ok).toBe(true);
     if (r.ok) {
       expect(r.value.mealSlots).toEqual([MealSlot.BREAKFAST, MealSlot.LUNCH, MealSlot.DINNER]);
     }
+  });
+});
+
+describe("parsePlanDraft — a plan may only include meals the mess serves", () => {
+  it("rejects a meal the mess does not serve", () => {
+    // The mess serves lunch and dinner. A plan promising breakfast is a promise
+    // it cannot keep: the student is told they have breakfast, no breakfast
+    // window exists, and they are refused at a counter that never opens.
+    const r = parsePlanDraft({
+      ...validDraft,
+      mealSlots: [MealSlot.BREAKFAST, MealSlot.LUNCH, MealSlot.SNACKS, MealSlot.DINNER],
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error.code).toBe("SLOT_NOT_SERVED");
+  });
+
+  it("names the offending meals so the admin knows what to untick", () => {
+    const r = parsePlanDraft({
+      ...validDraft,
+      mealSlots: [MealSlot.BREAKFAST, MealSlot.LUNCH, MealSlot.SNACKS],
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.error.message.toLowerCase()).toContain("breakfast");
+      expect(r.error.message.toLowerCase()).toContain("snacks");
+    }
+  });
+
+  it("accepts a plan covering a subset of what the mess serves", () => {
+    const r = parsePlanDraft({ ...validDraft, mealSlots: [MealSlot.DINNER] });
+    expect(r.ok).toBe(true);
+  });
+
+  it("accepts breakfast once the mess actually serves it", () => {
+    const r = parsePlanDraft({
+      ...validDraft,
+      mealSlots: [MealSlot.BREAKFAST, MealSlot.LUNCH],
+      servedSlots: [MealSlot.BREAKFAST, MealSlot.LUNCH, MealSlot.DINNER],
+    });
+    expect(r.ok).toBe(true);
+  });
+
+  it("keeps the per-meal rate honest by construction", () => {
+    // The rate divides the price by slots x days. Counting a meal that can
+    // never be claimed halves the rate, and every mess-cut credit derived from
+    // it would be wrong. Refusing the plan is what prevents that.
+    const bad = parsePlanDraft({
+      ...validDraft,
+      priceRupees: 5200,
+      mealSlots: [MealSlot.BREAKFAST, MealSlot.LUNCH, MealSlot.SNACKS, MealSlot.DINNER],
+    });
+    expect(bad.ok).toBe(false);
   });
 });
 

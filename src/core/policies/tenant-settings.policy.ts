@@ -30,6 +30,16 @@ export interface TenantSettingsInput {
   readonly mealSlots: readonly MealSlotInput[];
   readonly qrTokenTtlSeconds: number;
   readonly qrRefreshSeconds: number;
+  /**
+   * Slots that **active plans** still offer.
+   *
+   * Deliberately not derived from subscription snapshots. A snapshot is frozen
+   * history — what a student already agreed to — and can never be edited, so
+   * including it would make any settings change permanently impossible once a
+   * single old subscription mentioned a meal. Active plans are editable, which
+   * gives the admin a way out: retire or edit the plan, then change the times.
+   */
+  readonly slotsInUse: readonly MealSlot[];
 }
 
 export interface TenantSettingsDraft {
@@ -127,6 +137,21 @@ export function parseTenantSettings(
         );
       }
     }
+  }
+
+  // Removing a meal is not symmetrical with adding one: nothing can depend on a
+  // slot that did not exist, but plenty depends on one that did.
+  const configured = new Set(parsed.map((p) => p.slot));
+  const dropped = input.slotsInUse.filter((slot) => !configured.has(slot));
+  if (dropped.length > 0) {
+    const names = dropped.map((s) => s.toLowerCase()).join(" and ");
+    return err(
+      domainError(
+        "CONFLICT",
+        `An active plan still offers ${names}. Edit or retire that plan first, then stop serving ${dropped.length > 1 ? "those meals" : "it"}.`,
+        { slots: dropped.join(",") },
+      ),
+    );
   }
 
   if (

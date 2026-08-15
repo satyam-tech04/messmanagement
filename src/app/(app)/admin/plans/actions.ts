@@ -12,6 +12,8 @@ import { z } from "zod";
 import { ALL_MEAL_SLOTS, type MealSlot } from "@/core/domain/enums";
 import { parsePlanDraft } from "@/core/policies/plan.policy";
 import { createAdminClient } from "@/infra/supabase/admin";
+import { createClient } from "@/infra/supabase/server";
+import { SupabaseTenantRepository } from "@/infra/supabase/repositories";
 import { getSessionUser } from "@/infra/auth/session";
 import { SupabaseAuditLogRepository } from "@/infra/supabase/repositories";
 
@@ -45,6 +47,20 @@ function readForm(formData: FormData) {
   });
 }
 
+/**
+ * The meals this mess actually serves.
+ *
+ * A plan may only promise these — see parsePlanDraft. Loaded per call rather
+ * than cached, because an admin may have just added a meal in Settings and
+ * expects to use it immediately.
+ */
+async function servedSlotsFor(tenantId: string): Promise<MealSlot[] | null> {
+  const supabase = await createClient();
+  const admin = createAdminClient();
+  const settings = await new SupabaseTenantRepository(supabase, admin).getSettings(tenantId);
+  return settings ? settings.mealSlots.map((s) => s.slot) : null;
+}
+
 export async function createPlan(
   _prev: PlanActionState,
   formData: FormData,
@@ -57,10 +73,14 @@ export async function createPlan(
     return { error: parsed.error.issues[0]?.message ?? "Check the form." };
   }
 
+  const servedSlots = await servedSlotsFor(user.tenantId);
+  if (!servedSlots) return { error: "This mess has no meal times configured yet." };
+
   const priceRupees = Number(parsed.data.priceRupees);
   const draft = parsePlanDraft({
     actorRole: user.role,
     name: parsed.data.name,
+    servedSlots,
     priceRupees,
     durationType: parsed.data.durationType,
     durationDays: parsed.data.durationDays,
@@ -124,9 +144,13 @@ export async function updatePlan(
     return { error: parsed.error.issues[0]?.message ?? "Check the form." };
   }
 
+  const servedSlots = await servedSlotsFor(user.tenantId);
+  if (!servedSlots) return { error: "This mess has no meal times configured yet." };
+
   const draft = parsePlanDraft({
     actorRole: user.role,
     name: parsed.data.name,
+    servedSlots,
     priceRupees: Number(parsed.data.priceRupees),
     durationType: parsed.data.durationType,
     durationDays: parsed.data.durationDays,

@@ -48,15 +48,28 @@ export async function updateSettings(
     }),
   );
 
+  // Only what ACTIVE PLANS still offer. Subscription snapshots are frozen
+  // history and can never be edited, so keying on them would deadlock this
+  // screen forever the moment one old subscription mentioned a meal.
+  const admin = createAdminClient();
+  const { data: activePlans } = await admin
+    .from("plans")
+    .select("included_meal_slots")
+    .eq("tenant_id", user.tenantId)
+    .eq("is_active", true);
+
+  const slotsInUse = [
+    ...new Set((activePlans ?? []).flatMap((p) => p.included_meal_slots as MealSlot[])),
+  ];
+
   const draft = parseTenantSettings({
     actorRole: user.role,
     mealSlots,
+    slotsInUse,
     qrTokenTtlSeconds: parsed.data.qrTokenTtlSeconds,
     qrRefreshSeconds: parsed.data.qrRefreshSeconds,
   });
   if (!draft.ok) return { error: draft.error.message };
-
-  const admin = createAdminClient();
 
   const { data: before } = await admin
     .from("tenant_settings")

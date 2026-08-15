@@ -42,6 +42,13 @@ export interface PlanDraftInput {
   readonly durationType: PlanDuration;
   readonly durationDays: number;
   readonly mealSlots: readonly MealSlot[];
+  /**
+   * The slots this mess actually serves, from tenant settings.
+   *
+   * A plan promising a meal with no window is a promise the mess cannot keep,
+   * and it corrupts the per-meal rate — see the check below.
+   */
+  readonly servedSlots: readonly MealSlot[];
 }
 
 export interface PlanDraft {
@@ -96,6 +103,26 @@ export function parsePlanDraft(input: PlanDraftInput): Result<PlanDraft, DomainE
   const mealSlots = normalizeMealSlots(input.mealSlots);
   if (mealSlots.length === 0) {
     return err(domainError("VALIDATION_FAILED", "Choose at least one meal for this plan."));
+  }
+
+  // Two things go wrong when a plan includes a meal the mess does not serve.
+  //
+  // The student is told their plan covers breakfast, no breakfast window
+  // exists, and they are refused at a counter that never opens. And the
+  // per-meal rate divides the price by slots x days, so counting an
+  // unclaimable meal understates the rate — a 5,200 plan over 90 days reads as
+  // 14.44 a meal instead of 28.88, and every mess-cut credit derived from it
+  // would be wrong.
+  const unserved = mealSlots.filter((slot) => !input.servedSlots.includes(slot));
+  if (unserved.length > 0) {
+    const names = unserved.map((s) => s.toLowerCase()).join(" and ");
+    return err(
+      domainError(
+        "SLOT_NOT_SERVED",
+        `This mess does not serve ${names}. Either untick ${unserved.length > 1 ? "them" : "it"}, or add the meal times under Settings first.`,
+        { slots: unserved.join(",") },
+      ),
+    );
   }
 
   return ok({
