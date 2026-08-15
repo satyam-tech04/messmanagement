@@ -487,3 +487,96 @@ export async function endSubscription(
 
   return { success: "Plan ended. You can now assign a new one." };
 }
+
+// --- Photo -----------------------------------------------------------------
+
+/** Matches the bucket's own limit, so the failure is caught before the upload. */
+const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
+const ALLOWED_PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
+/**
+ * Uploads the photo staff see at the counter.
+ *
+ * §6.3: the QR proves possession of a phone, not identity. Without a face on
+ * the scanner, a student can hand their phone to a friend and nobody can tell.
+ */
+export async function uploadStudentPhoto(
+  studentId: string,
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const loaded = await loadOwnedStudent(studentId);
+  if ("error" in loaded) return { error: loaded.error };
+  const { user, admin, student } = loaded;
+
+  const file = formData.get("photo");
+  if (!(file instanceof File) || file.size === 0) return { error: "Choose a photo first." };
+  if (file.size > MAX_PHOTO_BYTES) {
+    return { error: "That image is larger than 2 MB. Use a smaller photo." };
+  }
+  if (!ALLOWED_PHOTO_TYPES.includes(file.type)) {
+    return { error: "Use a JPEG, PNG or WebP image." };
+  }
+
+  // The tenant id is the first path segment, which is what the storage policies
+  // match on — so the layout itself carries the tenancy boundary.
+  const path = `${user.tenantId}/${student.id}`;
+
+  const { error: uploadError } = await admin.storage
+    .from("student-photos")
+    .upload(path, file, { upsert: true, contentType: file.type });
+
+  if (uploadError) return { error: `Could not upload: ${uploadError.message}` };
+
+  const { error: linkError } = await admin
+    .from("profiles")
+    .update({ photo_url: path })
+    .eq("id", student.profile_id)
+    .eq("tenant_id", user.tenantId);
+
+  if (linkError) {
+    // The file is stored but nothing points at it. Say so rather than claiming
+    // success, or staff will wonder why the counter shows no face.
+    return { error: `Uploaded, but could not attach it to the student: ${linkError.message}` };
+  }
+
+  await new SupabaseAuditLogRepository(admin).write({
+    tenantId: user.tenantId,
+    actorProfileId: user.actorProfileId,
+    action: "STUDENT_PHOTO_UPDATED",
+    entityType: "student",
+    entityId: student.id,
+    after: { rollNumber: student.roll_number },
+  });
+
+  revalidatePath(`/admin/students/${student.id}`);
+  return { success: "Photo saved. Staff will see it at the counter." };
+}
+
+export async function removeStudentPhoto(studentId: string): Promise<ActionState> {
+  const loaded = await loadOwnedStudent(studentId);
+  if ("error" in loaded) return { error: loaded.error };
+  const { user, admin, student } = loaded;
+
+  await admin.storage.from("student-photos").remove([`${user.tenantId}/${student.id}`]);
+
+  const { error } = await admin
+    .from("profiles")
+    .update({ photo_url: null })
+    .eq("id", student.profile_id)
+    .eq("tenant_id", user.tenantId);
+
+  if (error) return { error: `Could not remove the photo: ${error.message}` };
+
+  await new SupabaseAuditLogRepository(admin).write({
+    tenantId: user.tenantId,
+    actorProfileId: user.actorProfileId,
+    action: "STUDENT_PHOTO_REMOVED",
+    entityType: "student",
+    entityId: student.id,
+    before: { rollNumber: student.roll_number },
+  });
+
+  revalidatePath(`/admin/students/${student.id}`);
+  return { success: "Photo removed." };
+}

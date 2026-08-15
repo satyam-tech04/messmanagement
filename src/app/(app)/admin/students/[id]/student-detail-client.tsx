@@ -2,7 +2,17 @@
 
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { AlertCircle, Check, Copy, KeyRound, Loader2, Save, ShieldAlert } from "lucide-react";
+import {
+  AlertCircle,
+  Check,
+  Copy,
+  KeyRound,
+  Loader2,
+  Save,
+  ShieldAlert,
+  Upload,
+  UserRound,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,9 +30,11 @@ import {
 import { StatusBadge } from "@/components/status-badge";
 import { cn } from "@/lib/utils";
 import {
+  removeStudentPhoto,
   resetStudentPassword,
   updateStudentDetails,
   updateStudentStatus,
+  uploadStudentPhoto,
   type ActionState,
 } from "./actions";
 
@@ -410,6 +422,97 @@ export function ResetPasswordCard({ student }: { student: StudentDetail }) {
             </DialogContent>
           </Dialog>
         ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+// --- Photo ----------------------------------------------------------------
+
+/**
+ * The face staff see at the counter (§6.3).
+ *
+ * The QR proves possession of a phone, not identity — without this, a student
+ * can hand their phone to a friend and nobody at the counter can tell.
+ */
+export function PhotoCard({ student, hasPhoto }: { student: StudentDetail; hasPhoto: boolean }) {
+  const [state, formAction] = useActionState<ActionState, FormData>(
+    uploadStudentPhoto.bind(null, student.id),
+    {},
+  );
+  const [removing, setRemoving] = useState(false);
+  const [removed, setRemoved] = useState(false);
+  const showing = hasPhoto && !removed;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Photo</CardTitle>
+        <CardDescription>
+          Shown to staff when this student is served, so they can check the phone belongs to the
+          person holding it.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center gap-4">
+          <div className="bg-muted flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border">
+            {showing ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={`/api/students/${student.id}/photo`}
+                alt={`${student.fullName}`}
+                className="size-full object-cover"
+              />
+            ) : (
+              <UserRound className="text-muted-foreground size-8" aria-hidden="true" />
+            )}
+          </div>
+
+          <form action={formAction} className="min-w-0 flex-1 space-y-2">
+            <Label htmlFor="photo" className="sr-only">
+              Photo
+            </Label>
+            <Input
+              id="photo"
+              name="photo"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="text-sm"
+            />
+            <div className="flex flex-wrap gap-2">
+              <Button type="submit" size="sm">
+                <Pending
+                  idle={
+                    <>
+                      <Upload className="size-4" aria-hidden="true" />
+                      {showing ? "Replace photo" : "Upload photo"}
+                    </>
+                  }
+                  busy="Uploading…"
+                />
+              </Button>
+              {showing ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={removing}
+                  onClick={async () => {
+                    setRemoving(true);
+                    const result = await removeStudentPhoto(student.id);
+                    setRemoving(false);
+                    if (!result.error) setRemoved(true);
+                  }}
+                >
+                  {removing ? "Removing…" : "Remove"}
+                </Button>
+              ) : null}
+            </div>
+            <p className="text-muted-foreground text-xs">JPEG, PNG or WebP, up to 2 MB.</p>
+          </form>
+        </div>
+
+        <Feedback state={state} />
       </CardContent>
     </Card>
   );

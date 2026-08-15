@@ -20,7 +20,7 @@ conversation: everything needed to continue correctly is here or linked from her
 | ------------------------------------- | ------------------------------------------------------------------- |
 | Repo, tooling, CI, import boundaries  | ✅ `npm run verify` green                                           |
 | Core domain (pure, no I/O)            | ✅ **460 tests**, 99%+ coverage                                     |
-| Database schema                       | ✅ migrations 001–006 **applied + sealed** on the live project      |
+| Database schema                       | ✅ migrations 001–007 **applied + sealed** on the live project      |
 | JWT auth hook                         | ✅ enabled and verified end-to-end                                  |
 | Generated DB types                    | ✅ `src/infra/supabase/database.types.ts` (incl. RPC Functions)     |
 | Infrastructure layer (`src/infra`)    | ✅ env, clients, HMAC signer, 7 repositories                        |

@@ -23,6 +23,7 @@ import { createClient } from "@/infra/supabase/server";
 import { formatDateTime, formatRelativeDay, formatServiceDate, todayIn } from "@/lib/format";
 import {
   EditDetailsCard,
+  PhotoCard,
   ResetPasswordCard,
   StatusCard,
   type StudentDetail,
@@ -47,7 +48,7 @@ export default async function StudentDetailPage(props: PageProps<"/admin/student
     .from("students")
     .select(
       `id, roll_number, block, room_number, status, joined_at,
-       profiles!inner ( full_name, phone, email, must_change_password ),
+       profiles!inner ( full_name, phone, email, must_change_password, photo_url ),
        subscriptions ( id, status, start_date, end_date, price_paise_snapshot,
                        included_meal_slots_snapshot, plans ( name ) )`,
     )
@@ -91,6 +92,7 @@ export default async function StudentDetailPage(props: PageProps<"/admin/student
     phone: string | null;
     email: string | null;
     must_change_password: boolean;
+    photo_url: string | null;
   };
 
   const subscriptions = (student.subscriptions ?? []) as unknown as Array<{
@@ -272,6 +274,7 @@ export default async function StudentDetailPage(props: PageProps<"/admin/student
         </CardContent>
       </Card>
 
+      <PhotoCard student={detail} hasPhoto={Boolean(profile.photo_url)} />
       <EditDetailsCard student={detail} />
       <StatusCard student={detail} />
       <ResetPasswordCard student={detail} />

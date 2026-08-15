@@ -34,5 +34,11 @@
     "state": "applied",
     "appliedTo": "yenxlcrtlmnfotfqqabo",
     "appliedAt": "2026-08-15"
+  },
+  "20260815000007_student_photos.sql": {
+    "sha256": "1625b5724277c9dd1860b8bc4a891fbb062dac4c7d08074432b9f85c49d7775b",
+    "state": "applied",
+    "appliedTo": "yenxlcrtlmnfotfqqabo",
+    "appliedAt": "2026-08-15"
   }
 }

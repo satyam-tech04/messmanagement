@@ -152,8 +152,9 @@ export async function POST(request: Request) {
       studentId: served.studentId,
       rollNumber: served.rollNumber,
       fullName: served.fullName,
-      // Staff must see this: the QR proves possession of a phone, not identity.
-      photoUrl: served.photoUrl,
+      // The stored value is a private storage path, never a public URL. Hand
+      // the scanner a route it can authorise against instead (§6.3).
+      photoUrl: served.photoUrl ? `/api/students/${served.studentId}/photo` : null,
       mealSlot: served.mealSlot,
       serviceDate: served.serviceDate,
       servedAt: served.servedAt.toISOString(),

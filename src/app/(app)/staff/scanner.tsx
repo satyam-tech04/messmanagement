@@ -361,9 +361,14 @@ export function Scanner({ deviceId, timeZone }: { deviceId: string; timeZone: st
                   <img
                     src={result.response.photoUrl}
                     alt=""
-                    className="size-20 rounded-full border-2 border-white/80 object-cover"
+                    className="size-24 rounded-full border-2 border-white/80 object-cover"
                   />
-                ) : null}
+                ) : (
+                  // Say so rather than showing nothing: staff need to know the
+                  // identity check is unavailable for this student, not assume
+                  // the face simply failed to load.
+                  <p className="text-xs opacity-80">No photo on file — check their ID</p>
+                )}
                 <div>
                   <p className="text-xl font-semibold">{result.response.fullName}</p>
                   <p className="font-mono text-sm opacity-90">{result.response.rollNumber}</p>
