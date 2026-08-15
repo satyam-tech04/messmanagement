@@ -13,6 +13,8 @@ import { StatusBadge } from "@/components/status-badge";
 import { TableEmpty, TableError, TableFooterBar, TableShell } from "@/components/data-table";
 import { formatPaise, perMealPaise, toPaise } from "@/core/money";
 import { planMealsInPeriod } from "@/core/policies/plan.policy";
+import { subscriptionStateOf } from "@/core/policies/subscription-state";
+import { serviceDateOf, toServiceDate } from "@/core/time";
 import { requireSessionUser } from "@/infra/auth/session";
 import { createAdminClient } from "@/infra/supabase/admin";
 import { SupabaseTenantRepository } from "@/infra/supabase/repositories";
@@ -28,6 +30,7 @@ export default async function PlansPage() {
   const supabase = await createClient();
   const admin = createAdminClient();
 
+  const today = serviceDateOf(user.timezone, new Date());
   const settings = await new SupabaseTenantRepository(supabase, admin).getSettings(user.tenantId);
   const servedSlots: readonly string[] = (settings?.mealSlots ?? []).map((s) => s.slot);
 
@@ -35,7 +38,7 @@ export default async function PlansPage() {
     .from("plans")
     .select(
       `id, name, price_paise, duration_type, duration_days, included_meal_slots, is_active,
-       subscriptions ( id, status )`,
+       subscriptions ( id, status, start_date, end_date )`,
     )
     .eq("tenant_id", user.tenantId)
     // Active first, then cheapest — the picker order an admin expects.
@@ -43,7 +46,12 @@ export default async function PlansPage() {
     .order("price_paise", { ascending: true });
 
   const plans: PlanRow[] = (data ?? []).map((p) => {
-    const subs = (p.subscriptions ?? []) as unknown as Array<{ id: string; status: string }>;
+    const subs = (p.subscriptions ?? []) as unknown as Array<{
+      id: string;
+      status: string;
+      start_date: string;
+      end_date: string;
+    }>;
     return {
       id: p.id,
       name: p.name,
@@ -52,7 +60,20 @@ export default async function PlansPage() {
       durationDays: p.duration_days,
       mealSlots: p.included_meal_slots,
       isActive: p.is_active,
-      subscriberCount: subs.filter((s) => s.status === "ACTIVE").length,
+      // Students actually on this plan today. Counting rows that merely say
+      // ACTIVE would include plans that finished weeks ago, and the retire
+      // dialog would warn about students who are no longer affected.
+      subscriberCount: subs.filter(
+        (s) =>
+          subscriptionStateOf(
+            {
+              status: s.status,
+              startDate: toServiceDate(s.start_date),
+              endDate: toServiceDate(s.end_date),
+            },
+            today,
+          ) === "RUNNING",
+      ).length,
     };
   });
 

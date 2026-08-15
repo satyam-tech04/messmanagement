@@ -42,6 +42,9 @@ const STATUS_TONES: Record<string, StatusTone> = {
   CANCELLED: "neutral",
   // Plans — retired means "not offered to anyone new", not "cancelled"
   RETIRED: "neutral",
+  // Derived subscription states (see subscription-state.ts). "Starts later" is
+  // informational, not a problem, so it is blue rather than amber.
+  "STARTS LATER": "info",
   // Invoices (Phase 2)
   PAID: "success",
   PARTIALLY_PAID: "warning",

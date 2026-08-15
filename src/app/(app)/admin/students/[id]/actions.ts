@@ -18,7 +18,8 @@ import type { MealSlot, StudentStatus } from "@/core/domain/enums";
 import { toPaise } from "@/core/money";
 import { activateSubscription } from "@/core/policies/plan.policy";
 import { changeStudentStatus } from "@/core/policies/student-admin.policy";
-import { toServiceDate } from "@/core/time";
+import { isReplaceable, subscriptionStateOf } from "@/core/policies/subscription-state";
+import { serviceDateOf, toServiceDate } from "@/core/time";
 import { createAdminClient } from "@/infra/supabase/admin";
 import { getSessionUser } from "@/infra/auth/session";
 import { SupabaseAuditLogRepository } from "@/infra/supabase/repositories";
@@ -318,18 +319,58 @@ export async function assignPlan(
 
   if (!plan) return { error: "That plan does not exist in this mess." };
 
-  const { count } = await admin
+  // Nothing marks a finished plan EXPIRED (that job is Phase 2), so a row can
+  // sit at ACTIVE months after it ended. Judge by the dates, and retire an
+  // already-finished one rather than making the admin "End plan" on something
+  // that ended weeks ago.
+  const today = serviceDateOf(user.timezone, new Date());
+  const { data: existing } = await admin
     .from("subscriptions")
-    .select("id", { count: "exact", head: true })
+    .select("id, status, start_date, end_date")
     .eq("tenant_id", user.tenantId)
     .eq("student_id", student.id)
-    .eq("status", "ACTIVE");
+    .eq("status", "ACTIVE")
+    .maybeSingle();
+
+  const current = existing
+    ? {
+        status: existing.status,
+        startDate: toServiceDate(existing.start_date),
+        endDate: toServiceDate(existing.end_date),
+      }
+    : null;
+
+  if (existing && !isReplaceable(current, today)) {
+    const state = subscriptionStateOf(current!, today);
+    return {
+      error:
+        state === "SCHEDULED"
+          ? "This student already has a plan scheduled to start. End it before assigning another."
+          : "This student already has an active plan. End it before assigning another.",
+    };
+  }
+
+  // Retire the finished one so the unique index has room. Its dates and frozen
+  // price are untouched — only the status moves ACTIVE -> EXPIRED, which is a
+  // legal transition and what the Phase 2 job will do anyway.
+  if (existing) {
+    const { error: expireError } = await admin
+      .from("subscriptions")
+      .update({ status: "EXPIRED" })
+      .eq("id", existing.id)
+      .eq("status", "ACTIVE");
+    if (expireError) {
+      return { error: `Could not retire the previous plan: ${expireError.message}` };
+    }
+  }
+
+  const count = 0;
 
   // The policy decides; this action only gathers the facts it needs.
   const decision = activateSubscription({
     actorRole: user.role,
     studentStatus: student.status as StudentStatus,
-    hasActiveSubscription: (count ?? 0) > 0,
+    hasActiveSubscription: count > 0,
     plan: {
       id: plan.id,
       isActive: plan.is_active,

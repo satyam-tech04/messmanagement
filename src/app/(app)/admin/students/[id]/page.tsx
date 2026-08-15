@@ -17,6 +17,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { TableEmpty, TableShell } from "@/components/data-table";
 import { formatPaise, toPaise } from "@/core/money";
 import { toServiceDate } from "@/core/time";
+import { subscriptionStateLabel, subscriptionStateOf } from "@/core/policies/subscription-state";
 import { requireSessionUser } from "@/infra/auth/session";
 import { createClient } from "@/infra/supabase/server";
 import { formatDateTime, formatRelativeDay, formatServiceDate, todayIn } from "@/lib/format";
@@ -124,7 +125,17 @@ export default async function StudentDetailPage(props: PageProps<"/admin/student
   };
 
   const today = todayIn(user.timezone);
-  const active = subscriptions.find((s) => s.status === "ACTIVE");
+  // Derived, not trusted — see subscription-state.ts.
+  const stateOf = (s: { status: string; start_date: string; end_date: string }) =>
+    subscriptionStateOf(
+      {
+        status: s.status,
+        startDate: toServiceDate(s.start_date),
+        endDate: toServiceDate(s.end_date),
+      },
+      today,
+    );
+  const active = subscriptions.find((s) => stateOf(s) === "RUNNING");
 
   // Only offered when there is no active plan — the database enforces one at a
   // time, so showing the button otherwise would promise something that fails.
@@ -221,7 +232,7 @@ export default async function StudentDetailPage(props: PageProps<"/admin/student
                       </TableCell>
                       <TableCell className="text-sm tabular-nums">
                         {formatServiceDate(s.start_date)} — {formatServiceDate(s.end_date)}
-                        {s.status === "ACTIVE" ? (
+                        {stateOf(s) === "RUNNING" ? (
                           <span className="text-muted-foreground block text-xs">
                             {formatRelativeDay(toServiceDate(s.end_date), today, {
                               withCountdown: true,
@@ -233,10 +244,10 @@ export default async function StudentDetailPage(props: PageProps<"/admin/student
                         {formatPaise(toPaise(s.price_paise_snapshot))}
                       </TableCell>
                       <TableCell>
-                        <StatusBadge status={s.status} />
+                        <StatusBadge status={subscriptionStateLabel(stateOf(s)).toUpperCase()} />
                       </TableCell>
                       <TableCell className="text-right">
-                        {s.status === "ACTIVE" ? (
+                        {stateOf(s) === "RUNNING" ? (
                           <EndPlanButton
                             studentId={student.id}
                             subscriptionId={s.id}

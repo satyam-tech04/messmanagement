@@ -15,6 +15,7 @@ import { TableEmpty, TableError, TableShell } from "@/components/data-table";
 import { formatPaise, perMealPaise, toPaise } from "@/core/money";
 import { planMealsInPeriod } from "@/core/policies/plan.policy";
 import { toServiceDate } from "@/core/time";
+import { subscriptionStateLabel, subscriptionStateOf } from "@/core/policies/subscription-state";
 import { requireSessionUser } from "@/infra/auth/session";
 import { createClient } from "@/infra/supabase/server";
 import { formatRelativeDay, formatServiceDate, todayIn } from "@/lib/format";
@@ -48,7 +49,18 @@ export default async function StudentPlanPage() {
     plans: { name: string; duration_days: number } | null;
   }>;
 
-  const active = subscriptions.find((s) => s.status === "ACTIVE");
+  const stateOf = (s: { status: string; start_date: string; end_date: string }) =>
+    subscriptionStateOf(
+      {
+        status: s.status,
+        startDate: toServiceDate(s.start_date),
+        endDate: toServiceDate(s.end_date),
+      },
+      today,
+    );
+  // Derived from the dates — a plan that ended is over even though nothing has
+  // marked the row EXPIRED yet.
+  const active = subscriptions.find((s) => stateOf(s) === "RUNNING");
   const past = subscriptions.filter((s) => s.id !== active?.id);
 
   return (
@@ -77,7 +89,7 @@ export default async function StudentPlanPage() {
                 <CardTitle>{active.plans?.name ?? "Meal plan"}</CardTitle>
                 <CardDescription>Your current subscription.</CardDescription>
               </div>
-              <StatusBadge status={active.status} />
+              <StatusBadge status={subscriptionStateLabel(stateOf(active)).toUpperCase()} />
             </div>
           </CardHeader>
           <CardContent>
@@ -181,7 +193,7 @@ export default async function StudentPlanPage() {
                         {formatPaise(toPaise(s.price_paise_snapshot))}
                       </TableCell>
                       <TableCell>
-                        <StatusBadge status={s.status} />
+                        <StatusBadge status={subscriptionStateLabel(stateOf(s)).toUpperCase()} />
                       </TableCell>
                     </TableRow>
                   ))}

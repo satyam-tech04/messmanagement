@@ -16,6 +16,8 @@ import { TableEmpty, TableError, TableFooterBar, TableShell } from "@/components
 import { requireSessionUser } from "@/infra/auth/session";
 import { createClient } from "@/infra/supabase/server";
 import { formatServiceDate } from "@/lib/format";
+import { subscriptionStateOf } from "@/core/policies/subscription-state";
+import { serviceDateOf, toServiceDate } from "@/core/time";
 import { StudentsFilters } from "./students-filters";
 
 export const metadata: Metadata = { title: "Students · Mess OS" };
@@ -70,7 +72,7 @@ export default async function StudentsPage(props: {
     .select(
       `id, roll_number, block, room_number, status, joined_at,
        profiles!inner ( full_name, phone ),
-       subscriptions ( status, end_date )`,
+       subscriptions ( status, start_date, end_date )`,
       { count: "exact" },
     )
     // Explicit tenant filter even though RLS enforces it — the application
@@ -86,6 +88,8 @@ export default async function StudentsPage(props: {
     }
     query = query.or(clauses.join(","));
   }
+
+  const today = serviceDateOf(user.timezone, new Date());
 
   const { data, count, error } = await query
     .order("roll_number", { ascending: true })
@@ -159,9 +163,25 @@ export default async function StudentsPage(props: {
                 } | null;
                 const subs = (s.subscriptions ?? []) as unknown as Array<{
                   status: string;
+                  start_date: string;
                   end_date: string;
                 }>;
-                const active = subs.find((x) => x.status === "ACTIVE");
+                // Judge by the dates: nothing marks a finished plan EXPIRED
+                // yet, so the status column alone would label a plan that ended
+                // weeks ago as "Active until 31 Jul".
+                const activeRow = subs.find((x) => x.status === "ACTIVE");
+                const state = activeRow
+                  ? subscriptionStateOf(
+                      {
+                        status: activeRow.status,
+                        startDate: toServiceDate(activeRow.start_date),
+                        endDate: toServiceDate(activeRow.end_date),
+                      },
+                      today,
+                    )
+                  : null;
+                const active = state === "RUNNING" ? activeRow : undefined;
+                const lapsed = state === "EXPIRED" || state === "SCHEDULED" ? activeRow : undefined;
 
                 return (
                   <TableRow key={s.id}>
@@ -187,6 +207,17 @@ export default async function StudentsPage(props: {
                           Active
                           <span className="text-muted-foreground block text-xs tabular-nums">
                             until {formatServiceDate(active.end_date)}
+                          </span>
+                        </span>
+                      ) : lapsed ? (
+                        <span className="text-sm">
+                          <span className="text-amber-700 dark:text-amber-400">
+                            {state === "SCHEDULED" ? "Starts later" : "Expired"}
+                          </span>
+                          <span className="text-muted-foreground block text-xs tabular-nums">
+                            {state === "SCHEDULED"
+                              ? `from ${formatServiceDate(lapsed.start_date)}`
+                              : `ended ${formatServiceDate(lapsed.end_date)}`}
                           </span>
                         </span>
                       ) : (
