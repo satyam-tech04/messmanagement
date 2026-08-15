@@ -45,6 +45,13 @@ const STATUS_TONES: Record<string, StatusTone> = {
   // Derived subscription states (see subscription-state.ts). "Starts later" is
   // informational, not a problem, so it is blue rather than amber.
   "STARTS LATER": "info",
+  // Answers "can this student eat today?" on the admin list. Deliberately not
+  // reusing EXPIRED: that stays neutral grey where it labels history, such as a
+  // student's own list of finished plans. LAPSED is amber because it is a live
+  // problem with an action attached — nobody can be served until it is renewed.
+  COVERED: "success",
+  LAPSED: "warning",
+  "NO PLAN": "neutral",
   // Invoices (Phase 2)
   PAID: "success",
   PARTIALLY_PAID: "warning",

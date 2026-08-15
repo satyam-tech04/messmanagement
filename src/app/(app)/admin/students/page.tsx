@@ -23,7 +23,12 @@ import { StudentsFilters } from "./students-filters";
 export const metadata: Metadata = { title: "Students · Mess OS" };
 
 const PAGE_SIZE = 25;
-const COLUMNS = ["Roll number", "Name", "Room", "Plan", "Status", ""] as const;
+// "Meal plan" and "Account", not "Plan" and "Status". Both used to read as
+// bare status words sitting side by side, so a row showing "Expired" next to
+// "Active" looked self-contradictory — the first is the subscription, the
+// second is whether the student is still enrolled. Naming what each describes
+// is the whole fix.
+const COLUMNS = ["Roll number", "Name", "Room", "Meal plan", "Account", ""] as const;
 
 /** Query-string status is untrusted input; only these values may reach the DB. */
 const VALID_STATUSES = ["ACTIVE", "GRACE", "BLOCKED", "INACTIVE"] as const;
@@ -202,26 +207,34 @@ export default async function StudentsPage(props: {
                         : "—"}
                     </TableCell>
                     <TableCell>
+                      {/* A badge, not coloured text. The one question an admin
+                          has scanning this list is "can this student eat
+                          today?", and a lapsed plan is the answer being no —
+                          which deserves the same visual weight as any other
+                          blocking state, plus the action that fixes it. */}
                       {active ? (
                         <span className="text-sm">
-                          Active
-                          <span className="text-muted-foreground block text-xs tabular-nums">
+                          <StatusBadge status="COVERED" />
+                          <span className="text-muted-foreground mt-1 block text-xs tabular-nums">
                             until {formatServiceDate(active.end_date)}
                           </span>
                         </span>
                       ) : lapsed ? (
                         <span className="text-sm">
-                          <span className="text-amber-700 dark:text-amber-400">
-                            {state === "SCHEDULED" ? "Starts later" : "Expired"}
-                          </span>
-                          <span className="text-muted-foreground block text-xs tabular-nums">
+                          <StatusBadge status={state === "SCHEDULED" ? "STARTS LATER" : "LAPSED"} />
+                          <span className="text-muted-foreground mt-1 block text-xs tabular-nums">
                             {state === "SCHEDULED"
                               ? `from ${formatServiceDate(lapsed.start_date)}`
-                              : `ended ${formatServiceDate(lapsed.end_date)}`}
+                              : `ended ${formatServiceDate(lapsed.end_date)} · renew to serve`}
                           </span>
                         </span>
                       ) : (
-                        <span className="text-muted-foreground text-sm">No plan</span>
+                        <span className="text-sm">
+                          <StatusBadge status="NO PLAN" />
+                          <span className="text-muted-foreground mt-1 block text-xs">
+                            assign one to serve
+                          </span>
+                        </span>
                       )}
                     </TableCell>
                     <TableCell>
