@@ -66,21 +66,25 @@ Remove everything with `npm run db:seed -- --reset`.
 **The MVP is complete.** Phase 1 exit criteria are proven — see below. What remains before
 the pilot runs on it:
 
-1. **Turn absences on for the pilot tenant.** They ship **off**, by design — Settings →
+1. **Onboard the first client**: `npm run provision -- --name … --slug … --email …`
+   creates a mess without touching any existing one. See RUNBOOK §"Onboarding a new
+   mess" for the order to configure it in. Still outstanding before handover: error
+   alerting, and making the repo private.
+2. **Turn absences on for the pilot tenant.** They ship **off**, by design — Settings →
    _Skipping meals_ / _Time away_. Until then the student nav shows no Absences link and
    `/student/absences` 404s, which is the intended behaviour, not a bug.
-2. **Reporting, and the remaining exports** — student import and export are built
+3. **Reporting, and the remaining exports** — student import and export are built
    (`/admin/students/import`, `/admin/students/export`), as are the subscriptions and revenue
    exports under `/admin/reports`. Password delivery is solved — a student's first password is
    their own mobile number. Still to do: the renewals-due report, and the attendance /
    absence / headcount exports. Full plan: [IMPORT-EXPORT.md](IMPORT-EXPORT.md).
-3. **Gaps 9–14 from the review**: audit-log viewer, student attendance history, plans empty
+4. **Gaps 9–14 from the review**: audit-log viewer, student attendance history, plans empty
    states, cross-tenant roll-number login, email notifications.
-4. **The deferred cleanup list** below — the repo is still public, and there is a general
+5. **The deferred cleanup list** below — the repo is still public, and there is a general
    tidy-up pass outstanding.
-5. **Widen the pilot's meal windows temporarily** if the client wants to test outside the
+6. **Widen the pilot's meal windows temporarily** if the client wants to test outside the
    configured IST windows. Scans are correctly refused outside them.
-6. **Phase 2 (money)** — D-05 and D-06 are now settled (see DECISIONS.md); the remaining
+7. **Phase 2 (money)** — D-05 and D-06 are now settled (see DECISIONS.md); the remaining
    blockers are the ledger and Razorpay, not product questions.
 
 ### Deferred to the end, by the user's instruction

@@ -245,3 +245,41 @@ The write upserts on `(tenant_id, service_date, meal_slot)`, and a locked
 snapshot is skipped rather than revised — once the kitchen has bought
 ingredients against a number, that number must not move. One tenant failing does
 not abort the rest.
+
+---
+
+## Onboarding a new mess
+
+```bash
+npm run provision -- --name "Sunrise Hostel Mess" \
+                     --slug sunrise-mess \
+                     --email owner@example.com
+```
+
+Creates the tenant, its default settings, a fresh per-tenant QR signing secret and
+the owner's admin login, then prints the credentials **once**.
+
+**Strictly additive** — unlike `db:seed`, which deletes the tenants it recreates.
+An existing slug is refused rather than overwritten, so this is safe to run
+against production.
+
+**The slug cannot be changed afterwards.** Every student's login email is derived
+from it (`cs21b001@sunrise-mess.mess.invalid`), so renaming it would break every
+account in the hostel. It must match `^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$` — lower
+case, 3–40 characters, hyphens allowed but not at either end, and **no
+underscores** (the demo tenant is `unversity-mess` for exactly this reason).
+
+Timezone is fixed at `Asia/Kolkata`. It moves every service date, meal window and
+headcount boundary and cannot be changed once there is history, so it is not a
+flag until a mess outside IST actually arrives.
+
+Then, in the app, in this order:
+
+1. **Settings** — the meal windows this mess actually serves (defaults are lunch
+   and dinner only)
+2. **Plans** — create them _before_ importing anyone; the import refers to plans
+   by name and will never create one
+3. **Students** — import the roster, or add a few by hand
+4. **Menu** — at least today's
+
+Absences ship **off**. Turn them on in Settings if the mess wants them.

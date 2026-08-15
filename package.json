@@ -28,7 +28,8 @@
     "db:seal": "node scripts/seal-migrations.mjs",
     "db:dry": "supabase db push --dry-run --db-url \"$(node scripts/db-url.mjs)\"",
     "db:verify": "node scripts/verify-schema.mjs && node scripts/verify-jwt-hook.mjs && node scripts/verify-isolation.mjs",
-    "verify:phase1": "tsx scripts/verify-phase1.mts"
+    "verify:phase1": "tsx scripts/verify-phase1.mts",
+    "provision": "tsx scripts/provision.ts"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
