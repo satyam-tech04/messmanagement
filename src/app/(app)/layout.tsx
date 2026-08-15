@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { getSessionUser } from "@/infra/auth/session";
 import { createClient } from "@/infra/supabase/server";
+import { createAdminClient } from "@/infra/supabase/admin";
+import { SupabaseTenantRepository } from "@/infra/supabase/repositories";
 import { signOut } from "@/app/(auth)/login/actions";
 
 /**
@@ -22,29 +24,23 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   if (!user) redirect("/login");
   if (user.mustChangePassword) redirect("/change-password");
 
+  // One cached read, not two live queries. This layout wraps every authenticated
+  // page, so what was here ran on every navigation in the app for a name that
+  // never changes and two booleans that change twice a year.
   const supabase = await createClient();
-  const [{ data: tenant }, { data: settings }] = await Promise.all([
-    supabase.from("tenants").select("name").eq("id", user.tenantId).maybeSingle(),
-    // Only the two nav-visible toggles. A student sees no way to skip a meal
-    // until the mess turns it on — a link that only leads to a refusal is worse
-    // than no link.
-    supabase
-      .from("tenant_settings")
-      .select("allow_meal_skipping, allow_away_requests")
-      .eq("tenant_id", user.tenantId)
-      .maybeSingle(),
-  ]);
+  const admin = createAdminClient();
+  const chrome = await new SupabaseTenantRepository(supabase, admin).getChrome(user.tenantId);
 
   return (
     <AppShell
       user={{
         fullName: user.fullName,
         role: user.role,
-        tenantName: tenant?.name ?? "Mess",
+        tenantName: chrome?.name ?? "Mess",
       }}
       features={{
-        allowMealSkipping: settings?.allow_meal_skipping ?? false,
-        allowAwayRequests: settings?.allow_away_requests ?? false,
+        allowMealSkipping: chrome?.allowMealSkipping ?? false,
+        allowAwayRequests: chrome?.allowAwayRequests ?? false,
       }}
       signOutAction={signOut}
     >
