@@ -35,14 +35,16 @@ export default async function StudentPage() {
       .from("menus")
       .select("meal_slot, items")
       .eq("tenant_id", user.tenantId)
-      .eq("service_date", today)
-      // A reversed meal never happened.
-      .is("reversed_at", null),
+      .eq("service_date", today),
     supabase
       .from("attendance")
       .select("meal_slot")
       .eq("tenant_id", user.tenantId)
-      .eq("service_date", today),
+      .eq("service_date", today)
+      // A reversed meal never happened, so it must not mark this student as
+      // already fed — that would leave them unable to get the meal the
+      // correction was made to give back.
+      .is("reversed_at", null),
   ]);
 
   const student = studentRes.data;
