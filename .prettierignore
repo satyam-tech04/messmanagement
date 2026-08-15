@@ -6,3 +6,4 @@ build
 package-lock.json
 src/infra/supabase/database.types.ts
 supabase/.temp
+.claude
