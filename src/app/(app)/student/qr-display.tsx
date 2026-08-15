@@ -16,7 +16,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { createClient } from "@/infra/supabase/client";
+import { createRealtimeClient } from "@/infra/supabase/client";
 
 interface TokenResponse {
   readonly token: string;
@@ -274,39 +274,52 @@ export function QrDisplay({ timeZone, counter }: { timeZone: string; counter: Co
   useEffect(() => {
     if (!liveServiceDate || !liveMealSlot) return;
 
-    const supabase = createClient();
     const serviceDate = liveServiceDate;
     const mealSlot = liveMealSlot;
+    let cleanup: (() => void) | null = null;
+    let cancelled = false;
 
-    const channel = supabase
-      .channel(`my-attendance:${serviceDate}:${mealSlot}`)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "attendance" },
-        (payload) => {
-          const row = payload.new as {
-            service_date?: string;
-            meal_slot?: string;
-            scanned_at?: string;
-          };
-          // A late scan for a different meal must not clear the code the
-          // student is holding for this one.
-          if (row.service_date !== serviceDate || row.meal_slot !== mealSlot) return;
+    void (async () => {
+      // The socket authenticates separately from REST calls. Without this it
+      // subscribes as anonymous, RLS matches nothing, and the channel reports
+      // SUBSCRIBED while silently never firing — which is exactly how this
+      // shipped broken the first time.
+      const supabase = await createRealtimeClient();
+      if (!supabase || cancelled) return;
 
-          if (timerRef.current) clearTimeout(timerRef.current);
-          timerRef.current = null;
-          setSecondsLeft(null);
-          setState({
-            kind: "served",
-            mealSlot,
-            servedAt: row.scanned_at ?? new Date().toISOString(),
-          });
-        },
-      )
-      .subscribe();
+      const channel = supabase
+        .channel(`my-attendance:${serviceDate}:${mealSlot}`)
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "attendance" },
+          (payload) => {
+            const row = payload.new as {
+              service_date?: string;
+              meal_slot?: string;
+              scanned_at?: string;
+            };
+            // A late scan for a different meal must not clear the code the
+            // student is holding for this one.
+            if (row.service_date !== serviceDate || row.meal_slot !== mealSlot) return;
+
+            if (timerRef.current) clearTimeout(timerRef.current);
+            timerRef.current = null;
+            setSecondsLeft(null);
+            setState({
+              kind: "served",
+              mealSlot,
+              servedAt: row.scanned_at ?? new Date().toISOString(),
+            });
+          },
+        )
+        .subscribe();
+
+      cleanup = () => void supabase.removeChannel(channel);
+    })();
 
     return () => {
-      void supabase.removeChannel(channel);
+      cancelled = true;
+      cleanup?.();
     };
     // Keyed on the meal, not the token: rotating the code must not tear down
     // and rebuild the socket every twenty-five seconds.

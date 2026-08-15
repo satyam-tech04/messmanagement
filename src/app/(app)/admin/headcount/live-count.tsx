@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Radio, TrendingDown, TrendingUp } from "lucide-react";
-import { createClient } from "@/infra/supabase/client";
+import { createRealtimeClient } from "@/infra/supabase/client";
 import { cn } from "@/lib/utils";
 
 export interface SlotCount {
@@ -40,34 +40,52 @@ export function LiveCount({
   const [live, setLive] = useState(false);
 
   useEffect(() => {
-    const supabase = createClient();
+    let cleanup: (() => void) | null = null;
+    let cancelled = false;
 
-    const channel = supabase
-      .channel(`attendance:${tenantId}:${serviceDate}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "attendance",
-          // RLS still applies to realtime, so this filter is a bandwidth
-          // optimisation rather than the security boundary.
-          filter: `tenant_id=eq.${tenantId}`,
-        },
-        (payload) => {
-          const row = payload.new as { service_date?: string; meal_slot?: string };
-          // A late scan for yesterday's dinner must not bump today's number.
-          if (row.service_date !== serviceDate || !row.meal_slot) return;
+    void (async () => {
+      // RLS applies to realtime, and the socket authenticates separately from
+      // REST calls — without the access token it subscribes as anonymous,
+      // matches nothing, and reports SUBSCRIBED while never firing. This screen
+      // showed a "Live" badge over a number that never moved.
+      const supabase = await createRealtimeClient();
+      if (!supabase || cancelled) return;
 
-          setCounts((current) =>
-            current.map((c) => (c.mealSlot === row.meal_slot ? { ...c, served: c.served + 1 } : c)),
-          );
-        },
-      )
-      .subscribe((status) => setLive(status === "SUBSCRIBED"));
+      const channel = supabase
+        .channel(`attendance:${tenantId}:${serviceDate}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "attendance",
+            // RLS still applies to realtime, so this filter is a bandwidth
+            // optimisation rather than the security boundary.
+            filter: `tenant_id=eq.${tenantId}`,
+          },
+          (payload) => {
+            const row = payload.new as { service_date?: string; meal_slot?: string };
+            // A late scan for yesterday's dinner must not bump today's number.
+            if (row.service_date !== serviceDate || !row.meal_slot) return;
+
+            setCounts((current) =>
+              current.map((c) =>
+                c.mealSlot === row.meal_slot ? { ...c, served: c.served + 1 } : c,
+              ),
+            );
+          },
+        )
+        .subscribe((status) => setLive(status === "SUBSCRIBED"));
+
+      cleanup = () => {
+        void supabase.removeChannel(channel);
+        setLive(false);
+      };
+    })();
 
     return () => {
-      void supabase.removeChannel(channel);
+      cancelled = true;
+      cleanup?.();
     };
   }, [tenantId, serviceDate]);
 
