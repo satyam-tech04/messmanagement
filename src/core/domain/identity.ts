@@ -35,6 +35,13 @@ const ROLL_NUMBER_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,62}$/;
 const SYNTHETIC_EMAIL_DOMAIN_SUFFIX = "mess.invalid";
 
 export function isValidRollNumber(rollNumber: string): boolean {
+  // Reserved words are refused here rather than at each of the three student
+  // creation paths, because this is the one function all of them — and
+  // `syntheticEmailFor` — already pass through. A roll number that is legal by
+  // shape but collides with the operator login would produce a student whose
+  // account exists and can never be signed into, which nobody would discover
+  // until they were standing at the counter.
+  if (isReservedRollNumber(rollNumber)) return false;
   return ROLL_NUMBER_PATTERN.test(rollNumber.trim());
 }
 
@@ -82,6 +89,34 @@ export function isSyntheticEmail(email: string): boolean {
 }
 
 /**
+ * The platform operator's login (the SUPER_ADMIN who moves between messes).
+ *
+ * Typed as the bare word `superuser` rather than an address, because the person
+ * typing it is the operator, not a customer, and it is easier to remember under
+ * pressure. Supabase Auth still needs an email, so the word maps to a fixed
+ * synthetic one here — the same trick as student roll numbers, for the same
+ * reason.
+ *
+ * `.internal` is deliberately not `.invalid`: student addresses use `.invalid`
+ * and `isSyntheticEmail` keys off it, and the operator is not a student. Both
+ * are undeliverable, which is the point — this account is reached by password,
+ * never by mail.
+ */
+export const SUPER_USER_IDENTIFIER = "superuser";
+export const SUPER_USER_EMAIL = "superuser@messos.internal";
+
+/**
+ * Roll numbers a student may never hold.
+ *
+ * `superuser` is a legal roll number by shape, so if a hostel ever issued it,
+ * that student would silently capture the operator's login. Rejecting it at
+ * student creation costs nothing and closes that off.
+ */
+export function isReservedRollNumber(rollNumber: string): boolean {
+  return rollNumber.trim().toLowerCase() === SUPER_USER_IDENTIFIER;
+}
+
+/**
  * What the user typed on the login form.
  *
  * Staff and admins are created with real email addresses; students log in with
@@ -95,6 +130,13 @@ export type LoginIdentifier =
 export function classifyLoginIdentifier(raw: string): LoginIdentifier | null {
   const trimmed = raw.trim();
   if (trimmed.length === 0) return null;
+
+  // Checked before anything else: `superuser` is shaped exactly like a valid
+  // roll number, so without this branch the platform operator's login would be
+  // sent to the student lookup and never resolve.
+  if (isReservedRollNumber(trimmed)) {
+    return { kind: "EMAIL", email: SUPER_USER_EMAIL };
+  }
 
   if (trimmed.includes("@")) {
     return { kind: "EMAIL", email: trimmed.toLowerCase() };

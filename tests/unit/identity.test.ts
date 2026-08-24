@@ -1,9 +1,18 @@
 import { describe, it, expect } from "vitest";
+
+/**
+ * The shape rule alone, copied from identity.ts. Lets the reserved-word tests
+ * prove that `superuser` is refused *because it is reserved*, not because it
+ * happens to fail the character rule — which it does not.
+ */
+const ROLL_NUMBER_SHAPE_ONLY = /^[A-Za-z0-9][A-Za-z0-9._-]{0,62}$/;
 import {
   classifyLoginIdentifier,
   InvalidRollNumberError,
+  isReservedRollNumber,
   isSyntheticEmail,
   isValidRollNumber,
+  SUPER_USER_EMAIL,
   normalizeRollNumber,
   syntheticEmailFor,
 } from "@/core/domain/identity";
@@ -127,5 +136,57 @@ describe("classifyLoginIdentifier", () => {
     expect(classifyLoginIdentifier("")).toBeNull();
     expect(classifyLoginIdentifier("   ")).toBeNull();
     expect(classifyLoginIdentifier("cs 21 b001")).toBeNull();
+  });
+});
+
+describe("the reserved operator login", () => {
+  it("resolves the bare word to the operator address, not a roll number", () => {
+    const result = classifyLoginIdentifier("superuser");
+    expect(result).toEqual({ kind: "EMAIL", email: SUPER_USER_EMAIL });
+  });
+
+  it("is case- and whitespace-insensitive, because it is typed by hand", () => {
+    for (const typed of ["SuperUser", "  SUPERUSER ", "superuser"]) {
+      expect(classifyLoginIdentifier(typed)).toEqual({ kind: "EMAIL", email: SUPER_USER_EMAIL });
+    }
+  });
+
+  it("does not swallow roll numbers that merely resemble it", () => {
+    for (const roll of ["superuser1", "super-user", "supersuser"]) {
+      expect(classifyLoginIdentifier(roll)).toEqual({
+        kind: "ROLL_NUMBER",
+        rollNumber: roll.toLowerCase(),
+      });
+    }
+  });
+
+  it("is a reserved roll number, so no student can shadow the operator login", () => {
+    expect(isReservedRollNumber("superuser")).toBe(true);
+    expect(isReservedRollNumber("  SuperUser  ")).toBe(true);
+    expect(isReservedRollNumber("cs21b001")).toBe(false);
+  });
+
+  it("keeps the operator address off the deliverable-mail path", () => {
+    // It must not be mistaken for a generated student address either.
+    expect(isSyntheticEmail(SUPER_USER_EMAIL)).toBe(false);
+  });
+});
+
+describe("the reserved word cannot become a student", () => {
+  it("is rejected as a roll number at the one gate every creation path uses", () => {
+    // Shape-legal — letters only — so nothing but the reserved check stops it.
+    expect(ROLL_NUMBER_SHAPE_ONLY.test("superuser")).toBe(true);
+    expect(isValidRollNumber("superuser")).toBe(false);
+    expect(isValidRollNumber("  SuperUser  ")).toBe(false);
+  });
+
+  it("cannot be minted into a student login address", () => {
+    expect(() => syntheticEmailFor("campus-crave", "superuser")).toThrow(InvalidRollNumberError);
+  });
+
+  it("leaves every ordinary roll number untouched", () => {
+    for (const roll of ["CS21B001", "superuser1", "super-user", "7"]) {
+      expect(isValidRollNumber(roll)).toBe(true);
+    }
   });
 });

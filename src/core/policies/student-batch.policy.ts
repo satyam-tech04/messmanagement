@@ -15,7 +15,7 @@
  * database it surfaces as a unique-index violation on the second row — after an
  * auth user has already been created for it.
  */
-import { isValidRollNumber } from "../domain/identity";
+import { isReservedRollNumber, isValidRollNumber } from "../domain/identity";
 import { validateSubscriptionStart } from "./student-admin.policy";
 import { toServiceDate, type ServiceDate } from "../time";
 
@@ -144,6 +144,8 @@ export function validateStudentBatch(
 
     if (rollNumber.length === 0) {
       push("rollNumber", "Enter a roll number — without one they cannot log in.");
+    } else if (isReservedRollNumber(rollNumber)) {
+      push("rollNumber", "That roll number is reserved by the system — choose another.");
     } else if (!isValidRollNumber(rollNumber)) {
       push("rollNumber", "Use letters, digits, dot, underscore or hyphen only.");
     } else {

@@ -9,7 +9,8 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { TenantSettings } from "@/core/domain/tenant-context";
-import type { TenantRepository } from "@/core/ports/repositories";
+import type { TenantDirectory, TenantRepository } from "@/core/ports/repositories";
+import type { SwitchableTenant } from "@/core/policies/tenant-switch.policy";
 import type { Database } from "../database.types";
 import { toTenantSettings } from "../mappers";
 import { createTtlCache } from "@/infra/cache/ttl-cache";
@@ -140,5 +141,71 @@ export class SupabaseTenantRepository implements TenantRepository {
       if (error) throw new Error(`tenant signing secret read failed: ${error.message}`);
       return data?.qr_signing_secret ?? null;
     });
+  }
+}
+
+/**
+ * The mess directory, and the operator's move between messes.
+ *
+ * Two clients again, for a sharper reason than the settings repository above.
+ *
+ * The **read** goes through the caller's session client, under RLS. It needs no
+ * privilege escalation: `tenants_read_own` already ends in `or
+ * app.is_super_admin()`, so a platform admin sees every mess and anybody else
+ * sees exactly one. If this feature is ever called by the wrong role, the
+ * database returns a one-row list and the switch fails on its own.
+ *
+ * The **write** cannot. Repointing a profile at another tenant is refused by
+ * every policy on `profiles` — `profiles_admin_write` is same-tenant only, and
+ * `app.guard_profile_self_update` explicitly raises on a self-service tenant
+ * change. That refusal is correct and must stay, so the one sanctioned crossing
+ * uses the service role and carries its own guard instead.
+ */
+export class SupabaseTenantDirectory implements TenantDirectory {
+  constructor(
+    private readonly db: SupabaseClient<Database>,
+    /** Service-role client. Required only for the move. */
+    private readonly admin: SupabaseClient<Database>,
+  ) {}
+
+  async listSwitchable(): Promise<SwitchableTenant[]> {
+    const { data, error } = await this.db
+      .from("tenants")
+      .select("id, slug, name, status")
+      .order("name");
+
+    if (error) throw new Error(`tenant directory read failed: ${error.message}`);
+    return data ?? [];
+  }
+
+  async moveOperator(profileId: string, tenantId: string): Promise<void> {
+    // `.eq("role", "SUPER_ADMIN")` is the guard that makes a service-role write
+    // to `tenant_id` safe to have in the codebase at all. It is not a courtesy
+    // check: with RLS bypassed, it is the *only* thing preventing a bug here
+    // from relocating a real mess admin — or a student, along with their
+    // attendance history — into another hostel. Filtering in the statement
+    // rather than reading-then-writing means there is no window between the
+    // check and the update.
+    const { data, error } = await this.admin
+      .from("profiles")
+      .update({ tenant_id: tenantId })
+      .eq("id", profileId)
+      .eq("role", "SUPER_ADMIN")
+      .select("id");
+
+    if (error) throw new Error(`operator move failed: ${error.message}`);
+
+    // Zero rows means the guard rejected it — the profile is not a platform
+    // admin. Treated as a fault, not a no-op: silently doing nothing would show
+    // the operator a success toast and leave them in the old mess.
+    if (!data || data.length === 0) {
+      throw new Error("operator move refused: that profile is not a platform admin");
+    }
+
+    // The old tenant's cached chrome is still keyed by its own id, so nothing
+    // stale is served — but the operator's *next* read is of a different tenant
+    // entirely, and dropping both keeps this instance from answering out of a
+    // cache filled under the previous session.
+    invalidateTenantCache(tenantId);
   }
 }

@@ -501,3 +501,22 @@ describe("IMPORT_COLUMNS — the export and import share one definition", () => 
     expect(new Set(IMPORT_COLUMNS).size).toBe(IMPORT_COLUMNS.length);
   });
 });
+
+describe("previewStudentImport — the reserved operator roll number", () => {
+  it("rejects a spreadsheet row claiming the reserved word", () => {
+    // A CSV is the likeliest way this ever arrives: nobody types `superuser`
+    // into the single-student form, but a generated export could carry it.
+    const r = preview([HEADER, ["superuser", "Impostor"]]);
+
+    expect(r.ok).toBe(false);
+    const rollError = r.errors.find((e) => e.column === "roll_number");
+    expect(rollError?.message).toMatch(/reserved/i);
+    expect(r.rows).toHaveLength(0);
+  });
+
+  it("leaves neighbouring roll numbers importable", () => {
+    const r = preview([HEADER, ["superuser1", "Priya Menon"]]);
+    expect(r.ok).toBe(true);
+    expect(r.rows).toHaveLength(1);
+  });
+});

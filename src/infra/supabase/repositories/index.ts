@@ -36,7 +36,7 @@ import { SupabaseMessCutRepository } from "./mess-cut.repository";
 import { SupabaseRateLimiter } from "./rate-limiter";
 import { SupabaseStudentRepository } from "./student.repository";
 import { SupabaseSubscriptionRepository } from "./subscription.repository";
-import { SupabaseTenantRepository } from "./tenant.repository";
+import { SupabaseTenantDirectory, SupabaseTenantRepository } from "./tenant.repository";
 
 export interface Repositories {
   readonly tenants: TenantRepository;
@@ -76,5 +76,6 @@ export {
   SupabaseRateLimiter,
   SupabaseStudentRepository,
   SupabaseSubscriptionRepository,
+  SupabaseTenantDirectory,
   SupabaseTenantRepository,
 };

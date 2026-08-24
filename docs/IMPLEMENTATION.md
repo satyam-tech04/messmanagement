@@ -9,7 +9,7 @@ Legend: ✅ done · 🚧 in progress · ⬜ not started · ⏸️ deferred by de
 
 ---
 
-## ▶ RESUME HERE — state as of 2026-08-15
+## ▶ RESUME HERE — state as of 2026-08-24
 
 **Read this first if you are picking the project up cold.** It is written to survive a lost
 conversation: everything needed to continue correctly is here or linked from here.
@@ -19,7 +19,7 @@ conversation: everything needed to continue correctly is here or linked from her
 | Area                                  | State                                                               |
 | ------------------------------------- | ------------------------------------------------------------------- |
 | Repo, tooling, CI, import boundaries  | ✅ `npm run verify` green                                           |
-| Core domain (pure, no I/O)            | ✅ **579 tests**, 99%+ coverage                                     |
+| Core domain (pure, no I/O)            | ✅ **818 tests**, 99%+ coverage                                     |
 | Database schema                       | ✅ migrations 001–009 **applied + sealed** on the live project      |
 | JWT auth hook                         | ✅ enabled and verified end-to-end                                  |
 | Generated DB types                    | ✅ `src/infra/supabase/database.types.ts` (incl. RPC Functions)     |
@@ -36,11 +36,63 @@ conversation: everything needed to continue correctly is here or linked from her
 | **Phase 1.8 — exit criteria**         | ✅ **14 checks pass against the live DB** (`npm run verify:phase1`) |
 | **MVP (Phase 0 + 1)**                 | ✅ **complete** — every nav route resolves                          |
 | **Absences (skip / away)**            | ✅ policy, service, settings toggles, student + admin screens       |
+| **First live client — Campus Crave**  | ✅ onboarded on the live project: 3 admins, 3 staff, 26 students    |
+| **Platform operator (SUPER_ADMIN)**   | ✅ `superuser` login + mess switcher, 13 live checks pass           |
 
 **Phase 0 is done.** Three roles sign in against the live database and land on their own
 shell; cross-tenant isolation is proven with real data. Phase 1 domain logic (QR policy,
 attendance verification, headcount projection) is already written and tested — what
 remains is the screens and endpoints on top of it.
+
+### Live client — Campus Crave (onboarded 2026-08-24)
+
+The first paying mess. **This is production data**: 26 real students who eat three times a
+day. `campus-crave` on the live Supabase project, `Asia/Kolkata`, four meal slots
+(breakfast, lunch, snacks, dinner), 8 plans.
+
+Provisioned by `scripts/onboard-campus-crave.ts`. Every account was created with
+`must_change_password: true`, so the passwords below stop working the moment their owner
+signs in and chooses their own — that is the flow working, not a fault. Harshal has
+already done so.
+
+| Role  | Email                            | Initial password    |
+| ----- | -------------------------------- | ------------------- |
+| Admin | `shraddha.admin@campuscrave.com` | `CampusAdmin@2026`  |
+| Admin | `harshal.admin@campuscrave.com`  | _(already changed)_ |
+| Admin | `admin@campuscrave.com`          | `CampusAdmin@2026`  |
+| Staff | `roshni.staff@campuscrave.com`   | `CampusStaff@2026`  |
+| Staff | `satish.staff@campuscrave.com`   | `CampusStaff@2026`  |
+| Staff | `staff@campuscrave.com`          | `CampusStaff@2026`  |
+
+### Platform operator — the `superuser` account
+
+One login that can work in **any** mess, for supporting customers without holding a
+password per hostel. Created by `npm run create:superadmin`.
+
+Sign in with the bare word `superuser` (not an email) — `classifyLoginIdentifier` maps
+that reserved word to the undeliverable address `superuser@messos.internal`, the same
+trick student roll numbers use. Then: **sidebar → Platform → Messes → Switch**.
+
+⚠️ The password is `superuser`, chosen deliberately by the owner. It is a nine-character
+dictionary word guarding an account that can enter every tenant, including Campus Crave's
+live students. `must_change_password` is `false` on this account by design — it is the one
+login with no recovery path, so forcing a change would risk locking the platform out.
+Re-running `npm run create:superadmin` resets it.
+
+**How the cross-tenant access works, because it is not what it looks like.** The operator
+is never granted sight of every tenant at once. Switching _moves their profile_ into the
+chosen mess and re-issues their JWT from it, so at any instant they are an ordinary admin
+of exactly one hostel and RLS confines them as tightly as it confines a real mess admin.
+That is why this feature needed **no migration and no change to any of the 30 RLS
+policies** protecting a live customer's data — there is no cross-tenant read path to get
+wrong, because none was created. `SUPER_ADMIN` already existed in the `user_role` enum,
+in `proxy.ts` role gates and in `homeRouteFor`; the schema anticipated this account.
+
+The one privileged write — repointing `profiles.tenant_id` — is in
+`SupabaseTenantDirectory.moveOperator` and carries `.eq("role", "SUPER_ADMIN")` in the
+statement itself. With RLS bypassed by the service role, that filter is the only thing
+preventing a bug there from relocating a real mess admin, or a student along with their
+attendance history, into another hostel. Do not remove it.
 
 ### Demo logins (after `npm run db:seed`)
 

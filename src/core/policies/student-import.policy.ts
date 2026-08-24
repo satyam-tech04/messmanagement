@@ -17,7 +17,7 @@
  * Pure: no I/O. The caller supplies the plans and the students that already
  * exist; this decides what would happen and reports it for confirmation.
  */
-import { isValidRollNumber } from "../domain/identity";
+import { isReservedRollNumber, isValidRollNumber } from "../domain/identity";
 import { StudentStatus, type MealSlot } from "../domain/enums";
 import { addDays, compareServiceDates, toServiceDate, type ServiceDate } from "../time";
 import { validateSubscriptionStart } from "./student-admin.policy";
@@ -241,7 +241,9 @@ export function previewStudentImport(request: ImportRequest): ImportPreview {
     // --- identity ---
     const rollNumber = get("roll_number");
     if (!rollNumber) reject("roll_number", "Missing roll number.");
-    else if (!isValidRollNumber(rollNumber)) {
+    else if (isReservedRollNumber(rollNumber)) {
+      reject("roll_number", `"${rollNumber}" is reserved by the system — choose another.`);
+    } else if (!isValidRollNumber(rollNumber)) {
       reject(
         "roll_number",
         `"${rollNumber}" cannot be used — letters, digits, dot, underscore and hyphen only.`,

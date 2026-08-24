@@ -331,3 +331,22 @@ describe("validateStudentBatch — per-row start dates", () => {
     expect(validateStudentBatch([row()], []).ok).toBe(true);
   });
 });
+
+describe("the reserved operator roll number", () => {
+  it("is refused with a message that says why, not a character-rule complaint", () => {
+    // "superuser" passes the character rule, so a generic "letters and digits
+    // only" message would send the admin hunting for a typo that is not there.
+    const r = validateStudentBatch([row({ rollNumber: "superuser" })], []);
+
+    const rollError = r.errors.find((e) => e.field === "rollNumber");
+    expect(rollError).toBeDefined();
+    expect(rollError!.message).toMatch(/reserved/i);
+    expect(r.valid).toHaveLength(0);
+  });
+
+  it("still accepts roll numbers that merely resemble it", () => {
+    const r = validateStudentBatch([row({ rollNumber: "superuser1" })], []);
+    expect(r.errors).toEqual([]);
+    expect(r.valid).toHaveLength(1);
+  });
+});

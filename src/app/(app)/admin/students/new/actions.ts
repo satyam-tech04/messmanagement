@@ -11,7 +11,11 @@
  */
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { isValidRollNumber, normalizeRollNumber } from "@/core/domain/identity";
+import {
+  isReservedRollNumber,
+  isValidRollNumber,
+  normalizeRollNumber,
+} from "@/core/domain/identity";
 // Only the validator and its types — a "use server" module may export nothing
 // but async functions, so the UI imports MAX_BATCH_SIZE from the policy direct.
 import {
@@ -30,6 +34,7 @@ const schema = z.object({
     .string()
     .trim()
     .min(1, "Roll number is required")
+    .refine((r) => !isReservedRollNumber(r), "That roll number is reserved by the system")
     .refine(isValidRollNumber, "Use letters, digits, dot, underscore or hyphen only"),
   fullName: z.string().trim().min(2, "Enter the student's full name").max(120),
   phone: z

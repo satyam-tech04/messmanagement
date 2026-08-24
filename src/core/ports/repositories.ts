@@ -14,6 +14,7 @@ import type { MealSlot, MessCutStatus, StudentStatus } from "../domain/enums";
 import type { TenantSettings } from "../domain/tenant-context";
 import type { ServiceDate } from "../time";
 import type { MessCutSnapshot, SubscriberSnapshot } from "../policies/headcount.policy";
+import type { SwitchableTenant } from "../policies/tenant-switch.policy";
 
 /** The facts the counter needs about a student, in one round trip. */
 export interface StudentForVerification {
@@ -106,6 +107,29 @@ export interface TenantRepository {
   getTimezone(tenantId: string): Promise<string | null>;
   /** Server-side only. Never reaches a client (§5.3). */
   getQrSigningSecret(tenantId: string): Promise<string | null>;
+}
+
+/**
+ * The list of messes on the platform, and the one operation that moves the
+ * platform operator between them (`switch-tenant.policy.ts`).
+ *
+ * Separate from `TenantRepository` on purpose: that port serves a caller who is
+ * already inside a tenant, and every method on it takes the `tenantId` they are
+ * confined to. This one deliberately reaches across that boundary, so it is
+ * named for what it does and kept where a reviewer will see it.
+ */
+export interface TenantDirectory {
+  /** Every mess the operator may move into. */
+  listSwitchable(): Promise<SwitchableTenant[]>;
+
+  /**
+   * Repoints the operator's profile at another mess.
+   *
+   * Implementations MUST refuse to move a profile that is not a SUPER_ADMIN —
+   * this is the only write in the system that changes a row's `tenant_id`, and
+   * pointing a real admin or a student at another hostel would be unrecoverable.
+   */
+  moveOperator(profileId: string, tenantId: string): Promise<void>;
 }
 
 export interface MessCutRepository {

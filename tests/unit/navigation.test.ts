@@ -73,10 +73,19 @@ describe("navigationFor — the rest of the nav is unaffected", () => {
     expect(hrefs(navigationFor(UserRole.ADMIN))).toContain("/admin/absences");
   });
 
-  it("gives a super admin everything an admin gets", () => {
-    expect(hrefs(navigationFor(UserRole.SUPER_ADMIN))).toEqual(
-      hrefs(navigationFor(UserRole.ADMIN)),
-    );
+  it("gives a super admin everything an admin gets, plus the mess switcher", () => {
+    const superAdmin = hrefs(navigationFor(UserRole.SUPER_ADMIN));
+
+    for (const href of hrefs(navigationFor(UserRole.ADMIN))) {
+      expect(superAdmin).toContain(href);
+    }
+    expect(superAdmin).toContain("/admin/messes");
+  });
+
+  it("hides the mess switcher from a mess admin, who runs exactly one hostel", () => {
+    expect(hrefs(navigationFor(UserRole.ADMIN))).not.toContain("/admin/messes");
+    expect(hrefs(navigationFor(UserRole.STAFF))).not.toContain("/admin/messes");
+    expect(hrefs(navigationFor(UserRole.STUDENT))).not.toContain("/admin/messes");
   });
 
   it("never leaves a section with no items", () => {

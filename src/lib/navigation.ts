@@ -72,6 +72,18 @@ const ADMIN_NAV: readonly NavSection[] = [
   },
 ];
 
+/**
+ * The one section a mess admin never sees.
+ *
+ * Appended for SUPER_ADMIN rather than folded into ADMIN_NAV, because the two
+ * roles differ by exactly this: a mess admin runs one hostel and has no concept
+ * of a second one existing.
+ */
+const PLATFORM_NAV: NavSection = {
+  heading: "Platform",
+  items: [{ label: "Messes", href: "/admin/messes", icon: "Building2" }],
+};
+
 const STAFF_NAV: readonly NavSection[] = [
   {
     items: [
@@ -126,8 +138,9 @@ export function navigationFor(role: UserRole, features: NavFeatures = {}): reado
     case "STAFF":
       return STAFF_NAV;
     case "ADMIN":
-    case "SUPER_ADMIN":
       return ADMIN_NAV;
+    case "SUPER_ADMIN":
+      return [...ADMIN_NAV, PLATFORM_NAV];
   }
 }
 
