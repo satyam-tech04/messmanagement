@@ -19,6 +19,16 @@ export default async function NewStudentPage() {
   // The tenant's day, never the browser's or the server's (rule 9).
   const today = serviceDateOf(user.timezone, new Date());
 
+  // Decides whether the admin is asked for a roll number at all.
+  const { data: settingsRow } = await supabase
+    .from("tenant_settings")
+    .select("auto_roll_numbers")
+    .eq("tenant_id", user.tenantId)
+    .maybeSingle();
+  // Fail closed towards the field being shown: if the setting cannot be read,
+  // asking for a roll number is recoverable, silently auto-assigning is not.
+  const autoRollNumbers = settingsRow?.auto_roll_numbers ?? false;
+
   const { data: plans } = await supabase
     .from("plans")
     .select("id, name, price_paise, included_meal_slots")
@@ -52,8 +62,10 @@ export default async function NewStudentPage() {
       />
 
       <AddStudentTabs
-        single={<StudentForm plans={options} today={today} />}
-        bulk={<BulkStudentForm plans={bulkOptions} today={today} />}
+        single={<StudentForm plans={options} today={today} autoRollNumbers={autoRollNumbers} />}
+        bulk={
+          <BulkStudentForm plans={bulkOptions} today={today} autoRollNumbers={autoRollNumbers} />
+        }
       />
     </div>
   );

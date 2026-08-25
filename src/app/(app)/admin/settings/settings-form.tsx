@@ -271,21 +271,63 @@ function SlotRow({ setting }: { setting: SlotSetting }) {
   );
 }
 
+/**
+ * How new students are identified.
+ *
+ * Separate from the absence card because it changes what the *admin* is asked
+ * for, not what a student is allowed to do.
+ */
+function EnrolmentCard({ autoRollNumbers }: { autoRollNumbers: boolean }) {
+  const [auto, setAuto] = useState(autoRollNumbers);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Enrolment</CardTitle>
+        <CardDescription>
+          Students sign in with their mobile number, so every student needs one on file. The roll
+          number is what staff type into the manual fallback at the counter.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <Toggle
+          name="autoRollNumbers"
+          label="Assign roll numbers automatically"
+          hint="The next free number is issued when a student is added, and the field disappears from the form. Leave this off if your hostel uses its own roll numbers, such as CS21B001."
+          checked={auto}
+          onChange={setAuto}
+        />
+        {auto ? (
+          <p className="text-muted-foreground text-xs">
+            A roll number becomes part of that student&apos;s login identity the moment it is
+            issued, so it cannot be changed afterwards. Turning this off later leaves the numbers
+            already assigned exactly as they are.
+          </p>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function SettingsForm({
   slots,
   qrTokenTtlSeconds,
   qrRefreshSeconds,
   absence,
+  autoRollNumbers,
 }: {
   slots: readonly SlotSetting[];
   qrTokenTtlSeconds: number;
   qrRefreshSeconds: number;
   absence: AbsenceSetting;
+  autoRollNumbers: boolean;
 }) {
   const [state, formAction] = useActionState<SettingsActionState, FormData>(updateSettings, {});
 
   return (
     <form action={formAction} className="space-y-6">
+      <EnrolmentCard autoRollNumbers={autoRollNumbers} />
+
       <Card>
         <CardHeader>
           <CardTitle>Meal times</CardTitle>

@@ -99,7 +99,7 @@ export async function updateSettings(
   const { data: before } = await admin
     .from("tenant_settings")
     .select(
-      "meal_slots, qr_token_ttl_seconds, qr_refresh_seconds, allow_meal_skipping, allow_partial_day_skip, allow_away_requests, away_requires_approval, cut_advance_hours, cut_max_days_per_month, away_advance_hours, away_max_days",
+      "meal_slots, qr_token_ttl_seconds, qr_refresh_seconds, allow_meal_skipping, allow_partial_day_skip, allow_away_requests, away_requires_approval, cut_advance_hours, cut_max_days_per_month, away_advance_hours, away_max_days, auto_roll_numbers",
     )
     .eq("tenant_id", user.tenantId)
     .maybeSingle();
@@ -122,6 +122,9 @@ export async function updateSettings(
       cut_max_days_per_month: draft.value.absence.cutMaxDaysPerMonth,
       away_advance_hours: draft.value.absence.awayAdvanceHours,
       away_max_days: draft.value.absence.awayMaxDays,
+      // Not part of the absence policy draft — it changes what the add-student
+      // form asks for, not what a student is allowed to do.
+      auto_roll_numbers: checked(formData, "autoRollNumbers"),
     })
     .eq("tenant_id", user.tenantId);
 

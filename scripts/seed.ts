@@ -47,14 +47,14 @@ const TENANTS = [
     admin: { email: "admin@unversity-mess.test", name: "Priya Menon" },
     staff: { email: "staff@unversity-mess.test", name: "Ramesh Kumar" },
     students: [
-      ["CS21B001", "Aarav Sharma", "A", "101"],
-      ["CS21B002", "Diya Patel", "A", "102"],
-      ["CS21B003", "Rohan Gupta", "A", "103"],
-      ["CS21B004", "Ananya Reddy", "B", "201"],
-      ["CS21B005", "Vihaan Nair", "B", "202"],
-      ["CS21B006", "Ishita Singh", "B", "203"],
-      ["EE21B011", "Arjun Das", "C", "301"],
-      ["EE21B012", "Meera Iyer", "C", "302"],
+      ["CS21B001", "Aarav Sharma", "A", "101", "9000000001"],
+      ["CS21B002", "Diya Patel", "A", "102", "9000000002"],
+      ["CS21B003", "Rohan Gupta", "A", "103", "9000000003"],
+      ["CS21B004", "Ananya Reddy", "B", "201", "9000000004"],
+      ["CS21B005", "Vihaan Nair", "B", "202", "9000000005"],
+      ["CS21B006", "Ishita Singh", "B", "203", "9000000006"],
+      ["EE21B011", "Arjun Das", "C", "301", "9000000011"],
+      ["EE21B012", "Meera Iyer", "C", "302", "9000000012"],
     ],
   },
   {
@@ -67,8 +67,10 @@ const TENANTS = [
     admin: { email: "admin@demo-hostel.test", name: "Sunita Rao" },
     staff: { email: "staff@demo-hostel.test", name: "Vikram Joshi" },
     students: [
-      ["CS21B001", "Kabir Malhotra", "A", "101"],
-      ["CS21B002", "Zara Khan", "A", "102"],
+      // Distinct from tenant A's numbers: a mobile is a username now, and two
+      // students sharing one would make the login ambiguous across messes.
+      ["CS21B001", "Kabir Malhotra", "A", "101", "9000000101"],
+      ["CS21B002", "Zara Khan", "A", "102", "9000000102"],
     ],
   },
 ] as const;
@@ -226,8 +228,8 @@ async function seed(): Promise<void> {
       console.log(`  ${role.toLowerCase().padEnd(7)} ${person.email}`);
     }
 
-    // --- Students (roll-number logins via synthetic addresses, D-02) ---
-    for (const [roll, name, block, room] of t.students) {
+    // --- Students (mobile-number logins, resolved to synthetic addresses) ---
+    for (const [roll, name, block, room, phone] of t.students) {
       const email = syntheticEmailFor(t.slug, roll);
       const userId = await upsertUser(email, name);
 
@@ -237,6 +239,9 @@ async function seed(): Promise<void> {
           tenant_id: tenantId,
           role: "STUDENT",
           full_name: name,
+          // The student's login. `profiles.mobile` is generated from this, and
+          // without it a seeded student cannot sign in at all.
+          phone,
           status: "ACTIVE",
           must_change_password: false,
         },
@@ -331,7 +336,7 @@ async function main() {
   console.log("─".repeat(64));
   console.log(`  Admin    admin@unversity-mess.test`);
   console.log(`  Staff    staff@unversity-mess.test`);
-  console.log(`  Student  CS21B001            (roll number, not email)`);
+  console.log(`  Student  9000000003          (mobile number \u2014 Rohan Gupta)`);
   console.log(`  Password ${DEMO_PASSWORD}   (all accounts)`);
   console.log("─".repeat(64));
   console.log("Second tenant 'demo-hostel' exists to prove isolation.");

@@ -41,6 +41,12 @@ export interface TenantSettings {
   readonly mealSlots: readonly MealSlotConfig[];
   readonly cutAdvanceHours: number;
   readonly cutMaxDaysPerMonth: number;
+  /**
+   * When true the admin never types a roll number — the next one is allocated
+   * by the database. A mess using institutional roll numbers (CS21B001) leaves
+   * this off and keeps typing them.
+   */
+  readonly autoRollNumbers: boolean;
   /** Absences (migration 008). All default off — see absence.policy.ts. */
   readonly allowMealSkipping: boolean;
   readonly allowPartialDaySkip: boolean;

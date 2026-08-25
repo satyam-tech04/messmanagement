@@ -363,6 +363,9 @@ export function tenantSettings(over: Partial<TenantSettings> = {}): TenantSettin
     ],
     cutAdvanceHours: 12,
     cutMaxDaysPerMonth: 5,
+    // Off by default, matching the column default: a mess keeps typing its own
+    // roll numbers unless it has deliberately asked not to.
+    autoRollNumbers: false,
     gracePeriodDays: 3,
     blockOnOverdue: true,
     allowExtras: false,

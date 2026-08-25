@@ -17,7 +17,7 @@
  * Pure: no I/O. The caller supplies the plans and the students that already
  * exist; this decides what would happen and reports it for confirmation.
  */
-import { isReservedRollNumber, isValidRollNumber } from "../domain/identity";
+import { isReservedRollNumber, isValidRollNumber, normalizeMobile } from "../domain/identity";
 import { StudentStatus, type MealSlot } from "../domain/enums";
 import { addDays, compareServiceDates, toServiceDate, type ServiceDate } from "../time";
 import { validateSubscriptionStart } from "./student-admin.policy";
@@ -221,6 +221,11 @@ export function previewStudentImport(request: ImportRequest): ImportPreview {
 
   const plansByName = new Map(request.plans.map((p) => [normalizePlanName(p.name), p]));
   const alreadyEnrolled = new Map(request.existing.map((e) => [e.rollNumber.toLowerCase(), e]));
+
+  // A mobile number is a student's username, so the same one twice in a file
+  // would create two accounts that both fail to sign in. Caught here, before a
+  // single auth user is written.
+  const mobileSeen = new Map<string, number>();
   const seenRolls = new Map<string, number>();
 
   dataRows.forEach((raw, index) => {
@@ -262,8 +267,34 @@ export function previewStudentImport(request: ImportRequest): ImportPreview {
     if (!fullName) reject("full_name", "Missing name.");
     else if (fullName.length > 120) reject("full_name", "That name is too long.");
 
+    // Resolved here rather than beside the subscription below, because whether
+    // this row is a new student or an update to an existing one decides how
+    // strict the mobile-number rule is.
+    const existing = alreadyEnrolled.get(rollNumber.toLowerCase());
+
     const phone = get("phone");
-    if (phone && !PHONE.test(phone)) reject("phone", `"${phone}" is not a valid phone number.`);
+    if (phone && !PHONE.test(phone)) {
+      reject("phone", `"${phone}" is not a valid phone number.`);
+    } else if (!existing && !normalizeMobile(phone)) {
+      // Required for a NEW student: the mobile number is how they sign in, so a
+      // row without one would create an account nobody can ever open. Not
+      // demanded of an UPDATE row, which is editing somebody who already has
+      // one on file and may simply not be re-stating it.
+      reject(
+        "phone",
+        `${fullName || rollNumber} has no mobile number. It is how a student signs in, so a new student cannot be created without one.`,
+      );
+    } else if (phone) {
+      const mobile = normalizeMobile(phone)!;
+      if (mobileSeen.has(mobile)) {
+        reject(
+          "phone",
+          `That mobile number is already on row ${mobileSeen.get(mobile)!} of this file — two students cannot share one, because it is how they sign in.`,
+        );
+      } else {
+        mobileSeen.set(mobile, rowNumber);
+      }
+    }
 
     const email = get("email");
     if (email && !EMAIL.test(email)) reject("email", `"${email}" is not a valid email address.`);
@@ -285,7 +316,6 @@ export function previewStudentImport(request: ImportRequest): ImportPreview {
     const planNameRaw = get("plan_name");
     let subscription: ImportSubscription | undefined;
     const warnings: string[] = [];
-    const existing = alreadyEnrolled.get(rollNumber.toLowerCase());
 
     if (planNameRaw) {
       const plan = plansByName.get(normalizePlanName(planNameRaw));

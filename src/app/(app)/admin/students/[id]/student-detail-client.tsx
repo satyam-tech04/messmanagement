@@ -37,6 +37,7 @@ import {
   uploadStudentPhoto,
   type ActionState,
 } from "./actions";
+import { CapturePhotoDialog } from "./photo-capture";
 
 export interface StudentDetail {
   readonly id: string;
@@ -491,6 +492,18 @@ export function PhotoCard({ student, hasPhoto }: { student: StudentDetail; hasPh
                   busy="Uploading…"
                 />
               </Button>
+
+              {/* The student is usually standing at the desk during enrolment,
+                  so the photo that matters is the one taken right then. It goes
+                  through the same action as a picked file. */}
+              <CapturePhotoDialog
+                hasPhoto={showing}
+                onPhoto={(file) => {
+                  const data = new FormData();
+                  data.set("photo", file);
+                  formAction(data);
+                }}
+              />
               {showing ? (
                 <Button
                   type="button"

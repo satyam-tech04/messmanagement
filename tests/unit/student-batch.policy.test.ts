@@ -20,8 +20,23 @@ import {
   type StudentDraft,
 } from "@/core/policies/student-batch.policy";
 
+/**
+ * A distinct ten-digit mobile for each roll number.
+ *
+ * The mobile number became a student's username, so it is both required and
+ * unique within a mess. Deriving it from the roll number keeps every default
+ * row valid AND distinct, so a test about roll numbers is not quietly also a
+ * test about duplicate phones.
+ */
+function phoneFor(rollNumber: string): string {
+  let hash = 0;
+  for (const ch of rollNumber) hash = (hash * 31 + ch.charCodeAt(0)) % 1_000_000_000;
+  return `9${String(hash).padStart(9, "0")}`;
+}
+
 function row(over: Partial<StudentDraft> = {}): StudentDraft {
-  return { rollNumber: "CS22B101", fullName: "Priya Menon", ...over };
+  const rollNumber = over.rollNumber ?? "CS22B101";
+  return { rollNumber, fullName: "Priya Menon", phone: phoneFor(rollNumber), ...over };
 }
 
 describe("validateStudentBatch — blank rows are not errors", () => {
@@ -194,8 +209,19 @@ describe("validateStudentBatch — batch size", () => {
 });
 
 describe("validateStudentBatch — optional fields", () => {
-  it("accepts a row with only the two required fields", () => {
-    expect(validateStudentBatch([{ rollNumber: "CS1", fullName: "A B" }], []).errors).toEqual([]);
+  it("accepts a row with only the required fields", () => {
+    // Three now, not two: the mobile number joined them when it became the
+    // student's username. A row without one creates an unopenable account.
+    expect(
+      validateStudentBatch([{ rollNumber: "CS1", fullName: "A B", phone: "9876543210" }], [])
+        .errors,
+    ).toEqual([]);
+  });
+
+  it("rejects a row with no mobile number at all", () => {
+    const r = validateStudentBatch([{ rollNumber: "CS1", fullName: "A B" }], []);
+    expect(r.errors[0]!.field).toBe("phone");
+    expect(r.errors[0]!.message).toMatch(/signs in/i);
   });
 
   it("rejects a malformed phone number", () => {
@@ -348,5 +374,75 @@ describe("the reserved operator roll number", () => {
     const r = validateStudentBatch([row({ rollNumber: "superuser1" })], []);
     expect(r.errors).toEqual([]);
     expect(r.valid).toHaveLength(1);
+  });
+});
+
+describe("validateStudentBatch — a mess that issues its own roll numbers", () => {
+  it("accepts a blank roll number when the mess auto-assigns", () => {
+    // The column is not rendered at all in that mode, so demanding it would
+    // block the form on a field the admin cannot see.
+    const r = validateStudentBatch(
+      [{ rollNumber: "", fullName: "Priya Menon", phone: "9876543210" }],
+      [],
+      { autoRollNumbers: true },
+    );
+    expect(r.errors).toEqual([]);
+    expect(r.valid).toHaveLength(1);
+  });
+
+  it("still demands one when the mess types its own", () => {
+    const r = validateStudentBatch(
+      [{ rollNumber: "", fullName: "Priya Menon", phone: "9876543210" }],
+      [],
+    );
+    expect(r.errors[0]!.field).toBe("rollNumber");
+  });
+
+  it("does not treat an auto-assigning batch as one giant duplicate", () => {
+    // Every row has the same blank roll number. Without the auto branch these
+    // would collide with each other on the duplicate check.
+    const rows = ["9800000001", "9800000002", "9800000003"].map((phone, i) => ({
+      rollNumber: "",
+      fullName: `Student ${i}`,
+      phone,
+    }));
+    const r = validateStudentBatch(rows, [], { autoRollNumbers: true });
+    expect(r.errors).toEqual([]);
+    expect(r.valid).toHaveLength(3);
+  });
+});
+
+describe("validateStudentBatch — the mobile number is a username", () => {
+  it("rejects a number already registered in this mess", () => {
+    const r = validateStudentBatch([row({ phone: "9876543210" })], [], {
+      existingMobiles: ["+91 98765-43210"],
+    });
+    expect(r.errors[0]!.field).toBe("phone");
+    expect(r.errors[0]!.message).toMatch(/already registered/i);
+  });
+
+  it("rejects the same number typed twice in one batch", () => {
+    const r = validateStudentBatch(
+      [
+        row({ rollNumber: "A1", phone: "9876543210" }),
+        row({ rollNumber: "A2", phone: "9876543210" }),
+      ],
+      [],
+    );
+    const phoneError = r.errors.find((e) => e.field === "phone");
+    expect(phoneError?.message).toMatch(/appears twice/i);
+    // Blames the repeat, not the first occurrence.
+    expect(phoneError?.index).toBe(1);
+  });
+
+  it("treats differently-written forms of one number as the same student", () => {
+    const r = validateStudentBatch(
+      [
+        row({ rollNumber: "A1", phone: "9876543210" }),
+        row({ rollNumber: "A2", phone: "+91 98765-43210" }),
+      ],
+      [],
+    );
+    expect(r.errors.find((e) => e.field === "phone")).toBeDefined();
   });
 });

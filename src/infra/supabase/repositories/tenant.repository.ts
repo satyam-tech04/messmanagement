@@ -209,3 +209,33 @@ export class SupabaseTenantDirectory implements TenantDirectory {
     invalidateTenantCache(tenantId);
   }
 }
+
+/**
+ * Claims the next roll number for a mess that auto-assigns them.
+ *
+ * Delegates to `public.allocate_roll_number`, which increments the counter
+ * inside an UPDATE and so takes a row lock. That is the whole point: the
+ * obvious `max(roll_number) + 1` would be read-then-write, and the bulk form
+ * creates twenty-five students in one submission while another admin may be
+ * enrolling at the same time. Two callers reading the same maximum would be
+ * handed the same number, and since the roll number is baked into the login
+ * address, the second student would simply fail to be created — halfway through
+ * a batch, with auth users already written.
+ *
+ * Service-role only. Student creation already runs with it (it must, to call
+ * auth.admin), and nothing reachable from a browser should advance a counter.
+ */
+export async function allocateRollNumber(
+  admin: SupabaseClient<Database>,
+  tenantId: string,
+): Promise<string> {
+  const { data, error } = await admin.rpc("allocate_roll_number", { p_tenant_id: tenantId });
+
+  // Thrown rather than defaulted. A student created with a guessed roll number
+  // would collide with a real one later, and the collision would surface as an
+  // unexplained failure to enrol somebody else entirely.
+  if (error || data === null || data === undefined) {
+    throw new Error(`could not allocate a roll number: ${error?.message ?? "no value returned"}`);
+  }
+  return String(data);
+}

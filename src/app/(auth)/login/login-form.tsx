@@ -36,18 +36,22 @@ export function LoginForm({ next }: { next?: string }) {
       {next ? <input type="hidden" name="next" value={next} /> : null}
 
       <div className="space-y-2">
-        <Label htmlFor="identifier">Roll number</Label>
+        <Label htmlFor="identifier">Mobile number</Label>
         <Input
           id="identifier"
           name="identifier"
           type="text"
           required
           autoFocus
+          // `tel` rather than `numeric`: students type this on a phone, and the
+          // telephone keypad is the one that offers + and the separators they
+          // are used to seeing in their own number.
+          inputMode="tel"
           autoComplete="username"
           autoCapitalize="none"
           autoCorrect="off"
           spellCheck={false}
-          placeholder="CS21B001"
+          placeholder="9876543210"
           aria-describedby="identifier-hint"
           aria-invalid={state.error ? true : undefined}
           className="h-12 text-base"

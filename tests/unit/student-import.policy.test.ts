@@ -37,8 +37,38 @@ const PLANS: ImportPlan[] = [
 
 const TODAY = "2026-08-15";
 
+/**
+ * Runs a preview, supplying a mobile number where the test did not.
+ *
+ * A mobile number became mandatory for a new student when it became their
+ * username. Rather than rewrite every fixture in this file — none of which is
+ * about phone numbers — the column is appended here, distinct per row, unless
+ * the test provides its own. Tests that ARE about the mobile rule pass a
+ * `phone` column explicitly and this leaves them alone.
+ */
 function preview(csvRows: string[][], existing: ExistingStudent[] = []) {
-  return previewStudentImport({ rows: csvRows, plans: PLANS, existing, today: TODAY });
+  const [header, ...rows] = csvRows;
+  const alreadyHasPhone = (header ?? []).some((h) => /phone/i.test(h));
+
+  const withPhone: string[][] = alreadyHasPhone
+    ? csvRows
+    : [
+        [...(header ?? []), "phone"],
+        ...rows.map((row, i) => {
+          // A wholly blank row must stay blank — several tests turn on the
+          // parser skipping it rather than reporting it.
+          if (row.every((cell) => cell.trim() === "")) return row;
+          // Padded to the header width first, or a short row would put the
+          // phone into whichever column happened to be missing.
+          const padded = [
+            ...row,
+            ...Array(Math.max(0, (header ?? []).length - row.length)).fill(""),
+          ];
+          return [...padded, `98000${String(i).padStart(5, "0")}`];
+        }),
+      ];
+
+  return previewStudentImport({ rows: withPhone, plans: PLANS, existing, today: TODAY });
 }
 
 const HEADER = ["roll_number", "full_name"];
@@ -459,12 +489,34 @@ describe("IMPORT_COLUMNS — the export and import share one definition", () => 
   });
 
   it("is accepted as a header by the importer", () => {
-    // The exact row the export writes first.
-    const r = preview([
-      [...IMPORT_COLUMNS],
-      ["CS1", "Priya Menon", "", "", "", "", "", "", "", "", "", "", "", ""],
-    ]);
+    // The exact row the export writes first. Built by column name rather than
+    // by counting commas, so adding a column to IMPORT_COLUMNS cannot silently
+    // shift the values into the wrong fields.
+    const row = IMPORT_COLUMNS.map((column) => {
+      if (column === "roll_number") return "CS1";
+      if (column === "full_name") return "Priya Menon";
+      // A new student needs one: it is their username.
+      if (column === "phone") return "9876543210";
+      return "";
+    });
+
+    const r = preview([[...IMPORT_COLUMNS], row]);
     expect(r.ok).toBe(true);
+  });
+
+  it("refuses a new student whose exported row has no mobile number", () => {
+    // The round trip is "export, bulk-edit in Excel, re-import". If the office
+    // adds a row by hand and leaves the phone blank, that student would exist
+    // with no way to sign in — so it is refused at preview, before any account.
+    const row = IMPORT_COLUMNS.map((column) => {
+      if (column === "roll_number") return "CS-NEW";
+      if (column === "full_name") return "No Phone";
+      return "";
+    });
+
+    const r = preview([[...IMPORT_COLUMNS], row]);
+    expect(r.ok).toBe(false);
+    expect(r.errors.find((e) => e.column === "phone")?.message).toMatch(/signs in/i);
   });
 
   it("round-trips a fully-populated exported row", () => {

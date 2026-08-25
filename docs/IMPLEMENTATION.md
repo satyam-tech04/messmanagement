@@ -9,7 +9,7 @@ Legend: ✅ done · 🚧 in progress · ⬜ not started · ⏸️ deferred by de
 
 ---
 
-## ▶ RESUME HERE — state as of 2026-08-24
+## ▶ RESUME HERE — state as of 2026-08-25
 
 **Read this first if you are picking the project up cold.** It is written to survive a lost
 conversation: everything needed to continue correctly is here or linked from here.
@@ -19,8 +19,8 @@ conversation: everything needed to continue correctly is here or linked from her
 | Area                                  | State                                                               |
 | ------------------------------------- | ------------------------------------------------------------------- |
 | Repo, tooling, CI, import boundaries  | ✅ `npm run verify` green                                           |
-| Core domain (pure, no I/O)            | ✅ **818 tests**, 99%+ coverage                                     |
-| Database schema                       | ✅ migrations 001–009 **applied + sealed** on the live project      |
+| Core domain (pure, no I/O)            | ✅ **839 tests**, 99%+ coverage                                     |
+| Database schema                       | ✅ migrations 001–012 **applied + sealed** on the live project      |
 | JWT auth hook                         | ✅ enabled and verified end-to-end                                  |
 | Generated DB types                    | ✅ `src/infra/supabase/database.types.ts` (incl. RPC Functions)     |
 | Infrastructure layer (`src/infra`)    | ✅ env, clients, HMAC signer, 7 repositories                        |
@@ -38,6 +38,9 @@ conversation: everything needed to continue correctly is here or linked from her
 | **Absences (skip / away)**            | ✅ policy, service, settings toggles, student + admin screens       |
 | **First live client — Campus Crave**  | ✅ onboarded on the live project: 3 admins, 3 staff, 26 students    |
 | **Platform operator (SUPER_ADMIN)**   | ✅ `superuser` login + mess switcher, 13 live checks pass           |
+| **Students sign in with a mobile**    | ✅ generated `profiles.mobile`, login resolves it to their account  |
+| **Auto-assigned roll numbers**        | ✅ per-mess toggle, allocated under a row lock (010)                |
+| **Counter photo from the camera**     | ✅ getUserMedia capture, same upload action as a picked file        |
 
 **Phase 0 is done.** Three roles sign in against the live database and land on their own
 shell; cross-tenant isolation is proven with real data. Phase 1 domain logic (QR policy,
@@ -94,13 +97,75 @@ statement itself. With RLS bypassed by the service role, that filter is the only
 preventing a bug there from relocating a real mess admin, or a student along with their
 attendance history, into another hostel. Do not remove it.
 
+### Student login — mobile number (revised D-02)
+
+Students sign in with their **mobile number**, not their roll number. Staff and admins are
+unchanged and still use email.
+
+The auth identity did NOT change. Each student's Supabase Auth address is still derived
+from their roll number (`3@campus-crave.mess.invalid`); the login form resolves the mobile
+number to that student and signs in as the address they already had. Rewriting hundreds of
+auth users would have been a migration with no way back.
+
+`profiles.mobile` is a **generated column** holding the last ten digits, so `+91
+98765-43210`, `09876543210` and `9876543210` are one student. That same normalisation is
+the student's initial password, so `temporaryPasswordFromPhone` delegates to
+`normalizeMobile` rather than reimplementing it — three copies of "the last ten digits"
+would eventually disagree, and the symptom is a student handed a password that does not
+open their own account.
+
+⚠️ The mobile number is both the username and the first password, chosen deliberately by
+the owner. `must_change_password` is what bounds it, and it must not be relaxed.
+
+Uniqueness is enforced per mess by `profiles_tenant_mobile_key` (migration 012). Verified
+against the live database: `9111100002`, `+919111100002` and `09111100002` all collide as
+one student, another mess may hold the same number, and any number of students may have
+none.
+
+Note `profiles_phone_format` only permits `^\+?[0-9]{7,15}$`, so a number cannot be
+_stored_ with spaces or hyphens. Normalisation still matters, because a student may **type**
+`+91 98765-43210` at the login form and `normalizeMobile` resolves it.
+
+**Students with no mobile number cannot sign in, deliberately.** No placeholder is written:
+the mobile number is also the initial password, so a dummy value would be a publicly
+guessable credential pair for a real student's account. The students list surfaces them — a
+banner counting them tenant-wide, a `?missingMobile=1` filter, and an amber
+"No mobile — cannot sign in" under the name — so the gap is visible rather than silent.
+Five Campus Crave students are in this state: rolls 12, 13, 24, 25, 34.
+
+**Resolved 2026-08-25 — the duplicate enrolment.** `9209489179` was on both _Sagar Gore_
+(roll 11) and _Sagar Subhash gore_ (roll 31), created four seconds apart. Each carried its
+own ACTIVE ₹5,200 subscription for the same plan and dates, so the mess was billing one
+person ₹10,400. Neither could sign in, because the login refuses an ambiguous number. On the
+owner's instruction roll 11 was deleted (`auth.users` delete, cascading to profile, student
+and subscription) and roll 31 kept. The full deleted row is preserved in `audit_log` under
+`STUDENT_DELETED_AS_DUPLICATE`.
+
+### Auto-assigned roll numbers
+
+Per-mess, under **Settings → Enrolment**, off by default. When on, the roll number column
+disappears from both the single and bulk forms and the number is issued by
+`public.allocate_roll_number()`.
+
+That function increments `tenants.next_roll_number` inside an `UPDATE`, which takes a row
+lock. This is not incidental: `max(roll_number) + 1` is read-then-write, the bulk form
+creates 25 students in one submission and the CSV import creates hundreds, so two callers
+would be handed the same number — and since the roll number is baked into the login
+address, the second student would fail to be created halfway through a batch with auth
+users already written. Verified against the live database: 10 concurrent calls returned 10
+distinct, sequential numbers.
+
+Counters were seeded above what each mess had already issued by hand — Campus Crave
+continues at 68. (demo-hostel's counter sits at 11 rather than 1: ten numbers were consumed
+proving the concurrency property. Gaps are harmless.)
+
 ### Demo logins (after `npm run db:seed`)
 
-| Role    | Identifier                          | Password      |
-| ------- | ----------------------------------- | ------------- |
-| Admin   | `admin@unversity-mess.test`         | `MessOS@2026` |
-| Staff   | `staff@unversity-mess.test`         | `MessOS@2026` |
-| Student | `CS21B003` (roll number, not email) | `MessOS@2026` |
+| Role    | Identifier                                 | Password      |
+| ------- | ------------------------------------------ | ------------- |
+| Admin   | `admin@unversity-mess.test`                | `MessOS@2026` |
+| Staff   | `staff@unversity-mess.test`                | `MessOS@2026` |
+| Student | `9000000003` (mobile number — Rohan Gupta) | `MessOS@2026` |
 
 ⚠️ **Do not use `CS21B001` or `CS21B002` to test student login.** Both exist in _both_
 seeded tenants, and roll numbers are unique per tenant, not globally — so the login action

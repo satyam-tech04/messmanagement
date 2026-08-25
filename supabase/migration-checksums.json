@@ -52,5 +52,23 @@
     "state": "applied",
     "appliedTo": "yenxlcrtlmnfotfqqabo",
     "appliedAt": "2026-08-15"
+  },
+  "20260825000010_auto_roll_numbers.sql": {
+    "sha256": "9182ca8f82c8cdf982235f2643436d978debf258f3d03a4b6f3fd7dc13a94a2d",
+    "state": "applied",
+    "appliedTo": "yenxlcrtlmnfotfqqabo",
+    "appliedAt": "2026-08-25"
+  },
+  "20260825000011_student_mobile_login.sql": {
+    "sha256": "366553b632f942910b52998e58d2ccb7964a82933df197588bb059761edea32a",
+    "state": "applied",
+    "appliedTo": "yenxlcrtlmnfotfqqabo",
+    "appliedAt": "2026-08-25"
+  },
+  "20260825000012_student_mobile_unique.sql": {
+    "sha256": "746cd167d91ddfe083f522d9f46ec33c8a4bd80e3896f4530cf5006ec28de4ef",
+    "state": "applied",
+    "appliedTo": "yenxlcrtlmnfotfqqabo",
+    "appliedAt": "2026-08-25"
   }
 }

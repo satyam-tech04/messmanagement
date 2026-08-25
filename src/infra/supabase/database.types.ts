@@ -287,6 +287,7 @@ export type Database = {
         must_change_password: boolean;
         created_at: string;
         updated_at: string;
+        mobile: string | null;
       };
       Insert: {
         id: string;
@@ -300,6 +301,7 @@ export type Database = {
         must_change_password?: boolean;
         created_at?: string;
         updated_at?: string;
+        mobile?: string | null;
       };
       Update: {
         id?: string;
@@ -313,6 +315,7 @@ export type Database = {
         must_change_password?: boolean;
         created_at?: string;
         updated_at?: string;
+        mobile?: string | null;
       };
       Relationships: [];
     };
@@ -461,6 +464,7 @@ export type Database = {
         away_requires_approval: boolean;
         away_advance_hours: number;
         away_max_days: number;
+        auto_roll_numbers: boolean;
       };
       Insert: {
         tenant_id: string;
@@ -483,6 +487,7 @@ export type Database = {
         away_requires_approval?: boolean;
         away_advance_hours?: number;
         away_max_days?: number;
+        auto_roll_numbers?: boolean;
       };
       Update: {
         tenant_id?: string;
@@ -505,6 +510,7 @@ export type Database = {
         away_requires_approval?: boolean;
         away_advance_hours?: number;
         away_max_days?: number;
+        auto_roll_numbers?: boolean;
       };
       Relationships: [];
     };
@@ -518,6 +524,7 @@ export type Database = {
         status: Database["public"]["Enums"]["tenant_status"];
         created_at: string;
         updated_at: string;
+        next_roll_number: number;
       };
       Insert: {
         id?: string;
@@ -528,6 +535,7 @@ export type Database = {
         status?: Database["public"]["Enums"]["tenant_status"];
         created_at?: string;
         updated_at?: string;
+        next_roll_number?: number;
       };
       Update: {
         id?: string;
@@ -538,12 +546,17 @@ export type Database = {
         status?: Database["public"]["Enums"]["tenant_status"];
         created_at?: string;
         updated_at?: string;
+        next_roll_number?: number;
       };
       Relationships: [];
     };
     };
     Views: Record<never, never>;
     Functions: {
+      allocate_roll_number: {
+        Args: { p_tenant_id: string };
+        Returns: number;
+      };
       consume_rate_limit: {
         Args: { p_bucket_key: string; p_window_seconds: number; p_max_requests: number };
         Returns: boolean;

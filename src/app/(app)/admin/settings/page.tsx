@@ -104,6 +104,7 @@ export default async function SettingsPage() {
           awayAdvanceHours: settings.awayAdvanceHours,
           awayMaxDays: settings.awayMaxDays,
         }}
+        autoRollNumbers={settings.autoRollNumbers}
       />
     </div>
   );

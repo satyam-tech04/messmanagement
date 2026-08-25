@@ -1,4 +1,5 @@
 import { randomInt } from "node:crypto";
+import { normalizeMobile } from "@/core/domain/identity";
 
 /**
  * Generates a temporary password for an admin-issued account (D-02).
@@ -60,10 +61,12 @@ export function generateTemporaryPassword(): string {
  * would tell the student something that does not work, and anything under six
  * characters is rejected by the auth provider mid-import.
  */
-const MOBILE_DIGITS = 10;
-
 export function temporaryPasswordFromPhone(phone: string | undefined | null): string | null {
-  const digits = (phone ?? "").replace(/\D/g, "");
-  if (digits.length < MOBILE_DIGITS) return null;
-  return digits.slice(-MOBILE_DIGITS);
+  // Delegated rather than reimplemented. Since students began signing in with
+  // their mobile number, this value IS their username as well as their first
+  // password, and the `profiles.mobile` column Postgres generates uses the same
+  // rule. Three copies of "the last ten digits" would eventually disagree, and
+  // the symptom would be a student handed a password that does not open their
+  // own account.
+  return normalizeMobile(phone);
 }

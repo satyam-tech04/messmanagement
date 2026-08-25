@@ -89,7 +89,10 @@ function Field({
 function CredentialsIssued({ created }: { created: NonNullable<CreateStudentState["created"]> }) {
   const [copied, setCopied] = useState(false);
 
-  const text = `Mess OS login\nRoll number: ${created.rollNumber}\nPassword: ${created.temporaryPassword}`;
+  // The mobile number is the username now, so that is what goes on the slip.
+  // The roll number is shown below for the admin's own records — it is what
+  // staff type into the manual fallback — but the student never types it.
+  const text = `Mess OS login\nMobile number: ${created.temporaryPassword}\nPassword: ${created.temporaryPassword}`;
 
   return (
     <Card className="border-emerald-500/40">
@@ -118,7 +121,12 @@ function CredentialsIssued({ created }: { created: NonNullable<CreateStudentStat
         <dl className="bg-muted/50 divide-border divide-y rounded-lg border">
           <div className="flex items-center justify-between gap-4 px-4 py-3">
             <dt className="text-muted-foreground text-sm">Roll number</dt>
-            <dd className="font-mono text-sm font-medium">{created.rollNumber}</dd>
+            <dd className="text-right">
+              <span className="font-mono text-sm font-medium">{created.rollNumber}</span>
+              <span className="text-muted-foreground block text-xs">
+                for the counter, not their login
+              </span>
+            </dd>
           </div>
           <div className="flex items-center justify-between gap-4 px-4 py-3">
             <dt className="text-muted-foreground text-sm">Temporary password</dt>
@@ -142,8 +150,8 @@ function CredentialsIssued({ created }: { created: NonNullable<CreateStudentStat
           <div className="flex items-start gap-2.5 rounded-lg border border-sky-500/30 bg-sky-50 px-3.5 py-3 text-sm text-sky-900 dark:bg-sky-950/40 dark:text-sky-200">
             <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
             <span>
-              Nothing to write down — just tell them to sign in with their{" "}
-              <strong>roll number</strong> and their <strong>10-digit mobile number</strong>. They
+              Nothing to write down — they sign in with their{" "}
+              <strong>10-digit mobile number</strong> as both the username and the password. They
               will be asked to set their own password straight away.
             </span>
           </div>
@@ -190,7 +198,16 @@ function CredentialsIssued({ created }: { created: NonNullable<CreateStudentStat
   );
 }
 
-export function StudentForm({ plans, today }: { plans: readonly PlanOption[]; today: string }) {
+export function StudentForm({
+  plans,
+  today,
+  autoRollNumbers,
+}: {
+  plans: readonly PlanOption[];
+  today: string;
+  /** When on, the database issues the roll number and the field is not shown. */
+  autoRollNumbers: boolean;
+}) {
   const [state, formAction] = useActionState<CreateStudentState, FormData>(createStudent, {});
   const [planId, setPlanId] = useState("");
 
@@ -204,30 +221,35 @@ export function StudentForm({ plans, today }: { plans: readonly PlanOption[]; to
         <CardHeader>
           <CardTitle>Student details</CardTitle>
           <CardDescription>
-            The roll number becomes their login. It cannot be changed later.
+            The mobile number is how the student signs in, and it is their first password too, so it
+            must be right. {autoRollNumbers ? "The roll number is issued automatically." : null}
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-5 sm:grid-cols-2">
-          <Field
-            id="rollNumber"
-            label="Roll number"
-            required
-            error={err.rollNumber}
-            hint="Letters, digits, dot, underscore or hyphen"
-          >
-            <Input
+          {/* Omitted entirely rather than disabled when the mess auto-assigns:
+              a greyed-out box invites the admin to wonder what it would say. */}
+          {autoRollNumbers ? null : (
+            <Field
               id="rollNumber"
-              name="rollNumber"
+              label="Roll number"
               required
-              autoFocus
-              autoCapitalize="characters"
-              autoComplete="off"
-              spellCheck={false}
-              placeholder="CS21B001"
-              aria-invalid={Boolean(err.rollNumber) || undefined}
-              className="font-mono"
-            />
-          </Field>
+              error={err.rollNumber}
+              hint="Letters, digits, dot, underscore or hyphen"
+            >
+              <Input
+                id="rollNumber"
+                name="rollNumber"
+                required
+                autoFocus
+                autoCapitalize="characters"
+                autoComplete="off"
+                spellCheck={false}
+                placeholder="CS21B001"
+                aria-invalid={Boolean(err.rollNumber) || undefined}
+                className="font-mono"
+              />
+            </Field>
+          )}
 
           <Field id="fullName" label="Full name" required error={err.fullName}>
             <Input
@@ -240,11 +262,19 @@ export function StudentForm({ plans, today }: { plans: readonly PlanOption[]; to
             />
           </Field>
 
-          <Field id="phone" label="Phone" error={err.phone} hint="Used for reminders later">
+          <Field
+            id="phone"
+            label="Mobile number"
+            required
+            error={err.phone}
+            hint="Their username and their first password. Without it they cannot sign in."
+          >
             <Input
               id="phone"
               name="phone"
               type="tel"
+              required
+              autoFocus={autoRollNumbers}
               inputMode="tel"
               placeholder="+919876543210"
               aria-invalid={Boolean(err.phone) || undefined}

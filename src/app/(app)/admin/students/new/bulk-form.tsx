@@ -44,7 +44,7 @@ interface FieldSpec {
 const BASE_FIELDS: readonly FieldSpec[] = [
   { key: "rollNumber", label: "Roll number", width: "w-36", placeholder: "CS22B101", mono: true },
   { key: "fullName", label: "Full name", width: "w-48", placeholder: "Priya Menon" },
-  { key: "phone", label: "Phone", width: "w-32", placeholder: "9876543210" },
+  { key: "phone", label: "Mobile", width: "w-32", placeholder: "9876543210" },
   { key: "block", label: "Block", width: "w-16", placeholder: "A" },
   { key: "roomNumber", label: "Room", width: "w-20", placeholder: "104" },
 ];
@@ -188,16 +188,23 @@ function CredentialsPanel({ rows }: { rows: NonNullable<BulkCreateState["created
 export function BulkStudentForm({
   plans,
   today,
+  autoRollNumbers,
 }: {
   plans: readonly BulkPlanOption[];
   today: string;
+  /** When on, the mess issues roll numbers and the column is not shown. */
+  autoRollNumbers: boolean;
 }) {
   const [state, formAction] = useActionState<BulkCreateState, FormData>(createStudentsBulk, {});
   const [rowCount, setRowCount] = useState(STARTING_ROWS);
   const [planId, setPlanId] = useState("");
 
   const errorFor = (index: number) => state.rowErrors?.find((e) => e.index === index);
-  const fields = planId ? [...BASE_FIELDS, STARTED_FIELD] : BASE_FIELDS;
+  // Dropping the column rather than disabling it: a whole column of greyed-out
+  // boxes across twenty-five rows is noise, and the numbers are issued by the
+  // database at write time anyway.
+  const visible = autoRollNumbers ? BASE_FIELDS.filter((f) => f.key !== "rollNumber") : BASE_FIELDS;
+  const fields = planId ? [...visible, STARTED_FIELD] : visible;
 
   if (state.created && state.created.length > 0) {
     return (
@@ -304,7 +311,7 @@ export function BulkStudentForm({
                       className="text-muted-foreground px-1 pb-2 text-left text-xs font-medium"
                     >
                       {f.label}
-                      {f.key === "rollNumber" || f.key === "fullName" ? (
+                      {f.key === "rollNumber" || f.key === "fullName" || f.key === "phone" ? (
                         <span className="text-destructive"> *</span>
                       ) : null}
                     </th>

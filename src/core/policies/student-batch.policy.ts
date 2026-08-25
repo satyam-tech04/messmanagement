@@ -15,7 +15,7 @@
  * database it surfaces as a unique-index violation on the second row — after an
  * auth user has already been created for it.
  */
-import { isReservedRollNumber, isValidRollNumber } from "../domain/identity";
+import { isReservedRollNumber, isValidRollNumber, normalizeMobile } from "../domain/identity";
 import { validateSubscriptionStart } from "./student-admin.policy";
 import { toServiceDate, type ServiceDate } from "../time";
 
@@ -56,6 +56,17 @@ export interface BatchOptions {
   readonly planDurationDays?: number;
   /** Today in the tenant's timezone. Required to bound any date. */
   readonly today?: string;
+  /**
+   * When true the mess issues roll numbers itself, so the column is not on the
+   * form and a blank one is expected rather than an error.
+   */
+  readonly autoRollNumbers?: boolean;
+  /**
+   * Mobile numbers already registered in this mess, last-ten-digits form.
+   * Needed because a number is a student's username: a second student holding
+   * it makes the login ambiguous and neither of them can sign in.
+   */
+  readonly existingMobiles?: readonly string[];
 }
 
 export interface BatchRowError {
@@ -130,6 +141,16 @@ export function validateStudentBatch(
   const taken = new Set(existingRollNumbers.map((r) => r.trim().toLowerCase()));
   const seen = new Map<string, number>();
 
+  // Same two-sided check as roll numbers: against the mess, and against the
+  // batch itself. A number typed twice in one form would otherwise pass every
+  // per-row rule and only fail when the second student tried to sign in.
+  const mobileTaken = new Set(
+    (options.existingMobiles ?? [])
+      .map((m) => normalizeMobile(m))
+      .filter((m): m is string => m !== null),
+  );
+  const mobileSeen = new Map<string, number>();
+
   for (const { row, index } of filled) {
     const rollNumber = clean(row.rollNumber);
     const fullName = clean(row.fullName);
@@ -142,8 +163,11 @@ export function validateStudentBatch(
       if (!errors.some((e) => e.index === index)) errors.push({ index, field, message });
     };
 
-    if (rollNumber.length === 0) {
-      push("rollNumber", "Enter a roll number — without one they cannot log in.");
+    if (rollNumber.length === 0 && options.autoRollNumbers) {
+      // Expected: the mess issues its own numbers and the column is not shown.
+      // One is allocated per row at write time, under a database row lock.
+    } else if (rollNumber.length === 0) {
+      push("rollNumber", "Enter a roll number — staff type it into the manual fallback.");
     } else if (isReservedRollNumber(rollNumber)) {
       push("rollNumber", "That roll number is reserved by the system — choose another.");
     } else if (!isValidRollNumber(rollNumber)) {
@@ -188,7 +212,23 @@ export function validateStudentBatch(
 
     if (fullName.length < 2) push("fullName", "Enter the student's full name.");
     if (fullName.length > 120) push("fullName", "That name is too long.");
-    if (phone && !PHONE.test(phone)) push("phone", "Enter a valid phone number.");
+    // Required, not optional: the mobile number is how a student signs in. A row
+    // without one creates an account nobody can ever open.
+    const mobile = normalizeMobile(phone);
+    if (phone.length === 0) {
+      push("phone", "Enter a mobile number — it is how the student signs in.");
+    } else if (!PHONE.test(phone) || !mobile) {
+      push("phone", "Enter a mobile number with at least 10 digits.");
+    } else if (mobileTaken.has(mobile)) {
+      push("phone", "That mobile number is already registered to another student.");
+    } else if (mobileSeen.has(mobile)) {
+      push(
+        "phone",
+        `That mobile number appears twice — it is already on row ${mobileSeen.get(mobile)! + 1}.`,
+      );
+    } else {
+      mobileSeen.set(mobile, index);
+    }
     if (email && !EMAIL.test(email)) push("email", "Enter a valid email address.");
 
     valid.push({

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Download, FileUp, Plus, Users } from "lucide-react";
+import { AlertTriangle, Download, FileUp, Plus, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -39,9 +39,17 @@ function parseStatus(raw: string): StudentStatusFilter | null {
 }
 
 export default async function StudentsPage(props: {
-  searchParams: Promise<{ q?: string; status?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; page?: string; missingMobile?: string }>;
 }) {
-  const { q = "", status: rawStatus = "", page: pageParam } = await props.searchParams;
+  const {
+    q = "",
+    status: rawStatus = "",
+    page: pageParam,
+    missingMobile,
+  } = await props.searchParams;
+  // Narrows the list to the students who cannot sign in, so the banner's
+  // "Show them" has somewhere to go.
+  const onlyMissingMobile = missingMobile === "1";
   const status = parseStatus(rawStatus);
   const page = Math.max(1, Number(pageParam) || 1);
   const from = (page - 1) * PAGE_SIZE;
@@ -76,7 +84,7 @@ export default async function StudentsPage(props: {
     .from("students")
     .select(
       `id, roll_number, block, room_number, status, joined_at,
-       profiles!inner ( full_name, phone ),
+       profiles!inner ( full_name, phone, mobile ),
        subscriptions ( status, start_date, end_date )`,
       { count: "exact" },
     )
@@ -85,6 +93,8 @@ export default async function StudentsPage(props: {
     .eq("tenant_id", user.tenantId);
 
   if (status) query = query.eq("status", status);
+  // Filters on the embedded profile, which the !inner join makes possible.
+  if (onlyMissingMobile) query = query.is("profiles.mobile", null);
   if (term) {
     const escaped = term.replace(/[,()]/g, "");
     const clauses = [`roll_number.ilike.%${escaped}%`];
@@ -95,6 +105,16 @@ export default async function StudentsPage(props: {
   }
 
   const today = serviceDateOf(user.timezone, new Date());
+
+  // Tenant-wide, not page-wide: an admin on page 3 still needs to know that
+  // somebody on page 1 cannot get in. A student with no mobile number has no
+  // way into the app at all, and nothing else on this screen would say so.
+  const { count: lockedOut } = await supabase
+    .from("profiles")
+    .select("id", { count: "exact", head: true })
+    .eq("tenant_id", user.tenantId)
+    .eq("role", "STUDENT")
+    .is("mobile", null);
 
   const { data, count, error } = await query
     .order("roll_number", { ascending: true })
@@ -131,6 +151,43 @@ export default async function StudentsPage(props: {
       />
 
       <StudentsFilters initialQuery={q} initialStatus={status ?? ""} />
+
+      {lockedOut && lockedOut > 0 && !onlyMissingMobile ? (
+        <div
+          role="status"
+          className="flex items-start gap-2.5 rounded-lg border border-amber-500/30 bg-amber-50 px-3.5 py-3 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-200"
+        >
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          <span>
+            <strong>
+              {lockedOut === 1
+                ? "1 student cannot sign in"
+                : `${lockedOut} students cannot sign in`}
+            </strong>{" "}
+            — no mobile number on file, and that is what students sign in with. Open the student and
+            add their number; nothing else is needed.{" "}
+            <Link href="/admin/students?missingMobile=1" className="font-medium underline">
+              Show them
+            </Link>
+          </span>
+        </div>
+      ) : null}
+
+      {onlyMissingMobile ? (
+        <div
+          role="status"
+          className="flex items-start gap-2.5 rounded-lg border border-amber-500/30 bg-amber-50 px-3.5 py-3 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-200"
+        >
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          <span>
+            Showing only students with no mobile number on file. They cannot sign in until one is
+            added.{" "}
+            <Link href="/admin/students" className="font-medium underline">
+              Show everyone
+            </Link>
+          </span>
+        </div>
+      ) : null}
 
       {error ? (
         <TableError
@@ -178,6 +235,7 @@ export default async function StudentsPage(props: {
                 const profile = s.profiles as unknown as {
                   full_name: string;
                   phone: string | null;
+                  mobile: string | null;
                 } | null;
                 const subs = (s.subscriptions ?? []) as unknown as Array<{
                   status: string;
@@ -209,9 +267,15 @@ export default async function StudentsPage(props: {
                     <TableCell>
                       <div className="min-w-0">
                         <p className="truncate font-medium">{profile?.full_name ?? "—"}</p>
-                        {profile?.phone ? (
+                        {profile?.mobile ? (
                           <p className="text-muted-foreground truncate text-xs">{profile.phone}</p>
-                        ) : null}
+                        ) : (
+                          // The number IS the login, so its absence is a
+                          // problem to fix rather than a blank to ignore.
+                          <p className="truncate text-xs text-amber-700 dark:text-amber-400">
+                            No mobile — cannot sign in
+                          </p>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">

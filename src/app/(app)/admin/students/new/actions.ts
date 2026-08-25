@@ -14,6 +14,7 @@ import { z } from "zod";
 import {
   isReservedRollNumber,
   isValidRollNumber,
+  normalizeMobile,
   normalizeRollNumber,
 } from "@/core/domain/identity";
 // Only the validator and its types — a "use server" module may export nothing
@@ -24,25 +25,37 @@ import {
   type StudentDraft,
 } from "@/core/policies/student-batch.policy";
 import { createAdminClient } from "@/infra/supabase/admin";
+import { SupabaseTenantRepository } from "@/infra/supabase/repositories";
+import { allocateRollNumber } from "@/infra/supabase/repositories/tenant.repository";
 import { createClient } from "@/infra/supabase/server";
 import { getSessionUser } from "@/infra/auth/session";
 import { serviceDateOf } from "@/core/time";
 import { createOneStudent } from "./create-one-student";
 
 const schema = z.object({
+  // Optional here, not because it is optional in the product, but because a
+  // mess that auto-assigns roll numbers never renders the field. Which of the
+  // two applies is a stored setting, and Zod cannot read it — so presence is
+  // enforced below, once the setting is known.
   rollNumber: z
     .string()
     .trim()
-    .min(1, "Roll number is required")
-    .refine((r) => !isReservedRollNumber(r), "That roll number is reserved by the system")
-    .refine(isValidRollNumber, "Use letters, digits, dot, underscore or hyphen only"),
+    .refine((r) => r === "" || !isReservedRollNumber(r), "That roll number is reserved")
+    .refine(
+      (r) => r === "" || isValidRollNumber(r),
+      "Use letters, digits, dot, underscore or hyphen only",
+    )
+    .optional()
+    .or(z.literal("")),
   fullName: z.string().trim().min(2, "Enter the student's full name").max(120),
+  // Required since students began signing in with it. A student without a
+  // mobile number has no way into the app at all, so accepting one without it
+  // would be creating an account nobody can use.
   phone: z
     .string()
     .trim()
-    .regex(/^\+?[0-9]{7,15}$/, "Enter a valid phone number")
-    .optional()
-    .or(z.literal("")),
+    .min(1, "A mobile number is required — it is how the student signs in")
+    .refine((p) => normalizeMobile(p) !== null, "Enter a mobile number with at least 10 digits"),
   email: z.email("Enter a valid email").optional().or(z.literal("")),
   block: z.string().trim().max(40).optional().or(z.literal("")),
   roomNumber: z.string().trim().max(40).optional().or(z.literal("")),
@@ -98,24 +111,65 @@ export async function createStudent(
   }
 
   const input = parsed.data;
-  const roll = normalizeRollNumber(input.rollNumber);
   const admin = createAdminClient();
   const supabase = await createClient();
 
-  // Reject a duplicate before creating an auth user, so a retry after a typo
-  // does not leave an orphaned account behind.
-  const { data: existing } = await supabase
-    .from("students")
-    .select("id")
+  const settings = await new SupabaseTenantRepository(supabase, admin).getSettings(user.tenantId);
+
+  // Two students sharing a number means neither can sign in — the login flow
+  // refuses an ambiguous mobile rather than guessing which account to open.
+  // Caught here, before an auth user exists, so the admin sees a field error
+  // instead of an orphaned account.
+  const mobile = normalizeMobile(input.phone)!;
+  const { data: phoneClash } = await supabase
+    .from("profiles")
+    .select("full_name")
     .eq("tenant_id", user.tenantId)
-    .ilike("roll_number", roll)
+    .eq("role", "STUDENT")
+    .eq("mobile", mobile)
     .maybeSingle();
 
-  if (existing) {
+  if (phoneClash) {
     return {
-      error: `Roll number ${input.rollNumber} already exists in this mess.`,
-      fieldErrors: { rollNumber: "Already in use" },
+      error: `That mobile number already belongs to ${phoneClash.full_name}. Two students cannot share one number, because it is how they sign in.`,
+      fieldErrors: { phone: "Already in use" },
     };
+  }
+
+  let roll: string;
+  if (settings?.autoRollNumbers) {
+    // Allocated by the database under a row lock, so concurrent enrolments
+    // cannot be handed the same number.
+    try {
+      roll = await allocateRollNumber(admin, user.tenantId);
+    } catch (e) {
+      return { error: e instanceof Error ? e.message : "Could not allocate a roll number." };
+    }
+  } else {
+    if (!input.rollNumber) {
+      return {
+        error: "Check the highlighted fields.",
+        fieldErrors: { rollNumber: "Roll number is required" },
+      };
+    }
+    roll = normalizeRollNumber(input.rollNumber);
+
+    // Reject a duplicate before creating an auth user, so a retry after a typo
+    // does not leave an orphaned account behind. Not needed on the auto path:
+    // the counter only ever moves forward.
+    const { data: existing } = await supabase
+      .from("students")
+      .select("id")
+      .eq("tenant_id", user.tenantId)
+      .ilike("roll_number", roll)
+      .maybeSingle();
+
+    if (existing) {
+      return {
+        error: `Roll number ${input.rollNumber} already exists in this mess.`,
+        fieldErrors: { rollNumber: "Already in use" },
+      };
+    }
   }
 
   const result = await createOneStudent(
@@ -127,7 +181,7 @@ export async function createStudent(
       actorProfileId: user.actorProfileId,
     },
     {
-      rollNumber: input.rollNumber,
+      rollNumber: roll,
       fullName: input.fullName,
       phone: input.phone || undefined,
       email: input.email || undefined,
@@ -182,7 +236,10 @@ export interface BulkCreateState {
 function readRows(formData: FormData): StudentDraft[] {
   const rows: StudentDraft[] = [];
   for (let i = 0; ; i++) {
-    if (!formData.has(`row-${i}-rollNumber`)) break;
+    // Keyed on the name, not the roll number: a mess that auto-assigns does not
+    // render a roll-number input at all, and keying on it would read zero rows
+    // and report the form as empty.
+    if (!formData.has(`row-${i}-fullName`)) break;
     rows.push({
       rollNumber: String(formData.get(`row-${i}-rollNumber`) ?? ""),
       fullName: String(formData.get(`row-${i}-fullName`) ?? ""),
@@ -232,6 +289,23 @@ export async function createStudentsBulk(
     return { error: `Could not check existing roll numbers: ${readError.message}` };
   }
 
+  // Same check, for the field that is actually the student's username now. A
+  // repeated number makes the login ambiguous and locks out both students.
+  const { data: registered, error: mobileError } = await supabase
+    .from("profiles")
+    .select("mobile")
+    .eq("tenant_id", user.tenantId)
+    .eq("role", "STUDENT")
+    .not("mobile", "is", null);
+
+  if (mobileError) {
+    return { error: `Could not check existing mobile numbers: ${mobileError.message}` };
+  }
+
+  const admin = createAdminClient();
+  const settings = await new SupabaseTenantRepository(supabase, admin).getSettings(user.tenantId);
+  const autoRollNumbers = settings?.autoRollNumbers ?? false;
+
   // The chosen plan's length is what bounds how far any row may backdate, so it
   // is read before validating rather than discovered at write time.
   let planDurationDays: number | undefined;
@@ -252,6 +326,10 @@ export async function createStudentsBulk(
       batchStartDate: planStartDate || undefined,
       planDurationDays,
       today: serviceDateOf(user.timezone, new Date()),
+      autoRollNumbers,
+      existingMobiles: (registered ?? [])
+        .map((r) => r.mobile)
+        .filter((m): m is string => m !== null),
     },
   );
 
@@ -263,7 +341,6 @@ export async function createStudentsBulk(
     };
   }
 
-  const admin = createAdminClient();
   const actor = {
     tenantId: user.tenantId,
     tenantSlug: user.tenantSlug,
@@ -279,8 +356,24 @@ export async function createStudentsBulk(
   // Every row is attempted even after one fails: the successes are real students
   // who now exist, and the admin needs the full picture in one pass.
   for (const draft of validation.valid) {
+    // Allocated per row, here rather than before validation, so a batch that
+    // fails its checks does not burn numbers off the mess's counter.
+    let rollNumber = draft.rollNumber;
+    if (autoRollNumbers) {
+      try {
+        rollNumber = await allocateRollNumber(admin, user.tenantId);
+      } catch (e) {
+        failed.push({
+          rollNumber: draft.fullName,
+          error: e instanceof Error ? e.message : "Could not allocate a roll number.",
+        });
+        continue;
+      }
+    }
+
     const result = await createOneStudent(admin, actor, {
       ...draft,
+      rollNumber,
       planId: planId || undefined,
       // Already resolved per row by the validator: the row's own date, or the
       // batch default where the row left it blank.

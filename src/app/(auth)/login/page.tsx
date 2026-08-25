@@ -19,7 +19,7 @@ export default async function LoginPage(props: { searchParams: Promise<{ next?: 
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>
         <p className="text-muted-foreground text-sm">
-          Use the roll number and password issued by your mess admin.
+          Students: sign in with your mobile number. Staff and admins: use your email address.
         </p>
       </div>
 

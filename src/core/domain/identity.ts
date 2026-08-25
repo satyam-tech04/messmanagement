@@ -117,15 +117,53 @@ export function isReservedRollNumber(rollNumber: string): boolean {
 }
 
 /**
+ * Digits a mobile number is keyed on.
+ *
+ * Ten, not the full number, because the office may hold `+91 98765-43210`,
+ * `09876543210` and `9876543210` for the same student and all three must
+ * resolve to one person. The `mobile` column in Postgres is generated from this
+ * same rule, and `temporaryPasswordFromPhone` derives the initial password from
+ * it — so a student's username and their first password come from one
+ * normalisation, and it lives here so the three can never disagree.
+ */
+const MOBILE_DIGITS = 10;
+
+/**
+ * Digits, and the punctuation people put between them. Deliberately excludes
+ * letters: `+91 98765 43210` and `(0)9876543210` are phone numbers, `CS21B001`
+ * is not, and only the first kind should ever be stripped down to digits.
+ */
+const PHONE_SHAPE = /^[+(]?[\d][\d\s()+-]*$/;
+
+/**
+ * The last ten digits of a phone number, or null when there are not ten.
+ *
+ * Null is the meaningful answer, not an error: a student with no usable number
+ * is a student who cannot sign in, and every caller needs to handle that rather
+ * than receive a truncated string that resolves to nobody.
+ */
+export function normalizeMobile(phone: string | null | undefined): string | null {
+  const digits = (phone ?? "").replace(/\D/g, "");
+  if (digits.length < MOBILE_DIGITS) return null;
+  return digits.slice(-MOBILE_DIGITS);
+}
+
+/**
  * What the user typed on the login form.
  *
- * Staff and admins are created with real email addresses; students log in with
- * a roll number. Distinguishing on `@` is unambiguous because a roll number can
- * never contain one.
+ * Staff and admins are created with real email addresses; students sign in with
+ * their mobile number (D-02, revised). A roll number is no longer a login — it
+ * is the counter's manual fallback identifier and, for messes that auto-assign
+ * it, a number the student may never see.
+ *
+ * The three cases are told apart without ambiguity: the operator's reserved
+ * word first, then anything containing `@`, then a run of digits long enough to
+ * be a mobile number. Anything else is not a login and is refused here rather
+ * than sent to the database to fail.
  */
 export type LoginIdentifier =
   | { readonly kind: "EMAIL"; readonly email: string }
-  | { readonly kind: "ROLL_NUMBER"; readonly rollNumber: string };
+  | { readonly kind: "MOBILE"; readonly mobile: string };
 
 export function classifyLoginIdentifier(raw: string): LoginIdentifier | null {
   const trimmed = raw.trim();
@@ -141,6 +179,13 @@ export function classifyLoginIdentifier(raw: string): LoginIdentifier | null {
   if (trimmed.includes("@")) {
     return { kind: "EMAIL", email: trimmed.toLowerCase() };
   }
-  if (!isValidRollNumber(trimmed)) return null;
-  return { kind: "ROLL_NUMBER", rollNumber: normalizeRollNumber(trimmed) };
+
+  // Only things shaped like a phone number reach the mobile branch. Without
+  // this, a mistyped roll number of ten-plus characters would be stripped to
+  // its digits and looked up as somebody's phone.
+  if (!PHONE_SHAPE.test(trimmed)) return null;
+
+  const mobile = normalizeMobile(trimmed);
+  if (!mobile) return null;
+  return { kind: "MOBILE", mobile };
 }

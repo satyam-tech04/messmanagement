@@ -15,6 +15,7 @@ import { createClient } from "@/infra/supabase/server";
 import { createAdminClient } from "@/infra/supabase/admin";
 import { rateLimitBuckets, SupabaseRateLimiter } from "@/infra/supabase/repositories";
 import { homeRouteFor } from "@/infra/auth/session";
+import { firstRelated } from "@/infra/supabase/mappers";
 import type { UserRole } from "@/core/domain/enums";
 
 const loginSchema = z.object({
@@ -67,27 +68,43 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
   if (identifier.kind === "EMAIL") {
     email = identifier.email;
   } else {
-    // A roll number is unique per tenant, not globally, so it must be resolved
-    // to a tenant before it means anything. This runs with the service role
-    // because there is no session yet — RLS cannot help pre-authentication.
+    // The student typed a mobile number, but their Supabase Auth address is
+    // still derived from their roll number — changing that would mean rewriting
+    // every auth user in the hostel. So the number is resolved to the student
+    // first, and the sign-in happens as the address they have always had.
+    //
+    // Runs with the service role because there is no session yet; RLS cannot
+    // help before authentication. `mobile` is a generated column holding the
+    // last ten digits, so `+91 98765-43210` and `9876543210` are one student.
     const { data: matches, error } = await admin
-      .from("students")
-      .select("roll_number, tenants!inner ( slug )")
-      .ilike("roll_number", identifier.rollNumber)
+      .from("profiles")
+      .select("mobile, students!inner ( roll_number ), tenants!inner ( slug )")
+      .eq("role", "STUDENT")
+      .eq("mobile", identifier.mobile)
       .limit(2);
 
     if (error || !matches || matches.length === 0) return { error: GENERIC_FAILURE };
 
     if (matches.length > 1) {
-      // Two tenants both have this roll number. Rather than guess — and risk
-      // logging someone into the wrong hostel — ask for the mess code.
+      // Two students share this number. Never guess — signing someone into the
+      // wrong account is worse than refusing, and this is a real state until
+      // migration 012's unique index lands. Said plainly, because the student
+      // cannot fix it and the admin can.
       return {
-        error: "That roll number exists at more than one mess. Sign in with your email instead.",
+        error:
+          "That mobile number is registered to more than one student. Ask your mess admin to correct it.",
       };
     }
 
-    const tenant = matches[0]!.tenants as unknown as { slug: string };
-    email = syntheticEmailFor(tenant.slug, identifier.rollNumber);
+    // Both embeds are to-one (students.profile_id is unique, tenant_id is a FK),
+    // so PostgREST collapses each to an object rather than an array. Reading
+    // `[0]` here would silently yield undefined — see firstRelated().
+    const row = matches[0]!;
+    const tenant = firstRelated<{ slug: string }>(row.tenants as never);
+    const student = firstRelated<{ roll_number: string }>(row.students as never);
+    if (!tenant || !student) return { error: GENERIC_FAILURE };
+
+    email = syntheticEmailFor(tenant.slug, student.roll_number);
   }
 
   const supabase = await createClient();
