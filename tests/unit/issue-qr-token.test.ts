@@ -70,6 +70,7 @@ const student = (over: Partial<StudentForVerification> = {}): StudentForVerifica
     startDate: toServiceDate("2026-07-01"),
     endDate: toServiceDate("2026-07-31"),
     includedMealSlots: ["LUNCH", "DINNER"],
+    pauses: [],
   },
   ...over,
 });
@@ -172,6 +173,7 @@ describe("issueQrToken — account status (§6.1, re-checked at verification)", 
           startDate: toServiceDate("2026-06-01"),
           endDate: toServiceDate("2026-06-30"),
           includedMealSlots: ["LUNCH", "DINNER"],
+          pauses: [],
         },
       }),
     ]);
@@ -189,6 +191,7 @@ describe("issueQrToken — account status (§6.1, re-checked at verification)", 
           startDate: toServiceDate("2026-07-01"),
           endDate: toServiceDate("2026-07-31"),
           includedMealSlots: ["DINNER"],
+          pauses: [],
         },
       }),
     ]);

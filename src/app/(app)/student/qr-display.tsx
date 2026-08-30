@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Clock,
   Loader2,
+  PauseCircle,
   Pointer,
   QrCode,
   RefreshCw,
@@ -14,6 +15,21 @@ import {
   WifiOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+/**
+ * `YYYY-MM-DD` to "5 September". Parsed as UTC and read back in UTC so the
+ * student's own device timezone can never shift the date by a day — the value
+ * is a plain calendar date the server already derived in the mess's timezone.
+ */
+function formatResumeDate(date: string): string {
+  const parsed = new Date(`${date}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) return date;
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "long",
+    timeZone: "UTC",
+  }).format(parsed);
+}
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { createRealtimeClient } from "@/infra/supabase/client";
@@ -52,7 +68,13 @@ type State =
   | { readonly kind: "expired" }
   | { readonly kind: "loading" }
   | { readonly kind: "ready"; readonly data: TokenResponse; readonly dataUrl: string }
-  | { readonly kind: "denied"; readonly code: string; readonly message: string }
+  | {
+      readonly kind: "denied";
+      readonly code: string;
+      readonly message: string;
+      /** Set for SUBSCRIPTION_PAUSED — the day meals start again (§12). */
+      readonly resumeDate?: string;
+    }
   | {
       readonly kind: "served";
       readonly mealSlot: string;
@@ -138,6 +160,9 @@ export function QrDisplay({ timeZone, counter }: { timeZone: string; counter: Co
           kind: "denied",
           code: body.error?.code ?? "UNKNOWN",
           message: body.error?.message ?? "Your QR code is unavailable.",
+          ...(typeof body.error?.details?.resumeDate === "string"
+            ? { resumeDate: body.error.details.resumeDate }
+            : {}),
         });
         setSecondsLeft(null);
         // A denial is a decision, not a blip. Re-poll slowly so a student who
@@ -483,6 +508,43 @@ export function QrDisplay({ timeZone, counter }: { timeZone: string; counter: Co
         </div>
         <p className="max-w-xs text-xs text-emerald-800/80 dark:text-emerald-300/80">
           Your code for the next meal will appear here automatically.
+        </p>
+      </div>
+    );
+  }
+
+  if (state.kind === "denied" && state.code === "SUBSCRIPTION_PAUSED") {
+    // Deliberately not the red panel. Nothing has gone wrong and the student
+    // owes nothing — their mess was told they would be away. Red here would
+    // send a queue of untroubled students to the office to dispute it.
+    //
+    // §12 asks for the status, the resume date, and for it to be clear that
+    // meals resume automatically. All three are here; there is nothing to do
+    // and nothing to tap.
+    return (
+      <div className="flex flex-col items-center gap-4 rounded-2xl border border-amber-500/30 bg-amber-50 px-6 py-12 text-center dark:bg-amber-950/30">
+        <PauseCircle className="size-10 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+        <div className="space-y-1.5">
+          <h2 className="font-semibold text-amber-900 dark:text-amber-200">Your plan is paused</h2>
+          <p className="mx-auto max-w-xs text-sm text-amber-800 dark:text-amber-300/90">
+            {state.resumeDate ? (
+              <>
+                You can&apos;t get meals right now. Your plan starts again on{" "}
+                <span className="font-medium tabular-nums">
+                  {formatResumeDate(state.resumeDate)}
+                </span>
+                , and your QR code will come back on its own.
+              </>
+            ) : (
+              <>
+                You can&apos;t get meals while your plan is paused. It will start again on its own —
+                speak to the mess office if you need it sooner.
+              </>
+            )}
+          </p>
+        </div>
+        <p className="text-xs text-amber-700/80 dark:text-amber-400/70">
+          The days you miss are added to the end of your plan.
         </p>
       </div>
     );

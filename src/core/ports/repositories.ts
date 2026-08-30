@@ -11,6 +11,7 @@
  */
 
 import type { MealSlot, MessCutStatus, StudentStatus } from "../domain/enums";
+import type { PauseRecord } from "../policies/pause.policy";
 import type { TenantSettings } from "../domain/tenant-context";
 import type { ServiceDate } from "../time";
 import type { MessCutSnapshot, SubscriberSnapshot } from "../policies/headcount.policy";
@@ -31,6 +32,16 @@ export interface StudentForVerification {
     readonly startDate: ServiceDate;
     readonly endDate: ServiceDate;
     readonly includedMealSlots: readonly MealSlot[];
+    /**
+     * Non-cancelled pauses on this subscription.
+     *
+     * Required, not optional, and fetched in the same round trip as the
+     * subscription itself. Optional would mean a repository that forgot to
+     * select them silently feeds a paused student — a fail-open on the one
+     * path where rule 7 says fail closed. As a required field, forgetting it
+     * is a compile error instead.
+     */
+    readonly pauses: readonly PauseRecord[];
   } | null;
 }
 

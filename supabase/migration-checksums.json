@@ -70,5 +70,11 @@
     "state": "applied",
     "appliedTo": "yenxlcrtlmnfotfqqabo",
     "appliedAt": "2026-08-25"
+  },
+  "20260830000013_subscription_pauses.sql": {
+    "sha256": "f5c25b90fd7d766336113ad1d4707a384e5c4967a1b4d1458cecc12a9860a0bc",
+    "state": "applied",
+    "appliedTo": "yenxlcrtlmnfotfqqabo",
+    "appliedAt": "2026-08-30"
   }
 }

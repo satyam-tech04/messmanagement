@@ -34,6 +34,7 @@ const EXPECTED_TABLES = [
   "menus",
   "attendance",
   "mess_cuts",
+  "subscription_pauses",
   "headcount_snapshots",
   "rate_limits",
 ];
@@ -42,6 +43,9 @@ const EXPECTED_TABLES = [
 const POLICYLESS_BY_DESIGN = new Set(["tenant_secrets", "rate_limits"]);
 
 const REQUIRED_CONSTRAINTS = [
+  // The overlap guard for subscription pauses. An application check cannot
+  // hold this under two concurrent admins, so its absence is a real failure.
+  ["subscription_pauses", "subscription_pauses_no_overlap"],
   ["menus", "menus_tenant_date_slot_key"],
   ["headcount_snapshots", "headcount_tenant_date_slot_key"],
   ["students", "students_profile_key"],
@@ -108,6 +112,7 @@ const expectedEnums = [
   "attendance_method",
   "meal_slot",
   "mess_cut_status",
+  "pause_status",
   "plan_duration",
   "profile_status",
   "student_status",

@@ -66,6 +66,7 @@ const student: StudentForVerification = {
     startDate: toServiceDate("2026-07-01"),
     endDate: toServiceDate("2026-07-31"),
     includedMealSlots: ["LUNCH", "DINNER"],
+    pauses: [],
   },
 };
 

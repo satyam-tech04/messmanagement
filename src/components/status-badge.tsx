@@ -42,6 +42,12 @@ const STATUS_TONES: Record<string, StatusTone> = {
   CANCELLED: "neutral",
   // Plans — retired means "not offered to anyone new", not "cancelled"
   RETIRED: "neutral",
+  // Subscription pauses. Amber for a running pause: the student cannot eat, so
+  // it needs to read as "attention" wherever it appears — but not red, because
+  // nothing is wrong and nobody is in dispute. A pause that has not started yet
+  // is purely informational.
+  PAUSED: "warning",
+  "PAUSE SCHEDULED": "info",
   // Derived subscription states (see subscription-state.ts). "Starts later" is
   // informational, not a problem, so it is blue rather than amber.
   "STARTS LATER": "info",

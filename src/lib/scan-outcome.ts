@@ -67,6 +67,19 @@ export const ALL_SCAN_OUTCOMES: Readonly<Record<string, ScanOutcome>> = {
     allowsManualOverride: false,
   },
 
+  SUBSCRIPTION_PAUSED: {
+    // Warning rather than danger: the student has done nothing wrong and owes
+    // nothing. Their plan is paused because the office was told they would be
+    // away. Red here would have staff treat a routine absence as a dispute.
+    tone: "warning",
+    title: "Plan paused",
+    action: "Do not serve. Their plan is paused — the office can tell them when it resumes.",
+    retryable: false,
+    // The manual fallback runs the identical eligibility check, so offering it
+    // would produce the same refusal while implying it might not.
+    allowsManualOverride: false,
+  },
+
   BLOCKED_UNPAID: {
     tone: "danger",
     title: "Blocked — unpaid dues",

@@ -21,7 +21,10 @@ import type { Database } from "../database.types";
 const SELECT = `
   id, tenant_id, roll_number, status,
   profiles!inner ( full_name, photo_url ),
-  subscriptions ( id, status, start_date, end_date, included_meal_slots_snapshot )
+  subscriptions (
+    id, status, start_date, end_date, included_meal_slots_snapshot,
+    subscription_pauses ( start_date, resume_date, status )
+  )
 ` as const;
 
 type Row = {
@@ -36,6 +39,16 @@ type Row = {
     start_date: string;
     end_date: string;
     included_meal_slots_snapshot: MealSlot[];
+    // To-many from subscriptions, so PostgREST returns an array even when a
+    // subscription has exactly one pause. Never an object here.
+    subscription_pauses: Array<{
+      start_date: string;
+      resume_date: string;
+      // Widened to string deliberately: PauseRecord.status is a string in core
+      // for the same reason subscription-state.ts widens it — the policy owns
+      // the vocabulary, not the generated enum.
+      status: string;
+    }> | null;
   }> | null;
 };
 
@@ -56,6 +69,14 @@ function toStudent(row: Row): StudentForVerification {
           startDate: toServiceDate(active.start_date),
           endDate: toServiceDate(active.end_date),
           includedMealSlots: active.included_meal_slots_snapshot,
+          // Nested one level deeper rather than fetched separately: this runs
+          // on the scan path, where a second round trip is the difference
+          // between a moving queue and a stalled one.
+          pauses: (active.subscription_pauses ?? []).map((p) => ({
+            status: p.status,
+            startDate: toServiceDate(p.start_date),
+            resumeDate: toServiceDate(p.resume_date),
+          })),
         }
       : null,
   };

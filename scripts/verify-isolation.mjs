@@ -19,6 +19,7 @@ import { loadEnv } from "./load-env.mjs";
 loadEnv();
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const service = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const PW = "MessOS@2026";
 
 let failures = 0;
@@ -47,6 +48,19 @@ const query = async (token, path) => {
   return { status: r.status, rows: await r.json() };
 };
 
+/**
+ * Reads past RLS, to establish what each tenant ACTUALLY holds.
+ *
+ * Only ever used to compute the expected answer. The checks themselves run on
+ * ordinary user JWTs — a service-role query proves nothing about isolation.
+ */
+const serviceQuery = async (path) => {
+  const r = await fetch(`${url}/rest/v1/${path}`, {
+    headers: { apikey: service, Authorization: `Bearer ${service}` },
+  });
+  return { status: r.status, rows: await r.json() };
+};
+
 try {
   console.log("\nRoles sign in and carry the correct claims");
   const admin = await signIn("admin@unversity-mess.test");
@@ -65,14 +79,33 @@ try {
     ? pass("the two tenants have distinct ids")
     : fail("tenant ids collide");
 
-  const a = await query(admin.token, "students?select=roll_number");
-  const b = await query(other.token, "students?select=roll_number");
-  a.rows.length === 8
-    ? pass("tenant A sees exactly its 8 students")
-    : fail(`A saw ${a.rows.length}`);
-  b.rows.length === 2
-    ? pass("tenant B sees exactly its 2 students")
-    : fail(`B saw ${b.rows.length}`);
+  // Compared against the truth, not against a number written here in July.
+  // The counts drift every time somebody enrols a student, and a check that
+  // fails for that reason teaches people to ignore it. What must hold is that
+  // each tenant sees its own rows and exactly those.
+  const a = await query(admin.token, "students?select=id");
+  const b = await query(other.token, "students?select=id");
+  const truthA = await serviceQuery(`students?select=id&tenant_id=eq.${admin.claims.tenant_id}`);
+  const truthB = await serviceQuery(`students?select=id&tenant_id=eq.${other.claims.tenant_id}`);
+
+  const sameSet = (seen, truth) => {
+    const t = new Set(truth.map((r) => r.id));
+    return seen.length === t.size && seen.every((r) => t.has(r.id));
+  };
+
+  a.rows.length > 0 && sameSet(a.rows, truthA.rows)
+    ? pass(`tenant A sees exactly its own ${truthA.rows.length} students`)
+    : fail(`A saw ${a.rows.length}, its tenant holds ${truthA.rows.length}`);
+  b.rows.length > 0 && sameSet(b.rows, truthB.rows)
+    ? pass(`tenant B sees exactly its own ${truthB.rows.length} students`)
+    : fail(`B saw ${b.rows.length}, its tenant holds ${truthB.rows.length}`);
+
+  // The leak this file exists to catch, stated directly rather than inferred
+  // from a count: no row of B's may ever appear in A's result.
+  const bIds = new Set(truthB.rows.map((r) => r.id));
+  a.rows.some((r) => bIds.has(r.id))
+    ? fail("tenant A can see one of tenant B's students")
+    : pass("no row of tenant B appears in tenant A's result");
 
   const tenants = await query(admin.token, "tenants?select=slug");
   tenants.rows.length === 1 && tenants.rows[0]?.slug === "unversity-mess"

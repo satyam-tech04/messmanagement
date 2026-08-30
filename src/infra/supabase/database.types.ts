@@ -376,6 +376,57 @@ export type Database = {
       };
       Relationships: [];
     };
+      subscription_pauses: {
+      Row: {
+        id: string;
+        tenant_id: string;
+        subscription_id: string;
+        student_id: string;
+        start_date: string;
+        resume_date: string;
+        end_date_before_pause: string;
+        computed_end_date: string;
+        remarks: string;
+        status: Database["public"]["Enums"]["pause_status"];
+        ended_early_at: string | null;
+        created_by: string | null;
+        created_at: string;
+        updated_at: string;
+      };
+      Insert: {
+        id?: string;
+        tenant_id: string;
+        subscription_id: string;
+        student_id: string;
+        start_date: string;
+        resume_date: string;
+        end_date_before_pause: string;
+        computed_end_date: string;
+        remarks: string;
+        status?: Database["public"]["Enums"]["pause_status"];
+        ended_early_at?: string | null;
+        created_by?: string | null;
+        created_at?: string;
+        updated_at?: string;
+      };
+      Update: {
+        id?: string;
+        tenant_id?: string;
+        subscription_id?: string;
+        student_id?: string;
+        start_date?: string;
+        resume_date?: string;
+        end_date_before_pause?: string;
+        computed_end_date?: string;
+        remarks?: string;
+        status?: Database["public"]["Enums"]["pause_status"];
+        ended_early_at?: string | null;
+        created_by?: string | null;
+        created_at?: string;
+        updated_at?: string;
+      };
+      Relationships: [];
+    };
       subscriptions: {
       Row: {
         id: string;
@@ -557,6 +608,10 @@ export type Database = {
         Args: { p_tenant_id: string };
         Returns: number;
       };
+      cash_dist: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
       consume_rate_limit: {
         Args: { p_bucket_key: string; p_window_seconds: number; p_max_requests: number };
         Returns: boolean;
@@ -565,15 +620,764 @@ export type Database = {
         Args: { event: Json };
         Returns: Json;
       };
+      date_dist: {
+        Args: { arg0: string; arg1: string };
+        Returns: number;
+      };
+      float4_dist: {
+        Args: { arg0: number; arg1: number };
+        Returns: number;
+      };
+      float8_dist: {
+        Args: { arg0: number; arg1: number };
+        Returns: number;
+      };
+      gbt_bit_compress: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbt_bit_consistent: {
+        Args: { arg0: unknown; arg1: unknown; arg2: number; arg3: unknown; arg4: unknown };
+        Returns: boolean;
+      };
+      gbt_bit_penalty: {
+        Args: { arg0: unknown; arg1: unknown; arg2: unknown };
+        Returns: unknown;
+      };
+      gbt_bit_picksplit: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
+      gbt_bit_same: {
+        Args: { arg0: unknown; arg1: unknown; arg2: unknown };
+        Returns: unknown;
+      };
+      gbt_bit_union: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
+      gbt_bool_compress: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbt_bool_consistent: {
+        Args: { arg0: unknown; arg1: boolean; arg2: number; arg3: unknown; arg4: unknown };
+        Returns: boolean;
+      };
+      gbt_bool_fetch: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbt_bool_penalty: {
+        Args: { arg0: unknown; arg1: unknown; arg2: unknown };
+        Returns: unknown;
+      };
+      gbt_bool_picksplit: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
+      gbt_bool_same: {
+        Args: { arg0: unknown; arg1: unknown; arg2: unknown };
+        Returns: unknown;
+      };
+      gbt_bool_union: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
+      gbt_bpchar_compress: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbt_bpchar_consistent: {
+        Args: { arg0: unknown; arg1: string; arg2: number; arg3: unknown; arg4: unknown };
+        Returns: boolean;
+      };
+      gbt_bytea_compress: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbt_bytea_consistent: {
+        Args: { arg0: unknown; arg1: unknown; arg2: number; arg3: unknown; arg4: unknown };
+        Returns: boolean;
+      };
+      gbt_bytea_penalty: {
+        Args: { arg0: unknown; arg1: unknown; arg2: unknown };
+        Returns: unknown;
+      };
+      gbt_bytea_picksplit: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
+      gbt_bytea_same: {
+        Args: { arg0: unknown; arg1: unknown; arg2: unknown };
+        Returns: unknown;
+      };
+      gbt_bytea_union: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
+      gbt_cash_compress: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbt_cash_consistent: {
+        Args: { arg0: unknown; arg1: unknown; arg2: number; arg3: unknown; arg4: unknown };
+        Returns: boolean;
+      };
+      gbt_cash_distance: {
+        Args: { arg0: unknown; arg1: unknown; arg2: number; arg3: unknown; arg4: unknown };
+        Returns: number;
+      };
+      gbt_cash_fetch: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbt_cash_penalty: {
+        Args: { arg0: unknown; arg1: unknown; arg2: unknown };
+        Returns: unknown;
+      };
+      gbt_cash_picksplit: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
+      gbt_cash_same: {
+        Args: { arg0: unknown; arg1: unknown; arg2: unknown };
+        Returns: unknown;
+      };
+      gbt_cash_union: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
+      gbt_date_compress: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbt_date_consistent: {
+        Args: { arg0: unknown; arg1: string; arg2: number; arg3: unknown; arg4: unknown };
+        Returns: boolean;
+      };
+      gbt_date_distance: {
+        Args: { arg0: unknown; arg1: string; arg2: number; arg3: unknown; arg4: unknown };
+        Returns: number;
+      };
+      gbt_date_fetch: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbt_date_penalty: {
+        Args: { arg0: unknown; arg1: unknown; arg2: unknown };
+        Returns: unknown;
+      };
+      gbt_date_picksplit: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
+      gbt_date_same: {
+        Args: { arg0: unknown; arg1: unknown; arg2: unknown };
+        Returns: unknown;
+      };
+      gbt_date_union: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
+      gbt_decompress: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbt_enum_compress: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbt_enum_consistent: {
+        Args: { arg0: unknown; arg1: unknown; arg2: number; arg3: unknown; arg4: unknown };
+        Returns: boolean;
+      };
+      gbt_enum_fetch: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbt_enum_penalty: {
+        Args: { arg0: unknown; arg1: unknown; arg2: unknown };
+        Returns: unknown;
+      };
+      gbt_enum_picksplit: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
+      gbt_enum_same: {
+        Args: { arg0: unknown; arg1: unknown; arg2: unknown };
+        Returns: unknown;
+      };
+      gbt_enum_union: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
+      gbt_float4_compress: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbt_float4_consistent: {
+        Args: { arg0: unknown; arg1: number; arg2: number; arg3: unknown; arg4: unknown };
+        Returns: boolean;
+      };
+      gbt_float4_distance: {
+        Args: { arg0: unknown; arg1: number; arg2: number; arg3: unknown; arg4: unknown };
+        Returns: number;
+      };
+      gbt_float4_fetch: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbt_float4_penalty: {
+        Args: { arg0: unknown; arg1: unknown; arg2: unknown };
+        Returns: unknown;
+      };
+      gbt_float4_picksplit: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
+      gbt_float4_same: {
+        Args: { arg0: unknown; arg1: unknown; arg2: unknown };
+        Returns: unknown;
+      };
+      gbt_float4_union: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
+      gbt_float8_compress: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbt_float8_consistent: {
+        Args: { arg0: unknown; arg1: number; arg2: number; arg3: unknown; arg4: unknown };
+        Returns: boolean;
+      };
+      gbt_float8_distance: {
+        Args: { arg0: unknown; arg1: number; arg2: number; arg3: unknown; arg4: unknown };
+        Returns: number;
+      };
+      gbt_float8_fetch: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbt_float8_penalty: {
+        Args: { arg0: unknown; arg1: unknown; arg2: unknown };
+        Returns: unknown;
+      };
+      gbt_float8_picksplit: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
+      gbt_float8_same: {
+        Args: { arg0: unknown; arg1: unknown; arg2: unknown };
+        Returns: unknown;
+      };
+      gbt_float8_union: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
+      gbt_inet_compress: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbt_inet_consistent: {
+        Args: { arg0: unknown; arg1: string; arg2: number; arg3: unknown; arg4: unknown };
+        Returns: boolean;
+      };
+      gbt_inet_penalty: {
+        Args: { arg0: unknown; arg1: unknown; arg2: unknown };
+        Returns: unknown;
+      };
+      gbt_inet_picksplit: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
+      gbt_inet_same: {
+        Args: { arg0: unknown; arg1: unknown; arg2: unknown };
+        Returns: unknown;
+      };
+      gbt_inet_union: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
+      gbt_int2_compress: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbt_int2_consistent: {
+        Args: { arg0: unknown; arg1: number; arg2: number; arg3: unknown; arg4: unknown };
+        Returns: boolean;
+      };
+      gbt_int2_distance: {
+        Args: { arg0: unknown; arg1: number; arg2: number; arg3: unknown; arg4: unknown };
+        Returns: number;
+      };
+      gbt_int2_fetch: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbt_int2_penalty: {
+        Args: { arg0: unknown; arg1: unknown; arg2: unknown };
+        Returns: unknown;
+      };
+      gbt_int2_picksplit: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
+      gbt_int2_same: {
+        Args: { arg0: unknown; arg1: unknown; arg2: unknown };
+        Returns: unknown;
+      };
+      gbt_int2_union: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
+      gbt_int4_compress: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbt_int4_consistent: {
+        Args: { arg0: unknown; arg1: number; arg2: number; arg3: unknown; arg4: unknown };
+        Returns: boolean;
+      };
+      gbt_int4_distance: {
+        Args: { arg0: unknown; arg1: number; arg2: number; arg3: unknown; arg4: unknown };
+        Returns: number;
+      };
+      gbt_int4_fetch: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbt_int4_penalty: {
+        Args: { arg0: unknown; arg1: unknown; arg2: unknown };
+        Returns: unknown;
+      };
+      gbt_int4_picksplit: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
+      gbt_int4_same: {
+        Args: { arg0: unknown; arg1: unknown; arg2: unknown };
+        Returns: unknown;
+      };
+      gbt_int4_union: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
+      gbt_int8_compress: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbt_int8_consistent: {
+        Args: { arg0: unknown; arg1: number; arg2: number; arg3: unknown; arg4: unknown };
+        Returns: boolean;
+      };
+      gbt_int8_distance: {
+        Args: { arg0: unknown; arg1: number; arg2: number; arg3: unknown; arg4: unknown };
+        Returns: number;
+      };
+      gbt_int8_fetch: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbt_int8_penalty: {
+        Args: { arg0: unknown; arg1: unknown; arg2: unknown };
+        Returns: unknown;
+      };
+      gbt_int8_picksplit: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
+      gbt_int8_same: {
+        Args: { arg0: unknown; arg1: unknown; arg2: unknown };
+        Returns: unknown;
+      };
+      gbt_int8_union: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
+      gbt_intv_compress: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbt_intv_consistent: {
+        Args: { arg0: unknown; arg1: string; arg2: number; arg3: unknown; arg4: unknown };
+        Returns: boolean;
+      };
+      gbt_intv_decompress: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbt_intv_distance: {
+        Args: { arg0: unknown; arg1: string; arg2: number; arg3: unknown; arg4: unknown };
+        Returns: number;
+      };
+      gbt_intv_fetch: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbt_intv_penalty: {
+        Args: { arg0: unknown; arg1: unknown; arg2: unknown };
+        Returns: unknown;
+      };
+      gbt_intv_picksplit: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
+      gbt_intv_same: {
+        Args: { arg0: unknown; arg1: unknown; arg2: unknown };
+        Returns: unknown;
+      };
+      gbt_intv_union: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
+      gbt_macad8_compress: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbt_macad8_consistent: {
+        Args: { arg0: unknown; arg1: unknown; arg2: number; arg3: unknown; arg4: unknown };
+        Returns: boolean;
+      };
+      gbt_macad8_fetch: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbt_macad8_penalty: {
+        Args: { arg0: unknown; arg1: unknown; arg2: unknown };
+        Returns: unknown;
+      };
+      gbt_macad8_picksplit: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
+      gbt_macad8_same: {
+        Args: { arg0: unknown; arg1: unknown; arg2: unknown };
+        Returns: unknown;
+      };
+      gbt_macad8_union: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
+      gbt_macad_compress: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbt_macad_consistent: {
+        Args: { arg0: unknown; arg1: unknown; arg2: number; arg3: unknown; arg4: unknown };
+        Returns: boolean;
+      };
+      gbt_macad_fetch: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbt_macad_penalty: {
+        Args: { arg0: unknown; arg1: unknown; arg2: unknown };
+        Returns: unknown;
+      };
+      gbt_macad_picksplit: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
+      gbt_macad_same: {
+        Args: { arg0: unknown; arg1: unknown; arg2: unknown };
+        Returns: unknown;
+      };
+      gbt_macad_union: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
+      gbt_numeric_compress: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbt_numeric_consistent: {
+        Args: { arg0: unknown; arg1: number; arg2: number; arg3: unknown; arg4: unknown };
+        Returns: boolean;
+      };
+      gbt_numeric_penalty: {
+        Args: { arg0: unknown; arg1: unknown; arg2: unknown };
+        Returns: unknown;
+      };
+      gbt_numeric_picksplit: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
+      gbt_numeric_same: {
+        Args: { arg0: unknown; arg1: unknown; arg2: unknown };
+        Returns: unknown;
+      };
+      gbt_numeric_union: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
+      gbt_oid_compress: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbt_oid_consistent: {
+        Args: { arg0: unknown; arg1: unknown; arg2: number; arg3: unknown; arg4: unknown };
+        Returns: boolean;
+      };
+      gbt_oid_distance: {
+        Args: { arg0: unknown; arg1: unknown; arg2: number; arg3: unknown; arg4: unknown };
+        Returns: number;
+      };
+      gbt_oid_fetch: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbt_oid_penalty: {
+        Args: { arg0: unknown; arg1: unknown; arg2: unknown };
+        Returns: unknown;
+      };
+      gbt_oid_picksplit: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
+      gbt_oid_same: {
+        Args: { arg0: unknown; arg1: unknown; arg2: unknown };
+        Returns: unknown;
+      };
+      gbt_oid_union: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
+      gbt_text_compress: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbt_text_consistent: {
+        Args: { arg0: unknown; arg1: string; arg2: number; arg3: unknown; arg4: unknown };
+        Returns: boolean;
+      };
+      gbt_text_penalty: {
+        Args: { arg0: unknown; arg1: unknown; arg2: unknown };
+        Returns: unknown;
+      };
+      gbt_text_picksplit: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
+      gbt_text_same: {
+        Args: { arg0: unknown; arg1: unknown; arg2: unknown };
+        Returns: unknown;
+      };
+      gbt_text_union: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
+      gbt_time_compress: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbt_time_consistent: {
+        Args: { arg0: unknown; arg1: unknown; arg2: number; arg3: unknown; arg4: unknown };
+        Returns: boolean;
+      };
+      gbt_time_distance: {
+        Args: { arg0: unknown; arg1: unknown; arg2: number; arg3: unknown; arg4: unknown };
+        Returns: number;
+      };
+      gbt_time_fetch: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbt_time_penalty: {
+        Args: { arg0: unknown; arg1: unknown; arg2: unknown };
+        Returns: unknown;
+      };
+      gbt_time_picksplit: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
+      gbt_time_same: {
+        Args: { arg0: unknown; arg1: unknown; arg2: unknown };
+        Returns: unknown;
+      };
+      gbt_time_union: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
+      gbt_timetz_compress: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbt_timetz_consistent: {
+        Args: { arg0: unknown; arg1: unknown; arg2: number; arg3: unknown; arg4: unknown };
+        Returns: boolean;
+      };
+      gbt_ts_compress: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbt_ts_consistent: {
+        Args: { arg0: unknown; arg1: string; arg2: number; arg3: unknown; arg4: unknown };
+        Returns: boolean;
+      };
+      gbt_ts_distance: {
+        Args: { arg0: unknown; arg1: string; arg2: number; arg3: unknown; arg4: unknown };
+        Returns: number;
+      };
+      gbt_ts_fetch: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbt_ts_penalty: {
+        Args: { arg0: unknown; arg1: unknown; arg2: unknown };
+        Returns: unknown;
+      };
+      gbt_ts_picksplit: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
+      gbt_ts_same: {
+        Args: { arg0: unknown; arg1: unknown; arg2: unknown };
+        Returns: unknown;
+      };
+      gbt_ts_union: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
+      gbt_tstz_compress: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbt_tstz_consistent: {
+        Args: { arg0: unknown; arg1: string; arg2: number; arg3: unknown; arg4: unknown };
+        Returns: boolean;
+      };
+      gbt_tstz_distance: {
+        Args: { arg0: unknown; arg1: string; arg2: number; arg3: unknown; arg4: unknown };
+        Returns: number;
+      };
+      gbt_uuid_compress: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbt_uuid_consistent: {
+        Args: { arg0: unknown; arg1: string; arg2: number; arg3: unknown; arg4: unknown };
+        Returns: boolean;
+      };
+      gbt_uuid_fetch: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbt_uuid_penalty: {
+        Args: { arg0: unknown; arg1: unknown; arg2: unknown };
+        Returns: unknown;
+      };
+      gbt_uuid_picksplit: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
+      gbt_uuid_same: {
+        Args: { arg0: unknown; arg1: unknown; arg2: unknown };
+        Returns: unknown;
+      };
+      gbt_uuid_union: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
+      gbt_var_decompress: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbt_var_fetch: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbtreekey16_in: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbtreekey16_out: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbtreekey2_in: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbtreekey2_out: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbtreekey32_in: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbtreekey32_out: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbtreekey4_in: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbtreekey4_out: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbtreekey8_in: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbtreekey8_out: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbtreekey_var_in: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      gbtreekey_var_out: {
+        Args: { arg0: unknown };
+        Returns: unknown;
+      };
+      int2_dist: {
+        Args: { arg0: number; arg1: number };
+        Returns: number;
+      };
+      int4_dist: {
+        Args: { arg0: number; arg1: number };
+        Returns: number;
+      };
+      int8_dist: {
+        Args: { arg0: number; arg1: number };
+        Returns: number;
+      };
+      interval_dist: {
+        Args: { arg0: string; arg1: string };
+        Returns: string;
+      };
+      oid_dist: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: unknown;
+      };
       prune_rate_limits: {
         Args: { p_older_than: string };
         Returns: number;
+      };
+      time_dist: {
+        Args: { arg0: unknown; arg1: unknown };
+        Returns: string;
+      };
+      ts_dist: {
+        Args: { arg0: string; arg1: string };
+        Returns: string;
+      };
+      tstz_dist: {
+        Args: { arg0: string; arg1: string };
+        Returns: string;
       };
     };
     Enums: {
       attendance_method: "QR" | "MANUAL" | "RFID";
       meal_slot: "BREAKFAST" | "LUNCH" | "SNACKS" | "DINNER";
       mess_cut_status: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED" | "CREDITED";
+      pause_status: "ACTIVE" | "CANCELLED";
       plan_duration: "MONTHLY" | "QUARTERLY";
       profile_status: "ACTIVE" | "DISABLED";
       student_status: "ACTIVE" | "GRACE" | "BLOCKED" | "INACTIVE";

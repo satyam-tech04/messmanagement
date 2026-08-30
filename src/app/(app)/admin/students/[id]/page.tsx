@@ -18,6 +18,8 @@ import { TableEmpty, TableShell } from "@/components/data-table";
 import { formatPaise, toPaise } from "@/core/money";
 import { toServiceDate } from "@/core/time";
 import { subscriptionStateLabel, subscriptionStateOf } from "@/core/policies/subscription-state";
+import { graceDays, pauseStateOf } from "@/core/policies/pause.policy";
+import { PauseSection, type CurrentPause } from "./pause-actions-ui";
 import { requireSessionUser } from "@/infra/auth/session";
 import { createClient } from "@/infra/supabase/server";
 import { formatDateTime, formatRelativeDay, formatServiceDate, todayIn } from "@/lib/format";
@@ -138,6 +140,43 @@ export default async function StudentDetailPage(props: PageProps<"/admin/student
       today,
     );
   const active = subscriptions.find((s) => stateOf(s) === "RUNNING");
+
+  // Only the non-cancelled pause matters here: a cancelled one frees its dates
+  // and must not be offered as the pause to modify (§23).
+  const { data: pauseRow } = active
+    ? await supabase
+        .from("subscription_pauses")
+        .select("start_date, resume_date, end_date_before_pause, remarks, status")
+        .eq("tenant_id", user.tenantId)
+        .eq("subscription_id", active.id)
+        .eq("status", "ACTIVE")
+        .order("start_date", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    : { data: null };
+
+  const currentPause: CurrentPause | null = pauseRow
+    ? {
+        startDate: pauseRow.start_date,
+        resumeDate: pauseRow.resume_date,
+        endDateBeforePause: pauseRow.end_date_before_pause,
+        remarks: pauseRow.remarks,
+        // Derived here for the same reason as the subscription's own state:
+        // nothing writes to a column when a date arrives.
+        state: pauseStateOf(
+          {
+            status: pauseRow.status,
+            startDate: toServiceDate(pauseRow.start_date),
+            resumeDate: toServiceDate(pauseRow.resume_date),
+          },
+          today,
+        ),
+        graceDays: graceDays(
+          toServiceDate(pauseRow.start_date),
+          toServiceDate(pauseRow.resume_date),
+        ),
+      }
+    : null;
 
   // Only offered when there is no active plan — the database enforces one at a
   // time, so showing the button otherwise would promise something that fails.
@@ -263,6 +302,17 @@ export default async function StudentDetailPage(props: PageProps<"/admin/student
               </Table>
             </TableShell>
           )}
+
+          {/* Pausing only means anything while a plan is actually running — there
+              is nothing to pause on an expired or scheduled one. */}
+          {active ? (
+            <PauseSection
+              studentId={student.id}
+              today={today}
+              planEndDate={active.end_date}
+              pause={currentPause}
+            />
+          ) : null}
 
           {/* Past subscriptions exist but none is active — the student cannot be
               served, so the way to fix that belongs here, not on another page. */}

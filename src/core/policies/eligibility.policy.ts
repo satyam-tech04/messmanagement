@@ -16,6 +16,7 @@ import { err, ok, type Result } from "../result";
 import { isWithinDateRange, type ServiceDate } from "../time";
 import type { StudentForVerification } from "../ports/repositories";
 import { isCutFromMeal } from "./headcount.policy";
+import { activePauseOn } from "./pause.policy";
 import type { MessCutSnapshot } from "./headcount.policy";
 
 export interface EligibilityInput {
@@ -76,6 +77,23 @@ export function checkMealEligibility(
       }),
     );
   }
+  // An admin paused this plan. Checked here rather than in each caller so the
+  // student's phone, the counter scanner and the manual fallback all refuse
+  // identically — spec §19 is explicit that hiding the scanner is not enough.
+  //
+  // Against the meal's service_date, never `now()`: a dinner served at 00:30
+  // belongs to the day it started, so a pause beginning "tomorrow" must not
+  // refuse a meal that is still part of today.
+  const pause = activePauseOn(subscription.pauses, serviceDate);
+  if (pause) {
+    return err(
+      domainError("SUBSCRIPTION_PAUSED", `${student.fullName}'s plan is paused.`, {
+        rollNumber: student.rollNumber,
+        resumeDate: pause.resumeDate,
+      }),
+    );
+  }
+
   if (!subscription.includedMealSlots.includes(mealSlot)) {
     return err(
       domainError("NO_ACTIVE_PLAN", `${student.fullName}'s plan does not include this meal.`, {

@@ -76,6 +76,7 @@ function studentWithPlan(
       startDate: toServiceDate(over.startDate ?? "2026-08-01"),
       endDate: toServiceDate(over.endDate ?? "2026-08-31"),
       includedMealSlots: over.slots ?? [MealSlot.LUNCH, MealSlot.DINNER],
+      pauses: [],
     },
   };
 }

@@ -24,6 +24,7 @@ export type DomainErrorCode =
   | "NO_ACTIVE_PLAN"
   | "BLOCKED_UNPAID"
   | "ON_MESS_CUT"
+  | "SUBSCRIPTION_PAUSED"
   | "OUTSIDE_MEAL_HOURS"
   | "SLOT_NOT_SERVED"
   | "STUDENT_INACTIVE"
