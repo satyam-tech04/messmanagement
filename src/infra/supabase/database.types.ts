@@ -106,6 +106,141 @@ export type Database = {
       };
       Relationships: [];
     };
+      counter_bill_items: {
+      Row: {
+        id: string;
+        tenant_id: string;
+        bill_id: string;
+        counter_item_id: string | null;
+        item_code_snapshot: string;
+        item_name_snapshot: string;
+        unit_snapshot: string;
+        unit_price_paise: number;
+        quantity: number;
+        created_at: string;
+        updated_at: string;
+      };
+      Insert: {
+        id?: string;
+        tenant_id: string;
+        bill_id: string;
+        counter_item_id?: string | null;
+        item_code_snapshot: string;
+        item_name_snapshot: string;
+        unit_snapshot: string;
+        unit_price_paise: number;
+        quantity: number;
+        created_at?: string;
+        updated_at?: string;
+      };
+      Update: {
+        id?: string;
+        tenant_id?: string;
+        bill_id?: string;
+        counter_item_id?: string | null;
+        item_code_snapshot?: string;
+        item_name_snapshot?: string;
+        unit_snapshot?: string;
+        unit_price_paise?: number;
+        quantity?: number;
+        created_at?: string;
+        updated_at?: string;
+      };
+      Relationships: [];
+    };
+      counter_bills: {
+      Row: {
+        id: string;
+        tenant_id: string;
+        bill_number: string;
+        person_name: string;
+        status: Database["public"]["Enums"]["bill_status"];
+        payment_status: Database["public"]["Enums"]["bill_payment_status"];
+        total_paise: number;
+        service_date: string | null;
+        created_by: string | null;
+        finalized_at: string | null;
+        finalized_by: string | null;
+        cancelled_at: string | null;
+        cancelled_by: string | null;
+        payment_updated_by: string | null;
+        created_at: string;
+        updated_at: string;
+      };
+      Insert: {
+        id?: string;
+        tenant_id: string;
+        bill_number: string;
+        person_name: string;
+        status?: Database["public"]["Enums"]["bill_status"];
+        payment_status?: Database["public"]["Enums"]["bill_payment_status"];
+        total_paise?: number;
+        service_date?: string | null;
+        created_by?: string | null;
+        finalized_at?: string | null;
+        finalized_by?: string | null;
+        cancelled_at?: string | null;
+        cancelled_by?: string | null;
+        payment_updated_by?: string | null;
+        created_at?: string;
+        updated_at?: string;
+      };
+      Update: {
+        id?: string;
+        tenant_id?: string;
+        bill_number?: string;
+        person_name?: string;
+        status?: Database["public"]["Enums"]["bill_status"];
+        payment_status?: Database["public"]["Enums"]["bill_payment_status"];
+        total_paise?: number;
+        service_date?: string | null;
+        created_by?: string | null;
+        finalized_at?: string | null;
+        finalized_by?: string | null;
+        cancelled_at?: string | null;
+        cancelled_by?: string | null;
+        payment_updated_by?: string | null;
+        created_at?: string;
+        updated_at?: string;
+      };
+      Relationships: [];
+    };
+      counter_items: {
+      Row: {
+        id: string;
+        tenant_id: string;
+        item_code: string;
+        item_name: string;
+        unit: string;
+        price_paise: number;
+        is_active: boolean;
+        created_at: string;
+        updated_at: string;
+      };
+      Insert: {
+        id?: string;
+        tenant_id: string;
+        item_code: string;
+        item_name: string;
+        unit: string;
+        price_paise: number;
+        is_active?: boolean;
+        created_at?: string;
+        updated_at?: string;
+      };
+      Update: {
+        id?: string;
+        tenant_id?: string;
+        item_code?: string;
+        item_name?: string;
+        unit?: string;
+        price_paise?: number;
+        is_active?: boolean;
+        created_at?: string;
+        updated_at?: string;
+      };
+      Relationships: [];
+    };
       headcount_snapshots: {
       Row: {
         id: string;
@@ -624,6 +759,8 @@ export type Database = {
         created_at: string;
         updated_at: string;
         next_roll_number: number;
+        next_bill_number: number;
+        next_counter_item_code: number;
       };
       Insert: {
         id?: string;
@@ -635,6 +772,8 @@ export type Database = {
         created_at?: string;
         updated_at?: string;
         next_roll_number?: number;
+        next_bill_number?: number;
+        next_counter_item_code?: number;
       };
       Update: {
         id?: string;
@@ -646,12 +785,22 @@ export type Database = {
         created_at?: string;
         updated_at?: string;
         next_roll_number?: number;
+        next_bill_number?: number;
+        next_counter_item_code?: number;
       };
       Relationships: [];
     };
     };
     Views: Record<never, never>;
     Functions: {
+      allocate_bill_number: {
+        Args: { p_tenant_id: string };
+        Returns: string;
+      };
+      allocate_counter_item_code: {
+        Args: { p_tenant_id: string };
+        Returns: string;
+      };
       allocate_roll_number: {
         Args: { p_tenant_id: string };
         Returns: number;
@@ -1384,6 +1533,10 @@ export type Database = {
         Args: { arg0: unknown };
         Returns: unknown;
       };
+      increment_bill_line: {
+        Args: { p_line_id: string; p_delta: number };
+        Returns: number;
+      };
       int2_dist: {
         Args: { arg0: number; arg1: number };
         Returns: number;
@@ -1423,6 +1576,8 @@ export type Database = {
     };
     Enums: {
       attendance_method: "QR" | "MANUAL" | "RFID";
+      bill_payment_status: "UNPAID" | "PAID";
+      bill_status: "OPEN" | "FINALIZED" | "CANCELLED";
       meal_slot: "BREAKFAST" | "LUNCH" | "SNACKS" | "DINNER";
       mess_cut_status: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED" | "CREDITED";
       pause_status: "ACTIVE" | "CANCELLED";

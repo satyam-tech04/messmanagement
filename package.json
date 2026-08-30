@@ -32,7 +32,8 @@
     "provision": "tsx scripts/provision.ts",
     "create:superadmin": "tsx scripts/create-super-admin.ts",
     "verify:pause": "tsx scripts/verify-pause.mts",
-    "verify:pricing": "tsx scripts/verify-pricing.mts"
+    "verify:pricing": "tsx scripts/verify-pricing.mts",
+    "verify:counter-sales": "tsx scripts/verify-counter-sales.mts"
   },
   "lint-staged": {
     "*.{ts,tsx}": [

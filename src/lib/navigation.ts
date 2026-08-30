@@ -41,6 +41,10 @@ const ADMIN_NAV: readonly NavSection[] = [
       // what students have already asked for, and requests submitted while the
       // feature was on do not disappear when it is turned off.
       { label: "Absences", href: "/admin/absences", icon: "CalendarOff" },
+      // Deliberately NOT called "Billing": that entry below is reserved for
+      // Phase 2 subscription invoices, and two screens of that name showing
+      // unrelated totals is how an owner loses track of what the mess earned.
+      { label: "Counter sales", href: "/admin/counter-sales", icon: "Receipt" },
     ],
   },
   {
@@ -90,6 +94,7 @@ const STAFF_NAV: readonly NavSection[] = [
       { label: "Scan", href: "/staff", icon: "ScanLine" },
       { label: "Manual entry", href: "/staff/manual", icon: "Keyboard" },
       { label: "Live count", href: "/staff/counts", icon: "ChefHat" },
+      { label: "Counter sales", href: "/staff/sales", icon: "Receipt" },
     ],
   },
 ];

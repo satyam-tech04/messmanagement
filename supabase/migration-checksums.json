@@ -82,5 +82,11 @@
     "state": "applied",
     "appliedTo": "yenxlcrtlmnfotfqqabo",
     "appliedAt": "2026-08-30"
+  },
+  "20260830000015_counter_sales.sql": {
+    "sha256": "2fca8a44f5e9967254f76582ec901768437deb7a144d7d4f0601be9fdd53f78e",
+    "state": "applied",
+    "appliedTo": "yenxlcrtlmnfotfqqabo",
+    "appliedAt": "2026-08-30"
   }
 }

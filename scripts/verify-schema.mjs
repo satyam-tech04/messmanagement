@@ -36,6 +36,9 @@ const EXPECTED_TABLES = [
   "attendance",
   "mess_cuts",
   "subscription_pauses",
+  "counter_items",
+  "counter_bills",
+  "counter_bill_items",
   "headcount_snapshots",
   "rate_limits",
 ];
@@ -48,6 +51,10 @@ const REQUIRED_CONSTRAINTS = [
   // hold this under two concurrent admins, so its absence is a real failure.
   ["subscription_pauses", "subscription_pauses_no_overlap"],
   ["meal_prices", "meal_prices_tenant_slot_key"],
+  // Per-mess bill numbering, and the guard that makes the merge rule
+  // safe when two staff add the same item at the same instant.
+  ["counter_bills", "counter_bills_tenant_number_key"],
+  ["counter_items", "counter_items_tenant_code_key"],
   // The identity that stops a plan's stated derivation drifting from its price.
   ["plans", "plans_price_is_base_less_discount"],
   ["menus", "menus_tenant_date_slot_key"],
@@ -115,6 +122,8 @@ const { rows: enums } = await client.query(
 const expectedEnums = [
   "attendance_method",
   "meal_slot",
+  "bill_payment_status",
+  "bill_status",
   "mess_cut_status",
   "pause_status",
   "plan_duration",

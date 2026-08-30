@@ -141,19 +141,38 @@ time instead of at 2am against production.
 INSERT that omits it. Grep for `from("<table>")` across `src`, `scripts` _and_ `tests`
 before pushing — typecheck alone is not proof.
 
-### NF-3 — Counter sales ("à la carte") 🚧 next
+### NF-3 — Counter sales ("à la carte") ✅
 
 Largest build, most independent. Nothing waits on it.
 
-- [ ] Name it **Counter Sales**, not Billing — that nav slot is Phase 2's (F22)
-- [ ] Name the catalogue `counter_items`, not menu items — third thing called "menu" (F23)
-- [ ] Per-tenant bill numbering via the row-locked counter pattern from migration 010 (F1)
-- [ ] Item add = `INSERT`; quantity change = atomic `quantity = quantity + n` (F20)
-- [ ] `service_date` column derived tenant-local; revenue groups on it, never on the timestamp (F21)
-- [ ] Snapshot fields on bill items, immutable after write (spec §12 — this part is correct)
-- [ ] Payment-status toggles appended to `audit_log` (F24)
+- [x] Named **Counter sales** everywhere; the Billing nav slot stays Phase 2's (F22)
+- [x] Catalogue is `counter_items`, not "menu items" (F23)
+- [x] Per-tenant numbering — `allocate_bill_number` / `allocate_counter_item_code`, row-locked (F1)
+- [x] Line add = `INSERT` guarded by a unique index; merge = `increment_bill_line` RPC (F20)
+- [x] `service_date` derived tenant-local at finalisation; revenue groups on it (F21)
+- [x] Snapshot columns on `counter_bill_items`, proven immutable against a live rename (spec §12)
+- [x] Four audit actions written for create / finalise / cancel / payment change (F24)
+- [x] `counter-sales.policy.ts` + 38 tests, written first
+- [x] Staff counter at `/staff/sales`; admin catalogue and daily takings under `/admin/counter-sales`
+- [x] `npm run verify:counter-sales` — live probe
 
-### NF-4 — Unspecced note items ❔ D-19
+**Live-verified:** both messes independently issued `BILL-000001`, so numbering is per mess
+rather than the single global sequence the spec asked for; ten concurrent `+1`s on one line
+all landed (a read-modify-write would have lost most); renaming an item to "Renamed
+Entirely" and repricing it ₹60 → ₹99 left every bill snapshot untouched; an OPEN bill
+cannot be marked paid and finalising without a `service_date` is refused, both by CHECK
+constraint rather than application code.
+
+**Deviations from the spec, all deliberate:**
+
+| Spec says                         | Built instead             | Why                                                                        |
+| --------------------------------- | ------------------------- | -------------------------------------------------------------------------- |
+| A7: one global bill sequence      | per-mess sequence         | two messes would interleave their books (F1)                               |
+| A13: last write wins              | atomic increment          | open bills are a shared pool and counter Wi-Fi is unreliable (F20)         |
+| §11: revenue by `finalized_at`    | revenue by `service_date` | UTC+5:30 would file every post-midnight bill under the previous day (F21)  |
+| §3: hard delete allowed if unused | always soft delete        | the saving is nil; the risk of a used item vanishing from a receipt is not |
+
+### NF-4 — Unspecced note items 🚧 next · needs D-19
 
 - [ ] Establish what item 6 ("special meal for selected days") means, then scope
 - [ ] Confirm whether item 4 is the existing `/admin/menu` planner

@@ -63,6 +63,9 @@ const STATUS_TONES: Record<string, StatusTone> = {
   "NO PLAN": "neutral",
   // Invoices (Phase 2)
   PAID: "success",
+  // Amber, not red: an unpaid counter bill is money owed, which needs
+  // chasing, but nothing has gone wrong and nobody is in dispute.
+  UNPAID: "warning",
   PARTIALLY_PAID: "warning",
   OVERDUE: "danger",
   DRAFT: "neutral",
