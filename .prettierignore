@@ -7,3 +7,10 @@ package-lock.json
 src/infra/supabase/database.types.ts
 supabase/.temp
 .claude
+
+# The client's original requirement documents. Never reformat and never edit
+# these -- they are the record of what was asked for, not project source.
+# Deviations belong in docs/new_features/TRACKER.md.
+docs/new_features/meal-billing-feature-spec.md
+docs/new_features/meal-pricing-feature-spec.md
+docs/new_features/student_subscription_grace_period_feature.md

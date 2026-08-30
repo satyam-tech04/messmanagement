@@ -1,37 +1,3 @@
-> ## ⚠️ AS-BUILT AMENDMENTS — read before implementing anything below
->
-> **Status: shipped 2026-08-30** (commit `f776d52`, migration 015). The text below is the
-> original requirement as written, preserved unchanged. Where the built system differs, the
-> table here is correct and the body below is not.
->
-> | §          | What the spec says                                            | What was built, and why                                                                                                                                                                                                                                                                                                                                         |
-> | ---------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-> | title      | "Meal Billing"                                                | **Counter sales.** The admin sidebar already reserves a _Billing_ entry for Phase 2 subscription invoices; two screens of that name showing unrelated totals is how an owner loses track of what the mess earned.                                                                                                                                               |
-> | §2.1       | "Menu Item"                                                   | **`counter_items`.** `menus` already means the daily published menu, and plans separately carry included meal slots — this would have been the third thing called "menu".                                                                                                                                                                                       |
-> | A7         | "a single continuous sequence for the lifetime of the system" | **Per mess.** Two messes sharing a sequence would interleave their books and leave each owner with gaps they cannot explain. Both counters advance under a row lock, the pattern migration 010 set for roll numbers.                                                                                                                                            |
-> | A13        | "no optimistic locking… last write wins"                      | **Overridden.** A2 makes every open bill a shared pool, and this deployment's counter Wi-Fi is documented as unreliable, so a read-modify-write would silently lose lines. Adding a line is an `INSERT` guarded by a unique index on `(bill, item, price)`; merging is an increment inside the `UPDATE`. The probe fires ten concurrent `+1`s and all ten land. |
-> | §11        | revenue keyed to `finalized_at`                               | **Keyed to a tenant-local `service_date`.** India is UTC+5:30, so taking the date off the timestamp would file every bill finalised between midnight and 05:30 under the previous day — a nightly error for a mess that serves dinner.                                                                                                                          |
-> | §3         | hard delete allowed for an unused item                        | **Always a soft delete.** The saving is nil and the check would have to be exactly right forever, or a used item vanishes from somebody's receipt.                                                                                                                                                                                                              |
-> | throughout | `decimal`                                                     | **Integer paise**, `bigint`.                                                                                                                                                                                                                                                                                                                                    |
-> | —          | not mentioned                                                 | Every table carries **`tenant_id`**, RLS and tenant-leading indexes. The spec never mentions multi-tenancy.                                                                                                                                                                                                                                                     |
-> | §2.2       | `payment_status` mutated in place                             | Kept, but every toggle is appended to **`audit_log`** — the row alone only remembers who touched it last, and "when was this marked paid" is exactly what gets asked later.                                                                                                                                                                                     |
->
-> **Broken cross-references in the original.** The document was renumbered and six citations
-> were not updated. It ends at §17, so these point at nothing:
->
-> | Cited                                       | Actually                           | Where            |
-> | ------------------------------------------- | ---------------------------------- | ---------------- |
-> | "Section 27"                                | §7 (finalize confirmation)         | A4               |
-> | "Section 25"                                | §7 (cannot finalize an empty bill) | A6               |
-> | "Section 49"                                | §16 (out of scope)                 | A9               |
-> | "Section 15 — No Customer Management"       | §13                                | §1               |
-> | "Section 8 — no zero-total finalized bills" | §7                                 | §7 preconditions |
->
-> This matters because the document instructs the reader to _stop and ask_ when something is
-> not covered — so following a dangling reference halts the work.
->
-> Live proof: `npm run verify:counter-sales`. Full reasoning: [TRACKER.md](./TRACKER.md) findings F19–F26.
-
 # Meal Billing Feature — Implementation Specification
 
 > **Instructions for the coding model:** This document is the single source of truth for this feature. Implement exactly what is described here. Do not invent features, fields, screens, or business rules beyond what is written. Where a decision was ambiguous in the original request, Section 0 states the **resolved assumption** to build against — follow it unless the user explicitly overrides it. If you encounter a situation not covered by this document, stop and ask rather than guessing.

@@ -1,24 +1,3 @@
-> ## ⚠️ AS-BUILT AMENDMENTS — read before implementing anything below
->
-> **Status: shipped 2026-08-30** (commit `48aa4c8`, migration 014). The text below is the
-> original requirement as written, preserved unchanged. Where the built system differs, the
-> table here is correct and the body below is not.
->
-> | §          | What the spec says           | What was built, and why                                                                                                                                                                                                                                                                                      |
-> | ---------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-> | §6.1       | a new `assignments` table    | **`subscriptions`**, which already existed and already froze the plan's price. Building `assignments` would have produced a second, parallel subscription system beside a working one.                                                                                                                       |
-> | §5.1       | a new `plans` table          | **`plans` already exists**, with `price_paise`, `duration_days` and `included_meal_slots`. Only columns were added.                                                                                                                                                                                          |
-> | §5.1       | `status: Active \| Retired`  | The existing **`is_active`** boolean is exactly this. No new column.                                                                                                                                                                                                                                         |
-> | §5.1       | a `final_price` column       | **Not added.** `plans.price_paise` _is_ the final price and every existing reader already uses it — a second price column would diverge the first time one was written without the other. `base_premium_paise` and `discount_paise` record the derivation, with a CHECK asserting `price = base − discount`. |
-> | throughout | `decimal`, ₹                 | **Integer paise**, `bigint`. Money is never a float in this codebase; ESLint blocks it in `src/core`.                                                                                                                                                                                                        |
-> | §6.6       | `Math.ceil(rawPrice - 1e-9)` | **No epsilon.** The guard exists only because the spec works in float rupees. In paise it is exact integer division: `ceil(a/b)` as `floor((a + b − 1) / b)`.                                                                                                                                                |
-> | §6.3       | per-day, rounded up          | **Kept** — and it _supersedes_ **D-03**, which specified per-meal floored. D-03 in [DECISIONS.md](../DECISIONS.md) is amended rather than left standing.                                                                                                                                                     |
-> | §5.4       | `final_price > 0`            | Built, and it **removed a capability**: zero-price plans are no longer possible, so a free staff or scholarship plan cannot be created. Logged as **D-21**; reversible with one migration.                                                                                                                   |
-> | —          | not mentioned                | Every new table carries **`tenant_id`**, RLS and tenant-leading indexes. The spec never mentions multi-tenancy.                                                                                                                                                                                              |
-> | —          | not mentioned                | An assignment price override also changes that student's **per-meal mess-cut credit rate**, since credits divide what they actually paid. Deliberate, and worth knowing.                                                                                                                                     |
->
-> Live proof: `npm run verify:pricing`. Full reasoning: [TRACKER.md](./TRACKER.md) findings F13–F18.
-
 # Meal Pricing Feature — Implementation Specification
 
 ## 1. Purpose & Scope
