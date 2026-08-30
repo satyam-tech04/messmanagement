@@ -106,18 +106,32 @@ preview helper (rewritten on `src/core/time`), and making `pauses` a **required*
 `StudentForVerification` turned every missed fetch into a compile error rather than a
 silently-served paused student.
 
-### NF-2 — Pricing engine 🚧 next
+### NF-2 — Pricing engine ✅
 
 Additive columns only. Roughly 60% already exists.
 
-- [ ] Query live plans for zero prices **before** writing the `> 0` CHECK (F18)
-- [ ] New `meal_prices` table — four rows per mess
-- [ ] `base_premium_paise` + `discount_paise` on `plans`, with a CHECK tying them to `price_paise` (F15)
-- [ ] Assignment duration + price override on `subscriptions`
-- [ ] Resolve the pro-rating formula and amend D-03 in the same commit (F14)
-- [ ] Document the override's effect on mess-cut credit rates (F16)
+- [x] Checked live plans first — 14 plans, none at zero, so `> 0` was safe (F18)
+- [x] `meal_prices` table — migration **014, applied + sealed**
+- [x] `base_premium_paise` + `discount_paise` on `plans`, with a CHECK tying them to `price_paise` (F15)
+- [x] `plan_duration_days_snapshot`, `assignment_duration_days`, `calculated_price_paise`, `is_price_overridden` on `subscriptions`
+- [x] `pricing.policy.ts` + 32 tests, written first; `plan.policy.ts` extended additively
+- [x] Rate card on `/admin/plans`; plan form suggests a base premium and shows the final price live
+- [x] Assign-plan takes days bought, previews the pro-rated price, allows an override
+- [x] **D-03 amended** in [DECISIONS.md](../DECISIONS.md) — superseded by D-17 (F14)
+- [x] The per-meal credit rate now follows what the student actually paid (F16)
+- [x] `npm run verify:pricing` — live probe of the independence rule
 
-### NF-3 — Counter sales ("à la carte") ⏸️
+**Live-verified:** the plan's price doubled underneath a student and their frozen price did
+not move; the database refuses a plan whose price disagrees with `base − discount` (23514)
+and refuses to sell more days than a plan holds; the 39 existing subscriptions backfilled
+with calculated == charged and none flagged as overridden.
+
+**Watch out:** migration 014 made `base_premium_paise` and three `subscriptions` columns
+NOT NULL with no default. That broke every existing INSERT — three in the app and two in
+the verification scripts. All five are fixed, and the scripts now fail fast on the insert
+rather than surfacing it as a null dereference forty lines later.
+
+### NF-3 — Counter sales ("à la carte") 🚧 next
 
 Largest build, most independent. Nothing waits on it.
 

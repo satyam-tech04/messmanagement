@@ -30,6 +30,7 @@ const EXPECTED_TABLES = [
   "students",
   "audit_log",
   "plans",
+  "meal_prices",
   "subscriptions",
   "menus",
   "attendance",
@@ -46,6 +47,9 @@ const REQUIRED_CONSTRAINTS = [
   // The overlap guard for subscription pauses. An application check cannot
   // hold this under two concurrent admins, so its absence is a real failure.
   ["subscription_pauses", "subscription_pauses_no_overlap"],
+  ["meal_prices", "meal_prices_tenant_slot_key"],
+  // The identity that stops a plan's stated derivation drifting from its price.
+  ["plans", "plans_price_is_base_less_discount"],
   ["menus", "menus_tenant_date_slot_key"],
   ["headcount_snapshots", "headcount_tenant_date_slot_key"],
   ["students", "students_profile_key"],

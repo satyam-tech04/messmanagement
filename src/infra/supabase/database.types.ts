@@ -145,6 +145,33 @@ export type Database = {
       };
       Relationships: [];
     };
+      meal_prices: {
+      Row: {
+        id: string;
+        tenant_id: string;
+        meal_slot: Database["public"]["Enums"]["meal_slot"];
+        price_paise: number;
+        created_at: string;
+        updated_at: string;
+      };
+      Insert: {
+        id?: string;
+        tenant_id: string;
+        meal_slot: Database["public"]["Enums"]["meal_slot"];
+        price_paise: number;
+        created_at?: string;
+        updated_at?: string;
+      };
+      Update: {
+        id?: string;
+        tenant_id?: string;
+        meal_slot?: Database["public"]["Enums"]["meal_slot"];
+        price_paise?: number;
+        created_at?: string;
+        updated_at?: string;
+      };
+      Relationships: [];
+    };
       menus: {
       Row: {
         id: string;
@@ -247,6 +274,9 @@ export type Database = {
         is_active: boolean;
         created_at: string;
         updated_at: string;
+        base_premium_paise: number;
+        discount_paise: number;
+        meal_prices_snapshot: Json | null;
       };
       Insert: {
         id?: string;
@@ -259,6 +289,9 @@ export type Database = {
         is_active?: boolean;
         created_at?: string;
         updated_at?: string;
+        base_premium_paise: number;
+        discount_paise?: number;
+        meal_prices_snapshot?: Json | null;
       };
       Update: {
         id?: string;
@@ -271,6 +304,9 @@ export type Database = {
         is_active?: boolean;
         created_at?: string;
         updated_at?: string;
+        base_premium_paise?: number;
+        discount_paise?: number;
+        meal_prices_snapshot?: Json | null;
       };
       Relationships: [];
     };
@@ -441,6 +477,10 @@ export type Database = {
         auto_renew: boolean;
         created_at: string;
         updated_at: string;
+        plan_duration_days_snapshot: number;
+        assignment_duration_days: number;
+        calculated_price_paise: number;
+        is_price_overridden: boolean;
       };
       Insert: {
         id?: string;
@@ -455,6 +495,10 @@ export type Database = {
         auto_renew?: boolean;
         created_at?: string;
         updated_at?: string;
+        plan_duration_days_snapshot: number;
+        assignment_duration_days: number;
+        calculated_price_paise: number;
+        is_price_overridden?: boolean;
       };
       Update: {
         id?: string;
@@ -469,6 +513,10 @@ export type Database = {
         auto_renew?: boolean;
         created_at?: string;
         updated_at?: string;
+        plan_duration_days_snapshot?: number;
+        assignment_duration_days?: number;
+        calculated_price_paise?: number;
+        is_price_overridden?: boolean;
       };
       Relationships: [];
     };

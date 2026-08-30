@@ -65,10 +65,19 @@ describe("parsePlanDraft — money", () => {
     expect(r.ok).toBe(false);
   });
 
-  it("allows a zero-price plan, for a staff or scholarship plan", () => {
+  it("rejects a zero-price plan — reversing an earlier allowance (D-21)", () => {
+    // This used to pass, deliberately, so a mess could run a staff or
+    // scholarship plan at no charge. Migration 014 replaced
+    // `plans_price_nonneg` with `plans_price_positive` because the far more
+    // common cause of a zero here is a price nobody filled in, and an unpriced
+    // plan silently produces a zero per-meal credit rate for everyone on it.
+    //
+    // The capability is genuinely gone, not merely validated differently. If a
+    // mess needs to feed somebody free, that now has to be a real decision
+    // somewhere visible rather than a blank field.
     const r = parsePlanDraft({ ...validDraft, priceRupees: 0 });
-    expect(r.ok).toBe(true);
-    if (r.ok) expect(r.value.pricePaise).toBe(0);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error.code).toBe("VALIDATION_FAILED");
   });
 
   it("rejects a price beyond the safe integer range", () => {
@@ -398,5 +407,106 @@ describe("activateSubscription — when the plan starts", () => {
     );
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error.code).toBe("FORBIDDEN");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Pro-rated assignments (D-17, superseding D-03)
+//
+// Until now a student always bought the plan's full term. These cover buying
+// part of one: the price is pro-rated per day and rounded up, the end date
+// follows the days actually bought, and an admin may override the figure.
+// ---------------------------------------------------------------------------
+
+describe("activateSubscription — partial terms", () => {
+  const plan = {
+    id: "11111111-1111-4111-8111-111111111111",
+    isActive: true,
+    pricePaise: toPaise(340000),
+    durationDays: 30,
+    mealSlots: [MealSlot.LUNCH, MealSlot.DINNER],
+  };
+
+  const base: ActivationRequest = {
+    actorRole: UserRole.ADMIN,
+    studentStatus: StudentStatus.ACTIVE,
+    hasActiveSubscription: false,
+    plan,
+    timeZone: "Asia/Kolkata",
+    now: new Date("2026-07-20T06:00:00Z"),
+  };
+
+  it("defaults to the full plan term when no duration is given", () => {
+    // The existing behaviour, preserved: every caller that predates pro-rating
+    // keeps working and keeps charging the full price.
+    const r = activateSubscription(base);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.value.assignmentDurationDays).toBe(30);
+    expect(r.value.pricePaiseSnapshot).toBe(340000);
+    expect(r.value.isPriceOverridden).toBe(false);
+  });
+
+  it("pro-rates a shorter term and rounds up (spec §6.4)", () => {
+    // ₹3,400 over 30 days, taken for 17 → 1926.66… → ₹1,927.
+    const r = activateSubscription({ ...base, assignmentDurationDays: 17 });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.value.calculatedPricePaise).toBe(192700);
+    expect(r.value.pricePaiseSnapshot).toBe(192700);
+  });
+
+  it("ends the plan after the days bought, not the plan's own duration", () => {
+    // The bug this guards: charging for 17 days and then serving 30. The end
+    // date has to follow what was actually sold.
+    const r = activateSubscription({ ...base, assignmentDurationDays: 17 });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.value.startDate).toBe(toServiceDate("2026-07-20"));
+    expect(r.value.endDate).toBe(toServiceDate("2026-08-05"));
+  });
+
+  it("snapshots the plan's duration alongside the assignment's", () => {
+    // Both are needed to explain the price later without touching the plan row,
+    // which may since have been edited or retired.
+    const r = activateSubscription({ ...base, assignmentDurationDays: 17 });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.value.planDurationDaysSnapshot).toBe(30);
+    expect(r.value.assignmentDurationDays).toBe(17);
+  });
+
+  it("refuses to sell more days than the plan offers", () => {
+    const r = activateSubscription({ ...base, assignmentDurationDays: 45 });
+    expect(r.ok).toBe(false);
+  });
+
+  it("keeps an admin's override and records what the formula said", () => {
+    const r = activateSubscription({
+      ...base,
+      assignmentDurationDays: 17,
+      overrideRupees: 1900,
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.value.calculatedPricePaise).toBe(192700);
+    expect(r.value.pricePaiseSnapshot).toBe(190000);
+    expect(r.value.isPriceOverridden).toBe(true);
+  });
+
+  it("derives the per-meal credit rate from what the student actually pays", () => {
+    // The rate mess-cut credits are issued at. It must follow the discounted
+    // price and the days actually bought — crediting a student at the full
+    // plan's rate for a term they got at half price would refund more than
+    // they paid, which is the invariant money.ts exists to protect.
+    const r = activateSubscription({
+      ...base,
+      assignmentDurationDays: 17,
+      overrideRupees: 1700,
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    // ₹1,700 over 17 days × 2 meals = 34 meals → ₹50 a meal exactly.
+    expect(r.value.perMealPaise).toBe(5000);
   });
 });

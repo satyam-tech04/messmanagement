@@ -76,5 +76,11 @@
     "state": "applied",
     "appliedTo": "yenxlcrtlmnfotfqqabo",
     "appliedAt": "2026-08-30"
+  },
+  "20260830000014_meal_pricing.sql": {
+    "sha256": "5be4b2d904fff89af5377354bd00e446ac93a3a55da9d64bd14ff888eb84d3e2",
+    "state": "applied",
+    "appliedTo": "yenxlcrtlmnfotfqqabo",
+    "appliedAt": "2026-08-30"
   }
 }

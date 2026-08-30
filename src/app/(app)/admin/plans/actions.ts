@@ -24,9 +24,11 @@ export interface PlanActionState {
 
 const formSchema = z.object({
   name: z.string(),
-  // Kept as a string here: `Number("")` is 0, which would silently create a free
+  // Kept as strings here: `Number("")` is 0, which would silently create a free
   // plan when the admin simply left the field blank.
-  priceRupees: z.string().trim().min(1, "Enter a price"),
+  basePremiumRupees: z.string().trim().min(1, "Enter a base premium"),
+  // Blank means no discount, which is the ordinary case and not an error.
+  discountRupees: z.string().trim(),
   durationType: z.enum(["MONTHLY", "QUARTERLY"]),
   durationDays: z.coerce.number(),
   mealSlots: z.array(z.enum(["BREAKFAST", "LUNCH", "SNACKS", "DINNER"])),
@@ -40,7 +42,8 @@ function readForm(formData: FormData) {
 
   return formSchema.safeParse({
     name: formData.get("name") ?? "",
-    priceRupees: formData.get("priceRupees") ?? "",
+    basePremiumRupees: formData.get("basePremiumRupees") ?? "",
+    discountRupees: formData.get("discountRupees") ?? "",
     durationType: formData.get("durationType") ?? "MONTHLY",
     durationDays: formData.get("durationDays") ?? "0",
     mealSlots: slots,
@@ -76,12 +79,15 @@ export async function createPlan(
   const servedSlots = await servedSlotsFor(user.tenantId);
   if (!servedSlots) return { error: "This mess has no meal times configured yet." };
 
-  const priceRupees = Number(parsed.data.priceRupees);
   const draft = parsePlanDraft({
     actorRole: user.role,
     name: parsed.data.name,
     servedSlots,
-    priceRupees,
+    // `priceRupees` is ignored when the derivation is supplied; the policy
+    // computes the price as base − discount.
+    priceRupees: 0,
+    basePremiumRupees: Number(parsed.data.basePremiumRupees),
+    discountRupees: Number(parsed.data.discountRupees || 0),
     durationType: parsed.data.durationType,
     durationDays: parsed.data.durationDays,
     mealSlots: parsed.data.mealSlots,
@@ -96,6 +102,8 @@ export async function createPlan(
       tenant_id: user.tenantId,
       name: draft.value.name,
       price_paise: draft.value.pricePaise,
+      base_premium_paise: draft.value.basePremiumPaise,
+      discount_paise: draft.value.discountPaise,
       duration_type: draft.value.durationType,
       duration_days: draft.value.durationDays,
       included_meal_slots: [...draft.value.mealSlots],
@@ -151,7 +159,9 @@ export async function updatePlan(
     actorRole: user.role,
     name: parsed.data.name,
     servedSlots,
-    priceRupees: Number(parsed.data.priceRupees),
+    priceRupees: 0,
+    basePremiumRupees: Number(parsed.data.basePremiumRupees),
+    discountRupees: Number(parsed.data.discountRupees || 0),
     durationType: parsed.data.durationType,
     durationDays: parsed.data.durationDays,
     mealSlots: parsed.data.mealSlots,
@@ -174,6 +184,8 @@ export async function updatePlan(
     .update({
       name: draft.value.name,
       price_paise: draft.value.pricePaise,
+      base_premium_paise: draft.value.basePremiumPaise,
+      discount_paise: draft.value.discountPaise,
       duration_type: draft.value.durationType,
       duration_days: draft.value.durationDays,
       included_meal_slots: [...draft.value.mealSlots],

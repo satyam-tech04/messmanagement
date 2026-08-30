@@ -89,6 +89,40 @@ export function AssignPlanDialog({
   );
   const [open, setOpen] = useState(false);
   const [planId, setPlanId] = useState("");
+  const [days, setDays] = useState("");
+  const [override, setOverride] = useState("");
+
+  const plan = plans.find((p) => p.id === planId) ?? null;
+
+  // Default to the plan's own term the moment a plan is picked, so the common
+  // case — a student buying the whole thing — needs no typing at all.
+  const choosePlan = (next: AssignablePlan) => {
+    setPlanId(next.id);
+    setDays(String(next.durationDays));
+    setOverride("");
+  };
+
+  const boughtDays = Number(days) || 0;
+  const withinPlan = plan !== null && boughtDays >= 1 && boughtDays <= plan.durationDays;
+
+  // Mirrors assignmentPricePaise in the pricing policy: pro-rate per day and
+  // round up to the whole rupee, with a full term costing exactly the plan
+  // price. Integer arithmetic throughout — this preview must agree with what
+  // the server computes, and float division would eventually disagree by a
+  // rupee on exactly the amounts nobody checks.
+  const calculatedPaise =
+    plan === null || !withinPlan
+      ? 0
+      : boughtDays === plan.durationDays
+        ? plan.pricePaise
+        : Math.floor(
+            (plan.pricePaise * boughtDays + plan.durationDays * 100 - 1) /
+              (plan.durationDays * 100),
+          ) * 100;
+
+  const overridePaise = override.trim() === "" ? null : Math.round(Number(override) * 100);
+  const chargedPaise = overridePaise ?? calculatedPaise;
+  const isOverridden = overridePaise !== null && overridePaise !== calculatedPaise;
 
   if (state.success && open) setOpen(false);
 
@@ -121,26 +155,26 @@ export function AssignPlanDialog({
             <div className="space-y-4 py-4">
               <input type="hidden" name="planId" value={planId} />
               <div className="space-y-2" role="radiogroup" aria-label="Plan">
-                {plans.map((plan) => (
+                {plans.map((option) => (
                   <button
-                    key={plan.id}
+                    key={option.id}
                     type="button"
                     role="radio"
-                    aria-checked={planId === plan.id}
-                    onClick={() => setPlanId(plan.id)}
+                    aria-checked={planId === option.id}
+                    onClick={() => choosePlan(option)}
                     className={cn(
                       "w-full rounded-lg border px-4 py-3 text-left text-sm transition-colors",
                       "focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none",
-                      planId === plan.id ? "border-primary bg-primary/5" : "hover:bg-muted/50",
+                      planId === option.id ? "border-primary bg-primary/5" : "hover:bg-muted/50",
                     )}
                   >
                     <span className="flex items-center justify-between gap-3">
-                      <span className="font-medium">{plan.name}</span>
-                      <span className="tabular-nums">{formatRupees(plan.pricePaise)}</span>
+                      <span className="font-medium">{option.name}</span>
+                      <span className="tabular-nums">{formatRupees(option.pricePaise)}</span>
                     </span>
                     <span className="text-muted-foreground mt-0.5 block text-xs">
-                      {plan.durationDays} days ·{" "}
-                      {plan.mealSlots.map((s) => s.toLowerCase()).join(", ")}
+                      {option.durationDays} days ·{" "}
+                      {option.mealSlots.map((s) => s.toLowerCase()).join(", ")}
                     </span>
                   </button>
                 ))}
@@ -160,13 +194,89 @@ export function AssignPlanDialog({
                   from here.
                 </p>
               </div>
+
+              {plan ? (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="assignmentDurationDays">Days</Label>
+                    <Input
+                      id="assignmentDurationDays"
+                      name="assignmentDurationDays"
+                      type="number"
+                      min="1"
+                      max={plan.durationDays}
+                      required
+                      value={days}
+                      onChange={(e) => setDays(e.target.value)}
+                      className="tabular-nums"
+                    />
+                    <p className="text-muted-foreground text-xs">
+                      How much of the plan this student is buying. The full {plan.durationDays} days
+                      costs {formatRupees(plan.pricePaise)}; fewer days are priced pro rata.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="overrideRupees">Price (₹)</Label>
+                    <Input
+                      id="overrideRupees"
+                      name="overrideRupees"
+                      type="number"
+                      min="1"
+                      step="1"
+                      inputMode="numeric"
+                      value={override}
+                      onChange={(e) => setOverride(e.target.value)}
+                      placeholder={
+                        withinPlan
+                          ? String(Math.round(calculatedPaise / 100))
+                          : "Pick the days first"
+                      }
+                      className="tabular-nums"
+                    />
+                    <p className="text-muted-foreground text-xs">
+                      Leave blank to charge the calculated price. Anything you type here is charged
+                      instead, and recorded as a change.
+                    </p>
+                  </div>
+
+                  {/* Shown before committing: what the formula says, and what
+                      the student will actually be charged if those differ. */}
+                  <div className="bg-muted/50 space-y-1.5 rounded-lg border p-3.5 text-sm">
+                    {withinPlan ? (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">
+                            {boughtDays === plan.durationDays
+                              ? "Full term"
+                              : `${boughtDays} of ${plan.durationDays} days`}
+                          </span>
+                          <span className="tabular-nums">{formatRupees(calculatedPaise)}</span>
+                        </div>
+                        {isOverridden ? (
+                          <div className="flex items-center justify-between border-t pt-1.5">
+                            <span className="font-medium">Charged instead</span>
+                            <span className="font-medium tabular-nums">
+                              {formatRupees(chargedPaise)}
+                            </span>
+                          </div>
+                        ) : null}
+                      </>
+                    ) : (
+                      <p className="text-muted-foreground text-xs">
+                        Enter between 1 and {plan.durationDays} days to see the price.
+                      </p>
+                    )}
+                  </div>
+                </>
+              ) : null}
             </div>
 
             <Feedback state={state} />
 
             <DialogFooter className="pt-4">
               <DialogClose render={<Button type="button" variant="ghost" />}>Cancel</DialogClose>
-              <Button type="submit" disabled={!planId}>
+              <Button type="submit" disabled={!planId || !withinPlan}>
                 <Submitting idle="Assign plan" busy="Assigning…" />
               </Button>
             </DialogFooter>

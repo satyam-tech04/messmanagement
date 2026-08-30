@@ -19,6 +19,7 @@ import { requireSessionUser } from "@/infra/auth/session";
 import { createAdminClient } from "@/infra/supabase/admin";
 import { SupabaseTenantRepository } from "@/infra/supabase/repositories";
 import { createClient } from "@/infra/supabase/server";
+import { MealPricesCard } from "./meal-prices-card";
 import { CreatePlanDialog, EditPlanDialog, TogglePlanButton, type PlanRow } from "./plan-form";
 
 export const metadata: Metadata = { title: "Plans · Mess OS" };
@@ -34,10 +35,21 @@ export default async function PlansPage() {
   const settings = await new SupabaseTenantRepository(supabase, admin).getSettings(user.tenantId);
   const servedSlots: readonly string[] = (settings?.mealSlots ?? []).map((s) => s.slot);
 
+  // The rate card. Four rows at most, so this is cheaper than the round trip
+  // it saves the plan form later.
+  const { data: mealPriceRows } = await supabase
+    .from("meal_prices")
+    .select("meal_slot, price_paise")
+    .eq("tenant_id", user.tenantId);
+
+  const mealPrices: Record<string, number> = {};
+  for (const row of mealPriceRows ?? []) mealPrices[row.meal_slot] = row.price_paise;
+
   const { data, error } = await supabase
     .from("plans")
     .select(
-      `id, name, price_paise, duration_type, duration_days, included_meal_slots, is_active,
+      `id, name, price_paise, base_premium_paise, discount_paise,
+       duration_type, duration_days, included_meal_slots, is_active,
        subscriptions ( id, status, start_date, end_date )`,
     )
     .eq("tenant_id", user.tenantId)
@@ -56,6 +68,8 @@ export default async function PlansPage() {
       id: p.id,
       name: p.name,
       pricePaise: p.price_paise,
+      basePremiumPaise: p.base_premium_paise,
+      discountPaise: p.discount_paise,
       durationType: p.duration_type as PlanRow["durationType"],
       durationDays: p.duration_days,
       mealSlots: p.included_meal_slots,
@@ -82,8 +96,10 @@ export default async function PlansPage() {
       <PageHeader
         title="Plans"
         description="What a student pays and which meals it covers. A plan's price is frozen onto each subscription when it is assigned, so changing it here never rewrites an existing student's terms."
-        action={<CreatePlanDialog servedSlots={servedSlots} />}
+        action={<CreatePlanDialog servedSlots={servedSlots} mealPrices={mealPrices} />}
       />
+
+      <MealPricesCard servedSlots={servedSlots} prices={mealPrices} />
 
       {error ? (
         <TableError
@@ -95,7 +111,7 @@ export default async function PlansPage() {
           icon={<ClipboardList className="size-6" aria-hidden="true" />}
           title="No plans yet"
           description="Create a plan before adding students — without one, a student cannot generate a QR code or be served at the counter."
-          action={<CreatePlanDialog servedSlots={servedSlots} />}
+          action={<CreatePlanDialog servedSlots={servedSlots} mealPrices={mealPrices} />}
         />
       ) : (
         <TableShell>
@@ -167,7 +183,11 @@ export default async function PlansPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-1">
-                        <EditPlanDialog plan={plan} servedSlots={servedSlots} />
+                        <EditPlanDialog
+                          plan={plan}
+                          servedSlots={servedSlots}
+                          mealPrices={mealPrices}
+                        />
                         <TogglePlanButton plan={plan} />
                       </div>
                     </TableCell>

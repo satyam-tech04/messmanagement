@@ -286,6 +286,11 @@ export async function resetStudentPassword(
 
 const assignSchema = z.object({
   planId: z.string().uuid("Choose a plan."),
+  // Blank means the plan's own term — the ordinary case, and not an error.
+  assignmentDurationDays: z.string().trim(),
+  // Blank means "charge the calculated price". Kept as a string so that an
+  // empty field is distinguishable from a deliberate zero.
+  overrideRupees: z.string().trim(),
   startDate: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Enter a valid start date")
@@ -304,6 +309,8 @@ export async function assignPlan(
 
   const parsed = assignSchema.safeParse({
     planId: formData.get("planId"),
+    assignmentDurationDays: formData.get("assignmentDurationDays") ?? "",
+    overrideRupees: formData.get("overrideRupees") ?? "",
     startDate: formData.get("startDate") ?? "",
   });
   if (!parsed.success) {
@@ -381,6 +388,10 @@ export async function assignPlan(
     timeZone: user.timezone,
     now: new Date(),
     ...(parsed.data.startDate ? { startDate: toServiceDate(parsed.data.startDate) } : {}),
+    ...(parsed.data.assignmentDurationDays
+      ? { assignmentDurationDays: Number(parsed.data.assignmentDurationDays) }
+      : {}),
+    ...(parsed.data.overrideRupees ? { overrideRupees: Number(parsed.data.overrideRupees) } : {}),
   });
 
   if (!decision.ok) return { error: decision.error.message };
@@ -396,6 +407,12 @@ export async function assignPlan(
       // what this student agreed to (§4.2).
       price_paise_snapshot: activation.pricePaiseSnapshot,
       included_meal_slots_snapshot: [...activation.mealSlotsSnapshot],
+      // What was bought and what the formula said it should cost, kept beside
+      // what was actually charged so a discount is visible later (D-17).
+      plan_duration_days_snapshot: activation.planDurationDaysSnapshot,
+      assignment_duration_days: activation.assignmentDurationDays,
+      calculated_price_paise: activation.calculatedPricePaise,
+      is_price_overridden: activation.isPriceOverridden,
       start_date: activation.startDate,
       end_date: activation.endDate,
       status: "ACTIVE",
@@ -422,6 +439,10 @@ export async function assignPlan(
       studentId: student.id,
       planId: activation.planId,
       pricePaise: activation.pricePaiseSnapshot,
+      calculatedPricePaise: activation.calculatedPricePaise,
+      priceOverridden: activation.isPriceOverridden,
+      assignmentDurationDays: activation.assignmentDurationDays,
+      planDurationDays: activation.planDurationDaysSnapshot,
       startDate: activation.startDate,
       endDate: activation.endDate,
     },

@@ -24,6 +24,8 @@ export interface PlanRow {
   readonly id: string;
   readonly name: string;
   readonly pricePaise: number;
+  readonly basePremiumPaise: number;
+  readonly discountPaise: number;
   readonly durationType: "MONTHLY" | "QUARTERLY";
   readonly durationDays: number;
   readonly mealSlots: readonly string[];
@@ -64,11 +66,39 @@ function ErrorBar({ state }: { state: PlanActionState }) {
 }
 
 /** Shared body for create and edit, so the two forms cannot drift apart. */
-function PlanFields({ plan, servedSlots }: { plan?: PlanRow; servedSlots: readonly string[] }) {
+function PlanFields({
+  plan,
+  servedSlots,
+  mealPrices,
+}: {
+  plan?: PlanRow;
+  servedSlots: readonly string[];
+  mealPrices: Readonly<Record<string, number>>;
+}) {
   const [durationType, setDurationType] = useState<"MONTHLY" | "QUARTERLY">(
     plan?.durationType ?? "MONTHLY",
   );
   const [durationDays, setDurationDays] = useState(String(plan?.durationDays ?? 30));
+
+  // Slots and money are tracked here rather than left to the DOM because the
+  // suggested price depends on both, and it has to move as the admin ticks.
+  const [slots, setSlots] = useState<readonly string[]>(plan?.mealSlots ?? []);
+  const [basePremium, setBasePremium] = useState(
+    plan ? (plan.basePremiumPaise / 100).toFixed(2) : "",
+  );
+  const [discount, setDiscount] = useState(plan ? (plan.discountPaise / 100).toFixed(2) : "0");
+
+  // The suggestion, in whole paise: summed rates x days. Only a suggestion —
+  // whatever the admin saves is what freezes onto the plan.
+  const suggestedPaise =
+    slots.reduce((sum, slot) => sum + (mealPrices[slot] ?? 0), 0) * (Number(durationDays) || 0);
+  const unpricedSlots = slots.filter((slot) => mealPrices[slot] === undefined);
+
+  const basePaise = Math.round((Number(basePremium) || 0) * 100);
+  const discountPaise = Math.round((Number(discount) || 0) * 100);
+  const finalPaise = basePaise - discountPaise;
+
+  const applySuggestion = () => setBasePremium((suggestedPaise / 100).toFixed(2));
 
   return (
     <div className="space-y-5 py-4">
@@ -89,20 +119,21 @@ function PlanFields({ plan, servedSlots }: { plan?: PlanRow; servedSlots: readon
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="priceRupees">Price (₹)</Label>
+          <Label htmlFor="basePremiumRupees">Base premium (₹)</Label>
           <Input
-            id="priceRupees"
-            name="priceRupees"
+            id="basePremiumRupees"
+            name="basePremiumRupees"
             type="number"
-            min="0"
+            min="0.01"
             step="0.01"
             required
             inputMode="decimal"
-            defaultValue={plan ? (plan.pricePaise / 100).toFixed(2) : ""}
+            value={basePremium}
+            onChange={(e) => setBasePremium(e.target.value)}
             placeholder="4000.00"
           />
           <p className="text-muted-foreground text-xs">
-            The full price for the whole period, not per meal.
+            The full price for the whole period, before any discount.
           </p>
         </div>
 
@@ -176,7 +207,12 @@ function PlanFields({ plan, servedSlots }: { plan?: PlanRow; servedSlots: readon
                   name="mealSlots"
                   value={slot.value}
                   disabled={!served}
-                  defaultChecked={served && plan?.mealSlots.includes(slot.value)}
+                  checked={slots.includes(slot.value)}
+                  onCheckedChange={(checked) =>
+                    setSlots((current) =>
+                      checked ? [...current, slot.value] : current.filter((s) => s !== slot.value),
+                    )
+                  }
                 />
                 <span className="flex-1">{slot.label}</span>
                 {served ? null : (
@@ -191,11 +227,86 @@ function PlanFields({ plan, servedSlots }: { plan?: PlanRow; servedSlots: readon
           cover them.
         </p>
       </fieldset>
+
+      <div className="space-y-2">
+        <Label htmlFor="discountRupees">Discount (₹)</Label>
+        <Input
+          id="discountRupees"
+          name="discountRupees"
+          type="number"
+          min="0"
+          step="0.01"
+          inputMode="decimal"
+          value={discount}
+          onChange={(e) => setDiscount(e.target.value)}
+          placeholder="0.00"
+        />
+        <p className="text-muted-foreground text-xs">
+          A flat amount off the base premium. Leave at zero for no discount.
+        </p>
+      </div>
+
+      {/* What the meal rates suggest, and what the plan will actually cost.
+          Separate lines because they are different things: the suggestion is a
+          convenience, the final price is what freezes onto every subscription. */}
+      <div className="bg-muted/50 space-y-1.5 rounded-lg border p-3.5 text-sm">
+        {suggestedPaise > 0 ? (
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-muted-foreground">
+              Suggested from meal prices
+              {unpricedSlots.length > 0 ? " (some meals unpriced)" : ""}
+            </span>
+            <span className="flex items-center gap-2">
+              <span className="tabular-nums">{formatRupees(suggestedPaise)}</span>
+              {basePaise !== suggestedPaise ? (
+                <button
+                  type="button"
+                  onClick={applySuggestion}
+                  className="text-primary text-xs underline underline-offset-2"
+                >
+                  use this
+                </button>
+              ) : null}
+            </span>
+          </div>
+        ) : slots.length > 0 ? (
+          <p className="text-muted-foreground text-xs">
+            No meal prices set yet, so there is nothing to suggest — type the base premium yourself.
+          </p>
+        ) : null}
+
+        <div className="flex items-center justify-between border-t pt-1.5">
+          <span className="font-medium">Students pay</span>
+          <span className={cn("font-medium tabular-nums", finalPaise <= 0 && "text-destructive")}>
+            {finalPaise > 0 ? formatRupees(finalPaise) : "—"}
+          </span>
+        </div>
+        {finalPaise <= 0 ? (
+          <p className="text-destructive text-xs">
+            The discount cannot be as large as the base premium — the plan would be free.
+          </p>
+        ) : null}
+      </div>
     </div>
   );
 }
 
-export function CreatePlanDialog({ servedSlots }: { servedSlots: readonly string[] }) {
+/** Paise to a rupee string. Formatting lives at the render boundary, never above it. */
+function formatRupees(paise: number): string {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    minimumFractionDigits: 2,
+  }).format(paise / 100);
+}
+
+export function CreatePlanDialog({
+  servedSlots,
+  mealPrices,
+}: {
+  servedSlots: readonly string[];
+  mealPrices: Readonly<Record<string, number>>;
+}) {
   const [state, formAction] = useActionState<PlanActionState, FormData>(createPlan, {});
   const [open, setOpen] = useState(false);
 
@@ -219,7 +330,7 @@ export function CreatePlanDialog({ servedSlots }: { servedSlots: readonly string
             </DialogDescription>
           </DialogHeader>
 
-          <PlanFields servedSlots={servedSlots} />
+          <PlanFields servedSlots={servedSlots} mealPrices={mealPrices} />
           <ErrorBar state={state} />
 
           <DialogFooter className="pt-4">
@@ -237,9 +348,11 @@ export function CreatePlanDialog({ servedSlots }: { servedSlots: readonly string
 export function EditPlanDialog({
   plan,
   servedSlots,
+  mealPrices,
 }: {
   plan: PlanRow;
   servedSlots: readonly string[];
+  mealPrices: Readonly<Record<string, number>>;
 }) {
   const [state, formAction] = useActionState<PlanActionState, FormData>(
     updatePlan.bind(null, plan.id),
@@ -272,7 +385,7 @@ export function EditPlanDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <PlanFields plan={plan} servedSlots={servedSlots} />
+          <PlanFields plan={plan} servedSlots={servedSlots} mealPrices={mealPrices} />
           <ErrorBar state={state} />
 
           <DialogFooter className="pt-4">

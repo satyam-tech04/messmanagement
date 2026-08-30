@@ -189,6 +189,12 @@ export async function createOneStudent(
         // Frozen now. A later plan price change must never rewrite history.
         price_paise_snapshot: plan.price_paise,
         included_meal_slots_snapshot: plan.included_meal_slots,
+        // Enrolment always sells the full term — there is no duration field on
+        // this form — so the assignment duration is the plan's own and the
+        // calculated price is the plan price, unpro-rated and un-overridden.
+        plan_duration_days_snapshot: plan.duration_days,
+        assignment_duration_days: plan.duration_days,
+        calculated_price_paise: plan.price_paise,
         start_date: period.startDate,
         end_date: period.endDate,
         status: "ACTIVE",

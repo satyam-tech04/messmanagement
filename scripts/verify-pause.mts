@@ -88,7 +88,7 @@ const { data: liveSettings } = await admin
   .single();
 const servedSlots = (liveSettings!.meal_slots as Array<{ slot: MealSlot }>).map((s) => s.slot);
 
-const { data: plan } = await admin
+const { data: plan, error: planError } = await admin
   .from("plans")
   .insert({
     tenant_id: tenant.id,
@@ -96,11 +96,14 @@ const { data: plan } = await admin
     duration_type: "MONTHLY",
     duration_days: 30,
     price_paise: 100000,
+    base_premium_paise: 100000,
+    discount_paise: 0,
     included_meal_slots: servedSlots,
     is_active: true,
   })
-  .select("id, price_paise, included_meal_slots")
+  .select("id, price_paise, duration_days, included_meal_slots")
   .single();
+if (planError) throw new Error(`throwaway plan insert failed: ${planError.message}`);
 
 const { data: sub } = await admin
   .from("subscriptions")
@@ -110,6 +113,9 @@ const { data: sub } = await admin
     plan_id: plan!.id,
     price_paise_snapshot: plan!.price_paise,
     included_meal_slots_snapshot: plan!.included_meal_slots,
+    plan_duration_days_snapshot: plan!.duration_days,
+    assignment_duration_days: plan!.duration_days,
+    calculated_price_paise: plan!.price_paise,
     start_date: today,
     end_date: addDays(toServiceDate(today), 30),
     status: "ACTIVE",

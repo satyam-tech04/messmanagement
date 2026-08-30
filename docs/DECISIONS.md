@@ -31,18 +31,28 @@ login.
 removes a whole class of tenant-enumeration abuse. Password resets go through the admin.
 A real email/phone is still captured on the profile for future notifications.
 
-### D-03 — Mid-cycle joiners are pro-rated
+### D-03 — Mid-cycle joiners are pro-rated — ⚠️ formula superseded by D-17
 
-**Decided:** 2026-07-25. The first invoice covers only the remaining days of the cycle,
-priced at the plan's per-meal rate.
+**Decided:** 2026-07-25. The first invoice covers only the remaining days of the cycle.
 
-**Why:** it reuses the exact per-meal derivation that mess-cut credits already require
-(architecture doc §7.1), so it is nearly free to implement, and it avoids the
-"student joins on the 18th and pays full price" dispute that would otherwise become a
-manual ledger adjustment every month.
+**Superseded 2026-08-30 by D-17** (see [new_features/TRACKER.md](new_features/TRACKER.md)).
+The _principle_ stands — a student who joins on the 18th does not pay for the whole month
+— but the arithmetic has changed:
 
-**Encoded in:** `BillingPolicy` (Phase 2). The remainder-stays-with-the-mess invariant
-applies here too.
+|          | Old (D-03)                                  | Current (D-17)                  |
+| -------- | ------------------------------------------- | ------------------------------- |
+| Rate     | per **meal**, `floor(price ÷ slots × days)` | per **day**, `price ÷ duration` |
+| Rounding | down; remainder stays with the mess         | up, to the whole rupee          |
+
+**Why it changed:** the per-day figure is the one an admin can explain to a student or a
+parent at the counter — "seventeen of thirty days" — where the per-meal derivation needs
+the slot count explained first. The remainder still never favours the student: rounding
+_up_ keeps the mess whole in the same direction D-03's floor did.
+
+**Where it lives now:** `assignmentPricePaise` in `src/core/policies/pricing.policy.ts`,
+in exact integer paise. The per-meal rate is still derived — `perMealPaise` — but only for
+mess-cut credits, and now from what the student actually paid rather than the full plan
+price, so a discounted student is never credited more per skipped meal than they paid.
 
 ### D-04 — Supabase is a hosted project; no local Docker stack
 

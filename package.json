@@ -31,7 +31,8 @@
     "verify:phase1": "tsx scripts/verify-phase1.mts",
     "provision": "tsx scripts/provision.ts",
     "create:superadmin": "tsx scripts/create-super-admin.ts",
-    "verify:pause": "tsx scripts/verify-pause.mts"
+    "verify:pause": "tsx scripts/verify-pause.mts",
+    "verify:pricing": "tsx scripts/verify-pricing.mts"
   },
   "lint-staged": {
     "*.{ts,tsx}": [

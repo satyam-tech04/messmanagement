@@ -96,7 +96,7 @@ const { data: liveSettings } = await admin
 
 const servedSlots = (liveSettings!.meal_slots as Array<{ slot: MealSlot }>).map((s) => s.slot);
 
-const { data: plan } = await admin
+const { data: plan, error: planError } = await admin
   .from("plans")
   .insert({
     tenant_id: tenant.id,
@@ -104,11 +104,14 @@ const { data: plan } = await admin
     duration_type: "MONTHLY",
     duration_days: 30,
     price_paise: 100000,
+    base_premium_paise: 100000,
+    discount_paise: 0,
     included_meal_slots: servedSlots,
     is_active: true,
   })
   .select("id, price_paise, duration_days, included_meal_slots")
   .single();
+if (planError) throw new Error(`throwaway plan insert failed: ${planError.message}`);
 
 await admin.from("subscriptions").insert({
   tenant_id: tenant.id,
@@ -116,6 +119,9 @@ await admin.from("subscriptions").insert({
   plan_id: plan!.id,
   price_paise_snapshot: plan!.price_paise,
   included_meal_slots_snapshot: plan!.included_meal_slots,
+  plan_duration_days_snapshot: plan!.duration_days,
+  assignment_duration_days: plan!.duration_days,
+  calculated_price_paise: plan!.price_paise,
   start_date: today,
   // Must extend past today: outside a meal window the QR targets the *next*
   // meal, which after the last service is tomorrow. A plan ending today would
