@@ -16,6 +16,7 @@
  * it cleanly without touching anything else in the database.
  */
 import { createClient } from "@supabase/supabase-js";
+import type { Database } from "../src/infra/supabase/database.types";
 import { randomBytes } from "node:crypto";
 import { syntheticEmailFor } from "../src/core/domain/identity";
 import { loadEnv } from "./load-env.mjs";
@@ -29,7 +30,10 @@ if (!url || !serviceKey) {
   process.exit(1);
 }
 
-const db = createClient<any>(url, serviceKey, {
+// Typed against the generated schema, not `any`. When it was `any`, migration
+// 014's new NOT NULL columns broke both inserts below and typecheck said
+// nothing — the failure only appeared when somebody ran the script.
+const db = createClient<Database>(url, serviceKey, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
@@ -178,11 +182,16 @@ async function seed(): Promise<void> {
     const PLAN_FIELDS = {
       tenant_id: tenantId,
       name: PLAN_NAME,
-      duration_type: "MONTHLY",
+      duration_type: "MONTHLY" as const,
       duration_days: 30,
       // Money is integer paise, always: ₹4,000.00
       price_paise: 400000,
-      included_meal_slots: ["LUNCH", "DINNER"],
+      // How that price was reached (migration 014). Kept here rather than only
+      // on the insert so the update path satisfies the
+      // `price = base - discount` CHECK as well.
+      base_premium_paise: 400000,
+      discount_paise: 0,
+      included_meal_slots: ["LUNCH", "DINNER"] as Database["public"]["Enums"]["meal_slot"][],
       is_active: true,
     };
 
@@ -280,7 +289,15 @@ async function seed(): Promise<void> {
             plan_id: planId,
             // Snapshotted, never read from the plan later (§4.2).
             price_paise_snapshot: 400000,
-            included_meal_slots_snapshot: ["LUNCH", "DINNER"],
+            included_meal_slots_snapshot: [
+              "LUNCH",
+              "DINNER",
+            ] as Database["public"]["Enums"]["meal_slot"][],
+            // Seeded students buy the whole term, so what they were charged is
+            // what the formula would have produced (migration 014).
+            plan_duration_days_snapshot: 30,
+            assignment_duration_days: 30,
+            calculated_price_paise: 400000,
             start_date: startDate,
             end_date: endDate,
             status: "ACTIVE",

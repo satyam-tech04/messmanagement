@@ -15,6 +15,7 @@ import { loadEnv } from "./load-env.mjs";
 loadEnv();
 
 import { createClient } from "@supabase/supabase-js";
+import type { Database } from "../src/infra/supabase/database.types";
 import { randomBytes } from "node:crypto";
 import { activateSubscription } from "../src/core/policies/plan.policy";
 import { autoBasePremiumPaise, assignmentPricePaise } from "../src/core/policies/pricing.policy";
@@ -31,7 +32,7 @@ const fail = (m: string) => {
 };
 const check = (ok: boolean, m: string) => (ok ? pass(m) : fail(m));
 
-const admin = createClient(
+const admin = createClient<Database>(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
@@ -160,8 +161,10 @@ try {
 
   const { error: subError } = await admin.from("subscriptions").insert({
     tenant_id: tenant.id,
-    student_id: studentId,
-    plan_id: planId,
+    // Both are set by here or the script has already thrown; the typed client
+    // is right to insist rather than take the nullable declaration on trust.
+    student_id: studentId!,
+    plan_id: planId!,
     price_paise_snapshot: activation.value.pricePaiseSnapshot,
     included_meal_slots_snapshot: [...activation.value.mealSlotsSnapshot],
     plan_duration_days_snapshot: activation.value.planDurationDaysSnapshot,

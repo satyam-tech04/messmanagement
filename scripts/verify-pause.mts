@@ -19,6 +19,7 @@ import { loadEnv } from "./load-env.mjs";
 loadEnv();
 
 import { createClient } from "@supabase/supabase-js";
+import type { Database } from "../src/infra/supabase/database.types";
 import { randomBytes } from "node:crypto";
 import { issueQrToken } from "../src/core/services/issue-qr-token";
 import { verifyManualAttendance, verifyQrAttendance } from "../src/core/services/verify-attendance";
@@ -42,7 +43,7 @@ const check = (ok: boolean, m: string) => (ok ? pass(m) : fail(m));
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const admin = createClient(url, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+const admin = createClient<Database>(url, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 const repos = createRepositories(admin as never, admin as never);
 
 const { data: tenant } = await admin
@@ -77,7 +78,13 @@ await admin.from("profiles").insert({
 
 const { data: student } = await admin
   .from("students")
-  .insert({ tenant_id: tenant.id, profile_id: userId, roll_number: ROLL, status: "ACTIVE", joined_at: today })
+  .insert({
+    tenant_id: tenant.id,
+    profile_id: userId,
+    roll_number: ROLL,
+    status: "ACTIVE",
+    joined_at: today,
+  })
   .select("id")
   .single();
 
@@ -209,18 +216,18 @@ try {
       .current != null;
 
   if (staleToken && counterOpen) {
-    const scanned = await verifyQrAttendance(staffCtx, { token: staleToken, deviceId: null }, verifyDeps);
+    const scanned = await verifyQrAttendance(
+      staffCtx,
+      { token: staleToken, deviceId: null },
+      verifyDeps,
+    );
     check(
       isErr(scanned) && scanned.error.code === "SUBSCRIPTION_PAUSED",
       `counter refuses a pre-pause token (${isErr(scanned) ? scanned.error.code : "SERVED — LEAK"})`,
     );
   } else {
-    console.log(
-      "  \x1b[33m—\x1b[0m counter scan not exercised: no meal window is open right now.",
-    );
-    console.log(
-      "    The manual check below runs the identical checkAccountEligibility path.",
-    );
+    console.log("  \x1b[33m—\x1b[0m counter scan not exercised: no meal window is open right now.");
+    console.log("    The manual check below runs the identical checkAccountEligibility path.");
   }
 
   // The manual fallback must not be the documented workaround.
@@ -247,7 +254,7 @@ try {
   // when run as the service role — while production served every paused
   // student. So this one runs on a real staff JWT.
   console.log("\nRow level security, on a real staff session");
-  const staffClient = createClient(url, anon);
+  const staffClient = createClient<Database>(url, anon);
   const { error: signInError } = await staffClient.auth.signInWithPassword({
     email: "staff@unversity-mess.test",
     password: "MessOS@2026",
@@ -299,7 +306,10 @@ try {
     remarks: "second trip home",
     status: "ACTIVE",
   });
-  check(!laterError, `a later, non-overlapping pause is allowed${laterError ? ` — ${laterError.message}` : ""}`);
+  check(
+    !laterError,
+    `a later, non-overlapping pause is allowed${laterError ? ` — ${laterError.message}` : ""}`,
+  );
 
   // --- Cancelling restores service -----------------------------------------
   console.log("\nAfter the pause is cancelled");

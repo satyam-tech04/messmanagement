@@ -15,6 +15,7 @@ import { loadEnv } from "./load-env.mjs";
 loadEnv();
 
 import { createClient } from "@supabase/supabase-js";
+import type { Database } from "../src/infra/supabase/database.types";
 import { randomBytes, randomUUID } from "node:crypto";
 import { issueQrToken } from "../src/core/services/issue-qr-token";
 import { verifyManualAttendance, verifyQrAttendance } from "../src/core/services/verify-attendance";
@@ -35,7 +36,7 @@ const fail = (m: string) => {
 };
 const check = (ok: boolean, m: string) => (ok ? pass(m) : fail(m));
 
-const admin = createClient(
+const admin = createClient<Database>(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );

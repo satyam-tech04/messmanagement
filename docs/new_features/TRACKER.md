@@ -127,9 +127,19 @@ and refuses to sell more days than a plan holds; the 39 existing subscriptions b
 with calculated == charged and none flagged as overridden.
 
 **Watch out:** migration 014 made `base_premium_paise` and three `subscriptions` columns
-NOT NULL with no default. That broke every existing INSERT — three in the app and two in
-the verification scripts. All five are fixed, and the scripts now fail fast on the insert
-rather than surfacing it as a null dereference forty lines later.
+NOT NULL with no default, which broke **six** existing INSERTs — three in the app, two in
+the verification scripts, and one in `scripts/seed.ts`. All six are fixed and each path
+was exercised against the live database.
+
+The reason only three were caught by `npm run typecheck` is worth remembering: `scripts/`
+_is_ in `tsconfig.json`, but those scripts called `createClient()` with no `<Database>`
+generic (`seed.ts` used `createClient<any>` outright), so their inserts were unchecked.
+They are typed now, so the next migration that adds a NOT NULL column fails at compile
+time instead of at 2am against production.
+
+**Rule for the next migration:** adding a NOT NULL column without a default breaks every
+INSERT that omits it. Grep for `from("<table>")` across `src`, `scripts` _and_ `tests`
+before pushing — typecheck alone is not proof.
 
 ### NF-3 — Counter sales ("à la carte") 🚧 next
 
