@@ -28,16 +28,16 @@ Update this file the moment a task finishes. Never batch.
 
 Traced from the handwritten requirements note, 2026-08-30.
 
-| #   | Feature                                | Spec                                                           | Phase | Status                          |
-| --- | -------------------------------------- | -------------------------------------------------------------- | ----- | ------------------------------- |
-| 1   | Student login = mobile number          | —                                                              | —     | ✅ shipped (migrations 011–012) |
-| 1b  | Send link + credentials via WhatsApp   | ❔ none                                                        | NF-5  | ⏸️ deferred                     |
-| 2   | Grace period — pause / extend / resume | [grace period](./student_subscription_grace_period_feature.md) | NF-1  | ✅                              |
-| 3   | À la carte menu & billing              | [meal billing](./meal-billing-feature-spec.md)                 | NF-3  | ⏸️                              |
-| —   | Meal & plan pricing engine             | [meal pricing](./meal-pricing-feature-spec.md)                 | NF-2  | ⏸️                              |
-| 4   | Meal planner                           | ❔ none                                                        | NF-4  | ❔                              |
-| 5   | Feedback option                        | ❔ none                                                        | NF-4  | ❔                              |
-| 6   | Special meal for selected days         | ❔ none                                                        | NF-4  | ❔                              |
+| #   | Feature                                | Spec                                                                     | Phase | Status                          |
+| --- | -------------------------------------- | ------------------------------------------------------------------------ | ----- | ------------------------------- |
+| 1   | Student login = mobile number          | —                                                                        | —     | ✅ shipped (migrations 011–012) |
+| 1b  | Send link + credentials via WhatsApp   | ❔ none                                                                  | NF-5  | ⏸️ deferred                     |
+| 2   | Grace period — pause / extend / resume | [grace period](./student_subscription_grace_period_feature.md)           | NF-1  | ✅                              |
+| 3   | À la carte menu & billing              | [meal billing](./meal-billing-feature-spec.md)                           | NF-3  | ⏸️                              |
+| —   | Meal & plan pricing engine             | [meal pricing](./meal-pricing-feature-spec.md)                           | NF-2  | ⏸️                              |
+| 4   | Meal planner                           | [planner/feedback/special](./meal-planner-feedback-special-meal-spec.md) | NF-4b | ⏸️ ready                        |
+| 5   | Feedback option                        | [planner/feedback/special](./meal-planner-feedback-special-meal-spec.md) | NF-4c | 🔒 D-19b                        |
+| 6   | Special meal for selected days         | [planner/feedback/special](./meal-planner-feedback-special-meal-spec.md) | NF-4a | ⏸️ ready                        |
 
 **Already shipped:** item 1 is complete — `profiles.mobile` is a generated column,
 `temporaryPasswordFromPhone` derives the first password from the same ten digits, and
@@ -172,11 +172,36 @@ constraint rather than application code.
 | §11: revenue by `finalized_at`    | revenue by `service_date` | UTC+5:30 would file every post-midnight bill under the previous day (F21)  |
 | §3: hard delete allowed if unused | always soft delete        | the saving is nil; the risk of a used item vanishing from a receipt is not |
 
-### NF-4 — Unspecced note items 🚧 next · needs D-19
+### NF-4 — Meal planner, feedback, special meals 🚧 next
 
-- [ ] Establish what item 6 ("special meal for selected days") means, then scope
-- [ ] Confirm whether item 4 is the existing `/admin/menu` planner
-- [ ] Feedback — deferred; listed in IMPLEMENTATION.md as a later-phase idea
+Now specified: **[meal-planner-feedback-special-meal-spec.md](./meal-planner-feedback-special-meal-spec.md)**,
+one section per feature, in the same shape as the three original documents.
+
+**The governing constraint, from the owner on 2026-08-30:** the student app is read-only.
+A student may show their QR, view their own details, and view notifications. Nothing else.
+Every other operation belongs to an admin or staff member. This outranks everything below.
+
+**NF-4a — Special meal announcements** ⏸️ ready to build
+
+- [ ] `announcements` table — `tenant_id`, RLS, dates through `src/core/time`
+- [ ] Admin create / edit / archive; admin-only (B6)
+- [ ] Visibility derived from `[starts_on, ends_on]`, never a stored flag — no cron exists (§9)
+- [ ] Read-only card on the student screen; absent entirely when there is none
+- [ ] Must touch no attendance, headcount, eligibility, plan or price (B2, B3, §11)
+
+**NF-4b — Meal planner** ⏸️ ready to build, additive only
+
+- [ ] Plan beyond the current week; past weeks render read-only
+- [ ] Copy a week, never silently overwriting an existing day
+- [ ] Show unplanned slots distinctly, with a count
+- [ ] No new table — `/admin/menu` and `menus` already exist and must not be rebuilt
+
+**NF-4c — Feedback** 🔒 **D-19b**
+
+Blocked on a genuine contradiction, not on scoping. The note asks for feedback; the
+constraint above forbids students submitting anything, and feedback is by definition
+submitted by the person eating. §5.1 of the spec sets out the three options. Assumed
+answer if none is given: **do not build it.**
 
 ### NF-5 — WhatsApp credential delivery ⏸️ deferred
 
@@ -200,14 +225,15 @@ unattended.
 Open decisions are numbered continuing from [DECISIONS.md](../DECISIONS.md), and move
 there once resolved.
 
-| ID   | Question                                         | Blocks | Status      |
-| ---- | ------------------------------------------------ | ------ | ----------- |
-| D-15 | Can a pause start today?                         | NF-1   | ✅ resolved |
-| D-16 | Are counter bills linked to students?            | NF-3   | ✅ resolved |
-| D-17 | Pro-rating formula                               | NF-2   | ✅ resolved |
-| D-18 | Who owns the post-pause end date                 | NF-1   | ✅ resolved |
-| D-19 | What does "special meal for selected days" mean? | NF-4   | ⏳ open     |
-| D-20 | WhatsApp: `wa.me` link or Business API?          | NF-5   | ⏸️ defer    |
+| ID    | Question                                    | Blocks | Status      |
+| ----- | ------------------------------------------- | ------ | ----------- |
+| D-15  | Can a pause start today?                    | NF-1   | ✅ resolved |
+| D-16  | Are counter bills linked to students?       | NF-3   | ✅ resolved |
+| D-17  | Pro-rating formula                          | NF-2   | ✅ resolved |
+| D-18  | Who owns the post-pause end date            | NF-1   | ✅ resolved |
+| D-19  | What "special meal for selected days" means | NF-4a  | ✅ resolved |
+| D-19b | Feedback vs. the read-only student app      | NF-4c  | ⏳ open     |
+| D-20  | WhatsApp: `wa.me` link or Business API?     | NF-5   | ⏸️ defer    |
 
 ### D-15 — A pause may start today, never in the past
 
