@@ -54,16 +54,25 @@ note — see D-19.
 Ordered by risk to live data and by what unblocks what. NF-1 is genuinely gated by the
 spec rewrite; NF-3 is independent and goes last despite being written down first.
 
-### NF-0 — Rewrite the three specs against reality ⏸️
+### NF-0 — Reconcile the three specs with reality ✅
 
-Documentation only, no code. This is what makes the rest safe to implement.
+Done 2026-08-30, **after** the features shipped rather than before — which was the wrong
+order. NF-1 through NF-3 were built while the three source documents still said decimal
+rupees, still had no `tenant_id`, still described an `assignments` table that is really
+`subscriptions`, and still claimed there was no audit log. Anyone reading them cold would
+have built the wrong thing and not known the shipped system differed.
 
-- [ ] Restate every money figure in **integer paise**, not decimal rupees (F2)
-- [ ] Add `tenant_id`, RLS and tenant-leading indexes to every proposed table (F1)
-- [ ] Replace invented table names with the ones that exist — `assignments` → `subscriptions` (F13)
-- [ ] Fix the six dangling cross-references in the meal-billing spec (F19)
-- [ ] Correct the two factual errors in the grace spec: audit log exists (F3), four roles not three (F4)
-- [ ] Fold in the answers to D-15 … D-20
+**The original wording is preserved.** Each of the three now carries an **as-built
+amendment block** at the top — a table of every deviation, why it was made, and which live
+probe proves it. Rewriting a client's requirement document in place would have destroyed
+the record of what was actually asked for.
+
+- [x] Money restated as integer paise, including the `1e-9` epsilon that only exists in float rupees (F2)
+- [x] `tenant_id`, RLS and tenant-leading indexes noted as absent from all three (F1)
+- [x] Invented table names mapped to the real ones — `assignments` → `subscriptions` (F13)
+- [x] The six dangling cross-references in the billing spec listed with their real targets (F19)
+- [x] The two factual errors in the grace spec corrected: `audit_log` exists (F3), four roles not three (F4)
+- [x] D-15 … D-21 folded in, including the two capability changes (D-17 supersedes D-03; D-21 removes zero-price plans)
 
 ### NF-1 — Subscription pause ("grace period") ✅
 
