@@ -31,7 +31,7 @@ Traced from the handwritten requirements note, 2026-08-30.
 | #   | Feature                                | Spec                                                           | Phase | Status                          |
 | --- | -------------------------------------- | -------------------------------------------------------------- | ----- | ------------------------------- |
 | 1   | Student login = mobile number          | —                                                              | —     | ✅ shipped (migrations 011–012) |
-| 1b  | Send link + credentials via WhatsApp   | ❔ none                                                        | NF-5  | ❔                              |
+| 1b  | Send link + credentials via WhatsApp   | ❔ none                                                        | NF-5  | ⏸️ deferred                     |
 | 2   | Grace period — pause / extend / resume | [grace period](./student_subscription_grace_period_feature.md) | NF-1  | ✅                              |
 | 3   | À la carte menu & billing              | [meal billing](./meal-billing-feature-spec.md)                 | NF-3  | ⏸️                              |
 | —   | Meal & plan pricing engine             | [meal pricing](./meal-pricing-feature-spec.md)                 | NF-2  | ⏸️                              |
@@ -178,9 +178,20 @@ constraint rather than application code.
 - [ ] Confirm whether item 4 is the existing `/admin/menu` planner
 - [ ] Feedback — deferred; listed in IMPLEMENTATION.md as a later-phase idea
 
-### NF-5 — WhatsApp credential delivery ❔ D-20
+### NF-5 — WhatsApp credential delivery ⏸️ deferred
 
-- [ ] Decide `wa.me` pre-filled link vs. a real Business API integration
+**Deferred 2026-08-30 by the project owner.** Not cancelled — parked.
+
+Nothing is built and nothing depends on it. Admins currently read the temporary
+password off the screen after creating a student and pass it on themselves, which is
+what they have been doing since launch.
+
+When it comes back, D-20 is still the question to answer first: a pre-filled `wa.me`
+link opens the admin's own WhatsApp with the message ready and needs no account, no
+per-message cost and no approval; the Business API needs all three but can send
+unattended.
+
+- [ ] (deferred) Decide `wa.me` pre-filled link vs. a real Business API integration
 
 ---
 
@@ -196,7 +207,7 @@ there once resolved.
 | D-17 | Pro-rating formula                               | NF-2   | ✅ resolved |
 | D-18 | Who owns the post-pause end date                 | NF-1   | ✅ resolved |
 | D-19 | What does "special meal for selected days" mean? | NF-4   | ⏳ open     |
-| D-20 | WhatsApp: `wa.me` link or Business API?          | NF-5   | ⏳ open     |
+| D-20 | WhatsApp: `wa.me` link or Business API?          | NF-5   | ⏸️ defer    |
 
 ### D-15 — A pause may start today, never in the past
 
