@@ -64,6 +64,8 @@ export function toTenantSettings(row: SettingsRow): TenantSettings {
     cutAdvanceHours: row.cut_advance_hours,
     cutMaxDaysPerMonth: row.cut_max_days_per_month,
     autoRollNumbers: row.auto_roll_numbers,
+    allowAnnouncements: row.allow_announcements,
+    allowFeedback: row.allow_feedback,
     allowMealSkipping: row.allow_meal_skipping,
     allowPartialDaySkip: row.allow_partial_day_skip,
     allowAwayRequests: row.allow_away_requests,

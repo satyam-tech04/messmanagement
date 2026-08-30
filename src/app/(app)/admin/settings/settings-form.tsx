@@ -309,24 +309,83 @@ function EnrolmentCard({ autoRollNumbers }: { autoRollNumbers: boolean }) {
   );
 }
 
+/**
+ * The two feature switches.
+ *
+ * Kept apart from Enrolment and from the absence rules because these decide
+ * whether a screen exists at all, rather than what a rule permits once it is
+ * open. Turning either off hides its navigation AND makes the underlying
+ * actions refuse — the toggle is a permission, not a display preference.
+ */
+function FeaturesCard({
+  allowAnnouncements,
+  allowFeedback,
+}: {
+  allowAnnouncements: boolean;
+  allowFeedback: boolean;
+}) {
+  const [announcements, setAnnouncements] = useState(allowAnnouncements);
+  const [feedback, setFeedback] = useState(allowFeedback);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Features</CardTitle>
+        <CardDescription>
+          Optional parts of the app. Turning one off hides it from everyone and stops it accepting
+          anything, but never deletes what has already been recorded.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <Toggle
+          name="allowAnnouncements"
+          label="Special meal announcements"
+          hint="Post a notice — a festival lunch, a Sunday special — and every student sees it on their own screen until the day you set. Nothing is booked or counted; they simply come to the mess."
+          checked={announcements}
+          onChange={setAnnouncements}
+        />
+        <Toggle
+          name="allowFeedback"
+          label="Meal feedback from students"
+          hint="Students rate a meal out of five and may add a comment and a photo. This is the only thing a student can send into the app, so it stays off until you want it."
+          checked={feedback}
+          onChange={setFeedback}
+        />
+        {feedback ? (
+          <p className="text-muted-foreground text-xs">
+            Feedback never affects a student&apos;s plan, their QR code or the headcount. You can
+            read it under Feedback, and turning this off later keeps everything already left.
+          </p>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function SettingsForm({
   slots,
   qrTokenTtlSeconds,
   qrRefreshSeconds,
   absence,
   autoRollNumbers,
+  allowAnnouncements,
+  allowFeedback,
 }: {
   slots: readonly SlotSetting[];
   qrTokenTtlSeconds: number;
   qrRefreshSeconds: number;
   absence: AbsenceSetting;
   autoRollNumbers: boolean;
+  allowAnnouncements: boolean;
+  allowFeedback: boolean;
 }) {
   const [state, formAction] = useActionState<SettingsActionState, FormData>(updateSettings, {});
 
   return (
     <form action={formAction} className="space-y-6">
       <EnrolmentCard autoRollNumbers={autoRollNumbers} />
+
+      <FeaturesCard allowAnnouncements={allowAnnouncements} allowFeedback={allowFeedback} />
 
       <Card>
         <CardHeader>

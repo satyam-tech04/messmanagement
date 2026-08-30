@@ -106,3 +106,64 @@ describe("navigationFor — the rest of the nav is unaffected", () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// Announcements and feedback (migration 016)
+//
+// Both are behind a per-mess toggle. These matter because the toggle is the
+// only thing standing between a mess that has not asked for feedback and a
+// student screen that invites them to leave some.
+// ---------------------------------------------------------------------------
+
+describe("feature toggles reach the navigation", () => {
+  const hrefs = (role: Parameters<typeof navigationFor>[0], features = {}) =>
+    navigationFor(role, features)
+      .flatMap((section) => section.items)
+      .map((item) => item.href);
+
+  it("hides student feedback when the mess has not switched it on", () => {
+    // The default. Feedback is the one place a student writes to this system,
+    // so it must not appear merely because a deploy happened.
+    expect(hrefs("STUDENT")).not.toContain("/student/feedback");
+  });
+
+  it("shows student feedback once it is on", () => {
+    expect(hrefs("STUDENT", { allowFeedback: true })).toContain("/student/feedback");
+  });
+
+  it("never shows a student the admin's review screen", () => {
+    const student = hrefs("STUDENT", { allowFeedback: true, allowAnnouncements: true });
+    expect(student).not.toContain("/admin/feedback");
+    expect(student).not.toContain("/admin/announcements");
+  });
+
+  it("hides both admin screens until their toggles are on", () => {
+    const admin = hrefs("ADMIN");
+    expect(admin).not.toContain("/admin/announcements");
+    expect(admin).not.toContain("/admin/feedback");
+  });
+
+  it("shows each admin screen independently", () => {
+    expect(hrefs("ADMIN", { allowAnnouncements: true })).toContain("/admin/announcements");
+    expect(hrefs("ADMIN", { allowAnnouncements: true })).not.toContain("/admin/feedback");
+    expect(hrefs("ADMIN", { allowFeedback: true })).toContain("/admin/feedback");
+  });
+
+  it("gives the platform operator the same screens as the mess admin", () => {
+    // SUPER_ADMIN supports customers, so it must see what their admin sees.
+    // It previously read a frozen ADMIN_NAV and would have missed both.
+    const superAdmin = hrefs("SUPER_ADMIN", { allowAnnouncements: true, allowFeedback: true });
+    expect(superAdmin).toContain("/admin/announcements");
+    expect(superAdmin).toContain("/admin/feedback");
+    expect(superAdmin).toContain("/admin/messes");
+  });
+
+  it("does not mutate the shared admin nav between calls", () => {
+    // adminNav copies before pushing. Without that, one request with the
+    // toggles on would leave the entries visible to every later request,
+    // including other messes'.
+    hrefs("ADMIN", { allowAnnouncements: true, allowFeedback: true });
+    expect(hrefs("ADMIN")).not.toContain("/admin/announcements");
+    expect(hrefs("ADMIN")).not.toContain("/admin/feedback");
+  });
+});

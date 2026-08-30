@@ -13,6 +13,51 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export type Database = {
   public: {
     Tables: {
+      announcements: {
+      Row: {
+        id: string;
+        tenant_id: string;
+        title: string;
+        body: string | null;
+        service_date: string | null;
+        meal_slot: Database["public"]["Enums"]["meal_slot"] | null;
+        starts_on: string;
+        ends_on: string;
+        status: Database["public"]["Enums"]["announcement_status"];
+        created_by: string | null;
+        created_at: string;
+        updated_at: string;
+      };
+      Insert: {
+        id?: string;
+        tenant_id: string;
+        title: string;
+        body?: string | null;
+        service_date?: string | null;
+        meal_slot?: Database["public"]["Enums"]["meal_slot"] | null;
+        starts_on: string;
+        ends_on: string;
+        status?: Database["public"]["Enums"]["announcement_status"];
+        created_by?: string | null;
+        created_at?: string;
+        updated_at?: string;
+      };
+      Update: {
+        id?: string;
+        tenant_id?: string;
+        title?: string;
+        body?: string | null;
+        service_date?: string | null;
+        meal_slot?: Database["public"]["Enums"]["meal_slot"] | null;
+        starts_on?: string;
+        ends_on?: string;
+        status?: Database["public"]["Enums"]["announcement_status"];
+        created_by?: string | null;
+        created_at?: string;
+        updated_at?: string;
+      };
+      Relationships: [];
+    };
       attendance: {
       Row: {
         id: string;
@@ -275,6 +320,45 @@ export type Database = {
         guest_count?: number;
         extra_plate_count?: number;
         locked_at?: string | null;
+        created_at?: string;
+        updated_at?: string;
+      };
+      Relationships: [];
+    };
+      meal_feedback: {
+      Row: {
+        id: string;
+        tenant_id: string;
+        student_id: string;
+        service_date: string;
+        meal_slot: Database["public"]["Enums"]["meal_slot"];
+        rating: number;
+        comment: string | null;
+        photo_path: string | null;
+        created_at: string;
+        updated_at: string;
+      };
+      Insert: {
+        id?: string;
+        tenant_id: string;
+        student_id: string;
+        service_date: string;
+        meal_slot: Database["public"]["Enums"]["meal_slot"];
+        rating: number;
+        comment?: string | null;
+        photo_path?: string | null;
+        created_at?: string;
+        updated_at?: string;
+      };
+      Update: {
+        id?: string;
+        tenant_id?: string;
+        student_id?: string;
+        service_date?: string;
+        meal_slot?: Database["public"]["Enums"]["meal_slot"];
+        rating?: number;
+        comment?: string | null;
+        photo_path?: string | null;
         created_at?: string;
         updated_at?: string;
       };
@@ -699,6 +783,8 @@ export type Database = {
         away_advance_hours: number;
         away_max_days: number;
         auto_roll_numbers: boolean;
+        allow_announcements: boolean;
+        allow_feedback: boolean;
       };
       Insert: {
         tenant_id: string;
@@ -722,6 +808,8 @@ export type Database = {
         away_advance_hours?: number;
         away_max_days?: number;
         auto_roll_numbers?: boolean;
+        allow_announcements?: boolean;
+        allow_feedback?: boolean;
       };
       Update: {
         tenant_id?: string;
@@ -745,6 +833,8 @@ export type Database = {
         away_advance_hours?: number;
         away_max_days?: number;
         auto_roll_numbers?: boolean;
+        allow_announcements?: boolean;
+        allow_feedback?: boolean;
       };
       Relationships: [];
     };
@@ -1575,6 +1665,7 @@ export type Database = {
       };
     };
     Enums: {
+      announcement_status: "PUBLISHED" | "ARCHIVED";
       attendance_method: "QR" | "MANUAL" | "RFID";
       bill_payment_status: "UNPAID" | "PAID";
       bill_status: "OPEN" | "FINALIZED" | "CANCELLED";

@@ -49,6 +49,8 @@ export interface TenantChrome {
   readonly name: string;
   readonly allowMealSkipping: boolean;
   readonly allowAwayRequests: boolean;
+  readonly allowAnnouncements: boolean;
+  readonly allowFeedback: boolean;
 }
 
 const chromeCache = createTtlCache<TenantChrome>(TENANT_CACHE_TTL_MS);
@@ -103,7 +105,7 @@ export class SupabaseTenantRepository implements TenantRepository {
         this.db.from("tenants").select("name").eq("id", tenantId).maybeSingle(),
         this.db
           .from("tenant_settings")
-          .select("allow_meal_skipping, allow_away_requests")
+          .select("allow_meal_skipping, allow_away_requests, allow_announcements, allow_feedback")
           .eq("tenant_id", tenantId)
           .maybeSingle(),
       ]);
@@ -115,6 +117,8 @@ export class SupabaseTenantRepository implements TenantRepository {
         // definitely turned it on.
         allowMealSkipping: settings?.allow_meal_skipping ?? false,
         allowAwayRequests: settings?.allow_away_requests ?? false,
+        allowAnnouncements: settings?.allow_announcements ?? false,
+        allowFeedback: settings?.allow_feedback ?? false,
       };
     });
   }

@@ -41,6 +41,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       features={{
         allowMealSkipping: chrome?.allowMealSkipping ?? false,
         allowAwayRequests: chrome?.allowAwayRequests ?? false,
+        allowAnnouncements: chrome?.allowAnnouncements ?? false,
+        allowFeedback: chrome?.allowFeedback ?? false,
       }}
       signOutAction={signOut}
     >

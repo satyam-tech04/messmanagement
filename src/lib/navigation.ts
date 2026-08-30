@@ -25,6 +25,31 @@ export interface NavSection {
   readonly items: readonly NavItem[];
 }
 
+function adminNav(features: NavFeatures): readonly NavSection[] {
+  const sections = ADMIN_NAV.map((section) => ({ ...section, items: [...section.items] }));
+
+  // Both live under Operations, beside the other day-to-day screens.
+  const operations = sections.find((s) => s.heading === "Operations");
+  if (operations) {
+    if (features.allowAnnouncements) {
+      operations.items.push({
+        label: "Announcements",
+        href: "/admin/announcements",
+        icon: "Megaphone",
+      });
+    }
+    if (features.allowFeedback) {
+      operations.items.push({
+        label: "Feedback",
+        href: "/admin/feedback",
+        icon: "MessageSquare",
+      });
+    }
+  }
+
+  return sections;
+}
+
 const ADMIN_NAV: readonly NavSection[] = [
   {
     items: [{ label: "Dashboard", href: "/admin", icon: "LayoutDashboard" }],
@@ -110,6 +135,8 @@ const STAFF_NAV: readonly NavSection[] = [
 export interface NavFeatures {
   readonly allowMealSkipping?: boolean;
   readonly allowAwayRequests?: boolean;
+  readonly allowAnnouncements?: boolean;
+  readonly allowFeedback?: boolean;
 }
 
 function studentNav(features: NavFeatures): readonly NavSection[] {
@@ -123,6 +150,12 @@ function studentNav(features: NavFeatures): readonly NavSection[] {
   // single-meal skips. The page itself shows only the halves that are on.
   if (features.allowMealSkipping || features.allowAwayRequests) {
     items.push({ label: "Absences", href: "/student/absences", icon: "CalendarOff" });
+  }
+
+  // The one place a student writes to this system, and the only student nav
+  // item behind a toggle that defaults to off.
+  if (features.allowFeedback) {
+    items.push({ label: "Feedback", href: "/student/feedback", icon: "MessageSquare" });
   }
 
   items.push({
@@ -143,9 +176,11 @@ export function navigationFor(role: UserRole, features: NavFeatures = {}): reado
     case "STAFF":
       return STAFF_NAV;
     case "ADMIN":
-      return ADMIN_NAV;
+      return adminNav(features);
     case "SUPER_ADMIN":
-      return [...ADMIN_NAV, PLATFORM_NAV];
+      // Through adminNav, not ADMIN_NAV: the platform operator supports
+      // customers, so it must see exactly the screens their admin sees.
+      return [...adminNav(features), PLATFORM_NAV];
   }
 }
 

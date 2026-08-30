@@ -48,6 +48,17 @@ export interface TenantSettings {
    */
   readonly autoRollNumbers: boolean;
   /** Absences (migration 008). All default off — see absence.policy.ts. */
+  /**
+   * Special-meal announcements (migration 016). On by default: posting one is
+   * harmless, and a mess that never does simply has an empty list.
+   */
+  readonly allowAnnouncements: boolean;
+  /**
+   * Student feedback. The ONE place a student writes to this system, so it is
+   * off by default — turning it on should be a decision somebody made, not
+   * something that appeared after a deploy.
+   */
+  readonly allowFeedback: boolean;
   readonly allowMealSkipping: boolean;
   readonly allowPartialDaySkip: boolean;
   readonly allowAwayRequests: boolean;

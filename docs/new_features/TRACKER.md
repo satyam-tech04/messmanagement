@@ -36,8 +36,8 @@ Traced from the handwritten requirements note, 2026-08-30.
 | 3   | À la carte menu & billing              | [meal billing](./meal-billing-feature-spec.md)                           | NF-3  | ⏸️                              |
 | —   | Meal & plan pricing engine             | [meal pricing](./meal-pricing-feature-spec.md)                           | NF-2  | ⏸️                              |
 | 4   | Meal planner                           | [planner/feedback/special](./meal-planner-feedback-special-meal-spec.md) | NF-4b | ⏸️ ready                        |
-| 5   | Feedback option                        | [planner/feedback/special](./meal-planner-feedback-special-meal-spec.md) | NF-4c | 🔒 D-19b                        |
-| 6   | Special meal for selected days         | [planner/feedback/special](./meal-planner-feedback-special-meal-spec.md) | NF-4a | ⏸️ ready                        |
+| 5   | Feedback option                        | [planner/feedback/special](./meal-planner-feedback-special-meal-spec.md) | NF-4c | ✅                              |
+| 6   | Special meal for selected days         | [planner/feedback/special](./meal-planner-feedback-special-meal-spec.md) | NF-4a | ✅                              |
 
 **Already shipped:** item 1 is complete — `profiles.mobile` is a generated column,
 `temporaryPasswordFromPhone` derives the first password from the same ten digits, and
@@ -172,7 +172,7 @@ constraint rather than application code.
 | §11: revenue by `finalized_at`    | revenue by `service_date` | UTC+5:30 would file every post-midnight bill under the previous day (F21)  |
 | §3: hard delete allowed if unused | always soft delete        | the saving is nil; the risk of a used item vanishing from a receipt is not |
 
-### NF-4 — Meal planner, feedback, special meals 🚧 next
+### NF-4 — Meal planner, feedback, special meals 🚧 4a and 4c done; 4b remains
 
 Now specified: **[meal-planner-feedback-special-meal-spec.md](./meal-planner-feedback-special-meal-spec.md)**,
 one section per feature, in the same shape as the three original documents.
@@ -181,27 +181,41 @@ one section per feature, in the same shape as the three original documents.
 A student may show their QR, view their own details, and view notifications. Nothing else.
 Every other operation belongs to an admin or staff member. This outranks everything below.
 
-**NF-4a — Special meal announcements** ⏸️ ready to build
+**NF-4a — Special meal announcements** ✅
 
-- [ ] `announcements` table — `tenant_id`, RLS, dates through `src/core/time`
-- [ ] Admin create / edit / archive; admin-only (B6)
-- [ ] Visibility derived from `[starts_on, ends_on]`, never a stored flag — no cron exists (§9)
-- [ ] Read-only card on the student screen; absent entirely when there is none
-- [ ] Must touch no attendance, headcount, eligibility, plan or price (B2, B3, §11)
+- [x] `announcements` table — migration **016, applied + sealed**, `tenant_id` + RLS
+- [x] Admin create / edit / withdraw at `/admin/announcements`; admin-only, audited
+- [x] Visibility derived from `[starts_on, ends_on]` inclusive — no cron, nothing to expire it
+- [x] Read-only amber card on `/student`, above the QR; renders nothing when none is live
+- [x] Touches no attendance, headcount, eligibility, plan or price
 
-**NF-4b — Meal planner** ⏸️ ready to build, additive only
+**NF-4c — Feedback** ✅ (D-19b resolved: students submit)
 
-- [ ] Plan beyond the current week; past weeks render read-only
-- [ ] Copy a week, never silently overwriting an existing day
-- [ ] Show unplanned slots distinctly, with a count
-- [ ] No new table — `/admin/menu` and `menus` already exist and must not be rebuilt
+- [x] `meal_feedback` table with `UNIQUE (tenant, student, service_date, meal_slot)`
+- [x] Student rates 1–5 with optional comment and photo, at `/student/feedback`
+- [x] Only meals they were recorded as attending in the last 7 days; reversed ones excluded
+- [x] Photos in a **private** `meal-feedback` bucket, served via `/api/feedback/[id]/photo`
+- [x] Admin review at `/admin/feedback` — worst first, with average and a 1–2 star count
+- [x] `feedback.policy.ts` + `announcement.policy.ts`, 31 tests, written first
 
-**NF-4c — Feedback** 🔒 **D-19b**
+**Both behind per-mess toggles** ✅
 
-Blocked on a genuine contradiction, not on scoping. The note asks for feedback; the
-constraint above forbids students submitting anything, and feedback is by definition
-submitted by the person eating. §5.1 of the spec sets out the three options. Assumed
-answer if none is given: **do not build it.**
+- [x] `allow_announcements` (default **on**) and `allow_feedback` (default **off**)
+- [x] Settings → Features card; nav gated for student, admin **and** SUPER_ADMIN
+- [x] The toggle is a permission, not a display preference — the actions refuse when off
+- [x] `npm run verify:announcements` — live probe
+
+**Live-verified:** an announcement outside its window is FINISHED with nothing having run
+to expire it, and a withdrawn one vanishes mid-window; a second rating for the same meal is
+refused (`23505`) so the action's upsert is a replacement rather than a stack; and on a real
+student session, posting feedback in **another student's name** and posting an announcement
+are both refused with `42501`.
+
+**NF-4b — Meal planner** ⏸️ not started
+
+Specified in §2–§5 of the spec and additive only — plan beyond the current week, copy a
+week without overwriting, show unplanned slots. `/admin/menu` and `menus` already exist and
+must not be rebuilt.
 
 ### NF-5 — WhatsApp credential delivery ⏸️ deferred
 
@@ -232,7 +246,7 @@ there once resolved.
 | D-17  | Pro-rating formula                          | NF-2   | ✅ resolved |
 | D-18  | Who owns the post-pause end date            | NF-1   | ✅ resolved |
 | D-19  | What "special meal for selected days" means | NF-4a  | ✅ resolved |
-| D-19b | Feedback vs. the read-only student app      | NF-4c  | ⏳ open     |
+| D-19b | Feedback vs. the read-only student app      | NF-4c  | ✅ resolved |
 | D-20  | WhatsApp: `wa.me` link or Business API?     | NF-5   | ⏸️ defer    |
 
 ### D-15 — A pause may start today, never in the past

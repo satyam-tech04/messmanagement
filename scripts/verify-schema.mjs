@@ -39,6 +39,8 @@ const EXPECTED_TABLES = [
   "counter_items",
   "counter_bills",
   "counter_bill_items",
+  "announcements",
+  "meal_feedback",
   "headcount_snapshots",
   "rate_limits",
 ];
@@ -55,6 +57,9 @@ const REQUIRED_CONSTRAINTS = [
   // safe when two staff add the same item at the same instant.
   ["counter_bills", "counter_bills_tenant_number_key"],
   ["counter_items", "counter_items_tenant_code_key"],
+  // One verdict per student per meal — a constraint, so re-submitting
+  // replaces an answer instead of stacking a second one.
+  ["meal_feedback", "meal_feedback_one_per_meal"],
   // The identity that stops a plan's stated derivation drifting from its price.
   ["plans", "plans_price_is_base_less_discount"],
   ["menus", "menus_tenant_date_slot_key"],
@@ -122,6 +127,7 @@ const { rows: enums } = await client.query(
 const expectedEnums = [
   "attendance_method",
   "meal_slot",
+  "announcement_status",
   "bill_payment_status",
   "bill_status",
   "mess_cut_status",

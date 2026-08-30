@@ -105,6 +105,8 @@ export default async function SettingsPage() {
           awayMaxDays: settings.awayMaxDays,
         }}
         autoRollNumbers={settings.autoRollNumbers}
+        allowAnnouncements={settings.allowAnnouncements}
+        allowFeedback={settings.allowFeedback}
       />
     </div>
   );

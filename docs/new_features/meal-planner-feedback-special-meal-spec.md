@@ -65,7 +65,7 @@ Three independent features, deliberately kept apart:
 
 1. **Meal Planner** — extends the existing admin week planner so the kitchen can plan
    further ahead and reuse what it already planned.
-2. **Feedback** — collecting what students think of the food. Blocked on §5.1.
+2. **Feedback** — students rate a meal, optionally with a photo; admins read the reviews.
 3. **Special Meal Announcements** — an admin posts "Onam Sadhya this Sunday"; students see
    it; nothing else happens.
 
@@ -146,25 +146,68 @@ requested.
 
 # FEATURE 2 — FEEDBACK
 
-## 5.1 ⚠️ Blocked — one decision required
+## 5.1 Resolved — students submit, and the constraint is relaxed for this one thing
 
-The handwritten note says "Feedback option". §0.1 says students may not submit anything.
-Those cannot both hold, because feedback is by definition submitted by the person eating.
+**Decided 2026-08-30 by the project owner (D-19b): option B.** Students rate a meal
+themselves and may attach a photo; admins read the reviews.
 
-**Resolved assumption to build against if no other instruction is given: do not build
-Feature 2.** It is deferred, not designed, because every possible implementation violates
-either the note or the constraint.
+This is a deliberate, single exception to §0.1. Only the person who ate the food can rate
+it, so there is no version of this feature that honours a strictly read-only student app.
+It is contained rather than left open:
 
-The owner must pick one before any work starts:
+- **Off by default.** `tenant_settings.allow_feedback` defaults to `false`. A mess turns
+  it on under Settings → Features.
+- **The toggle is a permission, not a display preference.** `parseFeedbackDraft` refuses
+  when the feature is off, so a request that arrives by any route other than the form is
+  still refused.
+- **One verdict per student per meal**, enforced by a unique index. Re-submitting replaces
+  the answer instead of stacking a second, so an average cannot be moved by whoever taps
+  hardest.
+- **Nothing operational.** Feedback touches no eligibility, attendance, headcount, plan or
+  price. It is the only student write in the product and it stays inert.
 
-| Option                           | What it means                                                                                                                      | Cost                                                        |
-| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| **A — Defer** (assumed)          | Nothing is built. Feedback continues to be given verbally at the counter.                                                          | none                                                        |
-| **B — Student submits a rating** | A student rates a meal from their own screen. **Requires relaxing §0.1** to allow exactly one student input.                       | Small: one table, one screen, one admin report              |
-| **C — Staff record it**          | Staff enter feedback they were told at the counter, attributed to a meal and date, never to a named student. Honours §0.1 exactly. | Small, but captures far less and depends on staff bothering |
+## 5.2 Data Model
 
-**Do not implement B or C on your own judgement.** If the answer is A, delete this section
-rather than leaving a designed-but-unbuilt feature in the tracker.
+Table: `public.meal_feedback`
+
+| Field                       | Type           | Notes                                                 |
+| --------------------------- | -------------- | ----------------------------------------------------- |
+| `id`                        | uuid PK        |                                                       |
+| `tenant_id`                 | uuid           | on the table, the index and every query               |
+| `student_id`                | uuid           | whose opinion it is                                   |
+| `service_date`              | date           | the day of the meal, tenant-local                     |
+| `meal_slot`                 | enum           | which meal                                            |
+| `rating`                    | integer        | 1–5, CHECK enforced                                   |
+| `comment`                   | text, nullable | at most 1,000 characters                              |
+| `photo_path`                | text, nullable | object path in the **private** `meal-feedback` bucket |
+| `created_at` / `updated_at` | timestamptz    |                                                       |
+
+`UNIQUE (tenant_id, student_id, service_date, meal_slot)` is the one-verdict rule.
+
+**Photos are private.** A student photographing their lunch will sometimes photograph the
+people around them, in a hostel full of young adults. The bucket is not public and images
+are served through `/api/feedback/[id]/photo`, which checks the session first — the same
+decision migration 007 made for student photos, for the same reason.
+
+## 5.3 Behaviour
+
+- A student may rate any meal they were **recorded as attending** in the last 7 days. A
+  rating for a meal somebody never had tells the kitchen nothing, and the attendance rows
+  already exist. A reversed attendance is excluded — that meal never happened.
+- Rating is required; comment and photo are optional. A star on its own is feedback.
+- Future meals are rejected: nobody has an opinion about tomorrow's lunch.
+- Admins and staff read everything for their own mess. Students read only their own.
+
+## 5.4 Acceptance Criteria — Feedback
+
+- [ ] With the toggle off, the student sees no feedback screen and the action refuses.
+- [ ] A student can rate a meal they attended, with an optional comment and photo.
+- [ ] Re-submitting the same meal replaces their rating rather than adding a second.
+- [ ] A student cannot post feedback in another student's name, including by direct API call.
+- [ ] A student cannot read another student's feedback.
+- [ ] A student in another mess never sees any of it.
+- [ ] The admin sees ratings worst-first, with an average and a count of one- and two-star meals.
+- [ ] Feedback changes no eligibility, attendance, headcount, plan or price.
 
 ---
 

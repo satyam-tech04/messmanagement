@@ -374,6 +374,10 @@ export function tenantSettings(over: Partial<TenantSettings> = {}): TenantSettin
     qrTokenTtlSeconds: 30,
     qrRefreshSeconds: 15,
     currency: "INR",
+    // Announcements on, feedback off — matching the column defaults, so a fake
+    // behaves the way a freshly provisioned mess does.
+    allowAnnouncements: true,
+    allowFeedback: false,
     // Absences default off, exactly as a real mess starts out.
     allowMealSkipping: false,
     allowPartialDaySkip: true,

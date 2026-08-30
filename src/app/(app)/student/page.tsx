@@ -6,12 +6,14 @@ import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { requireSessionUser } from "@/infra/auth/session";
 import { createClient } from "@/infra/supabase/server";
-import { serviceDateOf } from "@/core/time";
+import { serviceDateOf, toServiceDate } from "@/core/time";
+import { visibleAnnouncements } from "@/core/policies/announcement.policy";
 import { resolveServiceState } from "@/core/policies/menu.policy";
 import { createAdminClient } from "@/infra/supabase/admin";
 import { SupabaseTenantRepository } from "@/infra/supabase/repositories";
 import { formatServiceDate } from "@/lib/format";
 import { QrDisplay } from "./qr-display";
+import { AnnouncementsCard, type LiveAnnouncement } from "./announcements-card";
 
 export const metadata: Metadata = { title: "My QR · Mess OS" };
 
@@ -57,6 +59,33 @@ export default async function StudentPage() {
   const settings = await new SupabaseTenantRepository(supabase, createAdminClient()).getSettings(
     user.tenantId,
   );
+
+  // Live announcements. Filtered by date in the query and again by the policy,
+  // so a row that slips through a date edge case still cannot render.
+  const { data: announcementRows } = settings?.allowAnnouncements
+    ? await supabase
+        .from("announcements")
+        .select("id, title, body, service_date, meal_slot, starts_on, ends_on, status")
+        .eq("tenant_id", user.tenantId)
+        .eq("status", "PUBLISHED")
+        .lte("starts_on", today)
+        .gte("ends_on", today)
+        .order("starts_on", { ascending: false })
+    : { data: null };
+
+  const liveAnnouncements: LiveAnnouncement[] = visibleAnnouncements(
+    (announcementRows ?? []).map((a) => ({
+      id: a.id,
+      title: a.title,
+      body: a.body,
+      serviceDate: a.service_date,
+      mealSlot: a.meal_slot,
+      status: a.status,
+      startsOn: toServiceDate(a.starts_on),
+      endsOn: toServiceDate(a.ends_on),
+    })),
+    today,
+  );
   const serviceState = settings
     ? resolveServiceState({ timeZone: user.timezone, now: new Date(), slots: settings.mealSlots })
     : null;
@@ -80,6 +109,8 @@ export default async function StudentPage() {
         }
         action={student ? <StatusBadge status={student.status} /> : undefined}
       />
+
+      <AnnouncementsCard announcements={liveAnnouncements} />
 
       <Card className="overflow-hidden">
         <CardContent className="flex flex-col items-center gap-5 py-10">

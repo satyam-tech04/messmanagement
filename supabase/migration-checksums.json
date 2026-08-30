@@ -88,5 +88,11 @@
     "state": "applied",
     "appliedTo": "yenxlcrtlmnfotfqqabo",
     "appliedAt": "2026-08-30"
+  },
+  "20260830000016_announcements_and_feedback.sql": {
+    "sha256": "98ca947ef53c89848ee835b9b9c4597d9e8f558c85e01c54f3ab80e90cd0f966",
+    "state": "applied",
+    "appliedTo": "yenxlcrtlmnfotfqqabo",
+    "appliedAt": "2026-08-30"
   }
 }
