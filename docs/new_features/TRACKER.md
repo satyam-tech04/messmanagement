@@ -236,6 +236,7 @@ picking the start date from a calendar that defaults to today.
 - [x] `hasActiveSubscription` boolean replaced by `existingPeriods` — one rule, one place
 - [x] Retire-on-assign workaround **removed** from `assignPlan`
 - [x] `renewSubscription` action + Renew dialog on the student page
+- [x] Renew offered on a **lapsed** term too, not only a running one — the commonest case
 - [x] `npm run verify:renewal` — live probe
 
 **The constraint change is the substance.** The old
@@ -253,6 +254,17 @@ already served.
 **Decided (D-22):** an overlapping renewal is **refused**, never truncated — the owner's
 call. The error names the first free date. No paid day is ever silently discarded, and the
 previous term is not touched at all.
+
+**Renewing a lapsed plan** was missed on the first pass: the control only rendered on a
+`RUNNING` term, so a student whose plan ran out last week — the commonest renewal of all —
+had no Renew button. Now offered on the most recent non-cancelled term whatever its state,
+defaulting to today rather than the day after a date already in the past. Cancelled is
+still excluded: that plan was deliberately ended, so starting another is an assignment.
+
+Backdating a lapsed renewal is allowed between two limits that meet in the middle — it may
+not reach into days the old term already covered, and the resulting term must still cover
+today. The second is not new: `validateSubscriptionStart` has always refused a plan that
+would expire before it was created.
 
 **Live-verified:** a student holds this term and next term simultaneously; a 10-day
 overlap and even a single-day overlap on the final day are both refused with `23P01`; the

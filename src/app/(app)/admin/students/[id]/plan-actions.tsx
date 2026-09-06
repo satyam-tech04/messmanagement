@@ -367,14 +367,17 @@ export function RenewPlanDialog({
   today,
   currentPlanId,
   currentEndDate,
+  currentHasEnded,
 }: {
   studentId: string;
   plans: readonly AssignablePlan[];
   today: string;
   /** Pre-selected, because most renewals stay on the same plan. */
   currentPlanId: string | null;
-  /** The term being renewed from, when one is still running. */
+  /** The term being renewed from. May already be in the past. */
   currentEndDate: string | null;
+  /** True when that term has already lapsed, which changes the default and the wording. */
+  currentHasEnded: boolean;
 }) {
   const [state, formAction] = useActionState<ActionState, FormData>(
     renewSubscription.bind(null, studentId),
@@ -382,10 +385,12 @@ export function RenewPlanDialog({
   );
   const [open, setOpen] = useState(false);
 
-  // The day after the current term ends — the other date an admin plausibly
-  // wants, offered as a shortcut rather than left to mental arithmetic.
+  // Two different defaults for two different situations. A student whose plan
+  // is still running is usually paying early for the next term, so the day
+  // after it ends is what they want. A lapsed student is standing at the desk
+  // now, so today is. Either way the admin can pick any date.
   const dayAfter = currentEndDate ? addDaysTo(currentEndDate, 1) : null;
-  const suggested = dayAfter && dayAfter > today ? dayAfter : today;
+  const suggested = !currentHasEnded && dayAfter && dayAfter > today ? dayAfter : today;
 
   const [planId, setPlanId] = useState(currentPlanId ?? "");
   const [startDate, setStartDate] = useState(suggested);

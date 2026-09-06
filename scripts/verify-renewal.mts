@@ -186,6 +186,145 @@ try {
     `the message names the first free date, ${nextStart}`,
   );
 
+  // --- The lapsed student, which is the commonest renewal -------------------
+  //
+  // Reported as a bug: a student whose plan ran out last week got no Renew
+  // control at all. The policy always allowed it; the admin screen only
+  // rendered the button on a RUNNING term. These prove the underlying flow.
+  console.log("\nRenewing a term that has already lapsed");
+
+  // A second throwaway student, so this stands alone from the terms above.
+  const LAPSED_ROLL = `ZZLAP${randomBytes(3).toString("hex").toUpperCase()}`;
+  const { data: lapsedUser } = await admin.auth.admin.createUser({
+    email: syntheticEmailFor(tenant.slug, LAPSED_ROLL.toLowerCase()),
+    password: randomBytes(12).toString("base64url"),
+    email_confirm: true,
+  });
+  const lapsedUserId = lapsedUser!.user!.id;
+  await admin.from("profiles").insert({
+    id: lapsedUserId,
+    tenant_id: tenant.id,
+    role: "STUDENT",
+    full_name: "Lapsed Probe",
+    status: "ACTIVE",
+    must_change_password: false,
+  });
+  const { data: lapsedStudent } = await admin
+    .from("students")
+    .insert({
+      tenant_id: tenant.id,
+      profile_id: lapsedUserId,
+      roll_number: LAPSED_ROLL,
+      status: "ACTIVE",
+      joined_at: today,
+    })
+    .select("id")
+    .single();
+
+  // A term that ran 60 days ago and finished 31 days ago.
+  const lapsedStart = addDays(toServiceDate(today), -60);
+  const lapsedEnd = addDays(toServiceDate(today), -31);
+  await admin.from("subscriptions").insert({
+    tenant_id: tenant.id,
+    student_id: lapsedStudent!.id,
+    plan_id: planId!,
+    price_paise_snapshot: 360000,
+    included_meal_slots_snapshot: ["LUNCH", "DINNER"],
+    plan_duration_days_snapshot: 30,
+    assignment_duration_days: 30,
+    calculated_price_paise: 360000,
+    start_date: lapsedStart,
+    end_date: lapsedEnd,
+    status: "ACTIVE",
+  });
+
+  const lapsedPeriods = [
+    { status: "ACTIVE", startDate: toServiceDate(lapsedStart), endDate: toServiceDate(lapsedEnd) },
+  ];
+  const planShape = {
+    id: planId!,
+    isActive: true,
+    pricePaise: toPaise(plan!.price_paise),
+    durationDays: plan!.duration_days,
+    mealSlots: ["LUNCH", "DINNER"] as MealSlot[],
+  };
+
+  const fromToday = activateSubscription({
+    actorRole: "ADMIN",
+    studentStatus: "ACTIVE",
+    existingPeriods: lapsedPeriods,
+    plan: planShape,
+    timeZone: tenant.timezone,
+    now: new Date(),
+    startDate: toServiceDate(today),
+  });
+  check(fromToday.ok, "a lapsed term can be renewed from today");
+
+  // "Backdate it if they have been eating since" — legal, within two limits
+  // that meet in the middle: it must not reach back into days the old term
+  // already covered, and the resulting term must still cover today.
+  const backdated = activateSubscription({
+    actorRole: "ADMIN",
+    studentStatus: "ACTIVE",
+    existingPeriods: lapsedPeriods,
+    plan: planShape,
+    timeZone: tenant.timezone,
+    now: new Date(),
+    startDate: toServiceDate(addDays(toServiceDate(today), -10)),
+  });
+  check(backdated.ok, "and backdated ten days, to cover meals already eaten");
+
+  // Backdating a 30-day term by 31 days would produce a plan that expired
+  // yesterday — the student still could not eat, so it is refused. Not the
+  // overlap rule: `validateSubscriptionStart` has always caught this.
+  const alreadyOver = activateSubscription({
+    actorRole: "ADMIN",
+    studentStatus: "ACTIVE",
+    existingPeriods: lapsedPeriods,
+    plan: planShape,
+    timeZone: tenant.timezone,
+    now: new Date(),
+    startDate: toServiceDate(addDays(toServiceDate(lapsedEnd), 1)),
+  });
+  check(
+    !alreadyOver.ok,
+    "a backdated term that would already have expired is refused, not silently created",
+  );
+
+  const tooFarBack = activateSubscription({
+    actorRole: "ADMIN",
+    studentStatus: "ACTIVE",
+    existingPeriods: lapsedPeriods,
+    plan: planShape,
+    timeZone: tenant.timezone,
+    now: new Date(),
+    startDate: toServiceDate(addDays(toServiceDate(lapsedEnd), -5)),
+  });
+  check(!tooFarBack.ok, "but not back into days the lapsed term already covered and was paid for");
+
+  const { error: lapsedInsert } = await admin.from("subscriptions").insert({
+    tenant_id: tenant.id,
+    student_id: lapsedStudent!.id,
+    plan_id: planId!,
+    price_paise_snapshot: 360000,
+    included_meal_slots_snapshot: ["LUNCH", "DINNER"],
+    plan_duration_days_snapshot: 30,
+    assignment_duration_days: 30,
+    calculated_price_paise: 360000,
+    start_date: today,
+    end_date: addDays(toServiceDate(today), 29),
+    status: "ACTIVE",
+  });
+  check(
+    !lapsedInsert,
+    `the renewal is actually written${lapsedInsert ? ` — ${lapsedInsert.message}` : ""}`,
+  );
+
+  await admin.from("subscriptions").delete().eq("student_id", lapsedStudent!.id);
+  await admin.from("students").delete().eq("id", lapsedStudent!.id);
+  await admin.from("profiles").delete().eq("id", lapsedUserId);
+  await admin.auth.admin.deleteUser(lapsedUserId).catch(() => {});
+
   // --- Cancelling releases the dates ---------------------------------------
   console.log("\nCancelling frees the dates again");
   await admin

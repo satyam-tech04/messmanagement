@@ -145,7 +145,22 @@ export default async function StudentDetailPage(props: PageProps<"/admin/student
       },
       today,
     );
+  // Newest first. PostgREST does not guarantee the order of an embedded list,
+  // and "which term is the latest" decides where the Renew control goes.
+  subscriptions.sort((a, b) => b.start_date.localeCompare(a.start_date));
+
   const active = subscriptions.find((s) => stateOf(s) === "RUNNING");
+
+  // The term a renewal follows on from. A lapsed student is the commonest case
+  // — they turn up a week after their plan ran out and pay for another month —
+  // so an expired term is renewable too, not just a running one. Cancelled is
+  // excluded: that plan was deliberately ended, and starting a fresh one there
+  // is an assignment rather than a renewal.
+  const renewable =
+    subscriptions.find((s) => {
+      const state = stateOf(s);
+      return state === "RUNNING" || state === "SCHEDULED" || state === "EXPIRED";
+    }) ?? null;
 
   // Spec §3 and §9: a pause may be configured on an UPCOMING subscription too,
   // not only a running one. Keyed off this rather than `active`, which is
@@ -299,22 +314,25 @@ export default async function StudentDetailPage(props: PageProps<"/admin/student
                         <StatusBadge status={subscriptionStateLabel(stateOf(s)).toUpperCase()} />
                       </TableCell>
                       <TableCell className="text-right">
-                        {stateOf(s) === "RUNNING" ? (
-                          <div className="flex justify-end gap-2">
+                        <div className="flex justify-end gap-2">
+                          {renewable?.id === s.id ? (
                             <RenewPlanDialog
                               studentId={student.id}
                               plans={assignablePlans}
                               today={today}
                               currentPlanId={s.plan_id ?? null}
                               currentEndDate={s.end_date}
+                              currentHasEnded={stateOf(s) === "EXPIRED"}
                             />
+                          ) : null}
+                          {stateOf(s) === "RUNNING" ? (
                             <EndPlanButton
                               studentId={student.id}
                               subscriptionId={s.id}
                               planName={s.plans?.name ?? "this plan"}
                             />
-                          </div>
-                        ) : null}
+                          ) : null}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
