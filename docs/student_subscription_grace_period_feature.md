@@ -73,14 +73,14 @@ For an upcoming subscription, the Grace Period may be configured in advance, but
 
 Each Grace Period should contain at least the following information:
 
-| Field                 | Required                                            | Description                                                                                |
-| --------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| Start Date            | Yes                                                 | First date on which the subscription is paused                                             |
-| Resume Date           | Yes                                                 | First date on which the subscription becomes active again                                  |
-| Grace Days            | System calculated                                   | Number of days between Start Date and Resume Date during which the subscription is paused  |
-| Subscription End Date | Yes                                                 | End date entered by the administrator for the subscription after applying the grace period |
-| Remarks               | Yes/No according to existing application convention | Administrator's notes/reason for the grace period                                          |
-| Status                | System managed                                      | Scheduled, Active, Completed/Ended, or Cancelled as applicable                             |
+| Field | Required | Description |
+|---|---|---|
+| Start Date | Yes | First date on which the subscription is paused |
+| Resume Date | Yes | First date on which the subscription becomes active again |
+| Grace Days | System calculated | Number of days between Start Date and Resume Date during which the subscription is paused |
+| Subscription End Date | Yes | End date entered by the administrator for the subscription after applying the grace period |
+| Remarks | Yes/No according to existing application convention | Administrator's notes/reason for the grace period |
+| Status | System managed | Scheduled, Active, Completed/Ended, or Cancelled as applicable |
 
 Do not introduce a separate remarks/history mechanism. The existing remarks field can be edited by the administrator when modifying the Grace Period.
 
@@ -613,13 +613,13 @@ The Grace Period interface should expose:
 
 ### Actions by status
 
-| Status          | Available actions                            |
-| --------------- | -------------------------------------------- |
-| No Grace Period | Add Grace Period                             |
-| Scheduled       | Modify, Extend, Cancel                       |
-| Active          | Modify, Extend, Resume Early                 |
-| Completed       | View status/details according to existing UI |
-| Cancelled       | Add a new Grace Period if otherwise eligible |
+| Status | Available actions |
+|---|---|
+| No Grace Period | Add Grace Period |
+| Scheduled | Modify, Extend, Cancel |
+| Active | Modify, Extend, Resume Early |
+| Completed | View status/details according to existing UI |
+| Cancelled | Add a new Grace Period if otherwise eligible |
 
 ---
 

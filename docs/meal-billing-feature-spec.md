@@ -8,21 +8,21 @@
 
 These items were ambiguous in the original functional description. Build against these defaults unless told otherwise:
 
-| #   | Topic                      | Resolved Assumption                                                                                                                                                                 |
-| --- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A1  | Staff identity             | Staff members log in individually (simple username/password or existing app auth). Every bill and action is attributed to the logged-in staff user.                                 |
-| A2  | Visibility of active bills | All active bills are visible and editable by **any** logged-in staff user (shared pool), not restricted to the creator. This matches the "switch freely between bills" requirement. |
-| A3  | Audit trail                | Every bill stores `created_by`, `finalized_by`, `cancelled_by`, and `payment_updated_by` (user reference), in addition to the timestamps already required by the spec.              |
-| A4  | Cancel confirmation        | Cancelling an open bill requires the same style of confirmation dialog as finalizing (Section 27), especially if the bill has items.                                                |
-| A5  | Editing person name        | Person Name can be edited while the bill is Open. It becomes locked once Finalized or Cancelled.                                                                                    |
-| A6  | Removing the last item     | Removing the last remaining item from an open bill is allowed; the bill simply becomes an empty Open bill (Section 25 rules still apply — it cannot be finalized while empty).      |
-| A7  | Bill numbering             | Bill numbers are a single continuous sequence for the lifetime of the system (never reset daily/yearly), e.g. `BILL-000001`, `BILL-000002`, ...                                     |
-| A8  | Fractional quantities      | Quantities are **whole numbers only** (integers ≥ 1) for v1, since example units (plate/bowl/piece/cup) are whole-unit items. Do not build decimal quantity support.                |
-| A9  | Un-finalizing              | There is **no** "un-finalize" or void workflow in v1. A finalized bill is permanently locked. This is explicitly out of scope (see Section 49).                                     |
-| A10 | Payment status changes     | Both staff and admin may change Unpaid → Paid and Paid → Unpaid on a finalized bill. This never changes the bill total or revenue inclusion.                                        |
-| A11 | Menu price validation      | Menu item price must be a positive number greater than 0. Reject zero or negative prices at entry.                                                                                  |
-| A12 | Categories                 | Do not build a category field/UI unless explicitly requested later. Omit entirely for v1.                                                                                           |
-| A13 | Concurrency                | No optimistic locking / conflict resolution is required for v1. Last write wins. This is a small internal tool, not a high-concurrency system.                                      |
+| # | Topic | Resolved Assumption |
+|---|-------|----------------------|
+| A1 | Staff identity | Staff members log in individually (simple username/password or existing app auth). Every bill and action is attributed to the logged-in staff user. |
+| A2 | Visibility of active bills | All active bills are visible and editable by **any** logged-in staff user (shared pool), not restricted to the creator. This matches the "switch freely between bills" requirement. |
+| A3 | Audit trail | Every bill stores `created_by`, `finalized_by`, `cancelled_by`, and `payment_updated_by` (user reference), in addition to the timestamps already required by the spec. |
+| A4 | Cancel confirmation | Cancelling an open bill requires the same style of confirmation dialog as finalizing (Section 27), especially if the bill has items. |
+| A5 | Editing person name | Person Name can be edited while the bill is Open. It becomes locked once Finalized or Cancelled. |
+| A6 | Removing the last item | Removing the last remaining item from an open bill is allowed; the bill simply becomes an empty Open bill (Section 25 rules still apply — it cannot be finalized while empty). |
+| A7 | Bill numbering | Bill numbers are a single continuous sequence for the lifetime of the system (never reset daily/yearly), e.g. `BILL-000001`, `BILL-000002`, ... |
+| A8 | Fractional quantities | Quantities are **whole numbers only** (integers ≥ 1) for v1, since example units (plate/bowl/piece/cup) are whole-unit items. Do not build decimal quantity support. |
+| A9 | Un-finalizing | There is **no** "un-finalize" or void workflow in v1. A finalized bill is permanently locked. This is explicitly out of scope (see Section 49). |
+| A10 | Payment status changes | Both staff and admin may change Unpaid → Paid and Paid → Unpaid on a finalized bill. This never changes the bill total or revenue inclusion. |
+| A11 | Menu price validation | Menu item price must be a positive number greater than 0. Reject zero or negative prices at entry. |
+| A12 | Categories | Do not build a category field/UI unless explicitly requested later. Omit entirely for v1. |
+| A13 | Concurrency | No optimistic locking / conflict resolution is required for v1. Last write wins. This is a small internal tool, not a high-concurrency system. |
 
 ---
 
@@ -36,7 +36,6 @@ The Meal Billing feature allows staff to create and manage individual meal bills
 It behaves like a simple restaurant/hotel billing system.
 
 Core principles:
-
 - Each visit by a person creates a **new independent bill**. The person is **not** a reusable customer record (see Section 15 — No Customer Management).
 - Multiple people can be eating simultaneously; staff must be able to maintain multiple open bills at once and switch freely between them.
 - The system automatically calculates each bill from menu items and quantities. Staff never manually enter prices or totals.
@@ -47,53 +46,50 @@ Core principles:
 ## 2. Core Entities
 
 ### 2.1 Menu Item
-
 Represents something the business serves.
 
-| Field       | Type                         | Notes                                                                |
-| ----------- | ---------------------------- | -------------------------------------------------------------------- |
-| `item_id`   | internal PK                  | not shown to users                                                   |
-| `item_code` | string, unique               | system-generated (e.g. `M001`), never reused, immutable once created |
-| `item_name` | string                       | editable                                                             |
-| `price`     | decimal                      | > 0, editable, no manual override by staff                           |
-| `unit`      | string                       | e.g. "Plate", "Bowl", "Piece", "Cup"                                 |
-| `status`    | enum: `Active` \| `Inactive` | controls visibility for new bills only                               |
+| Field | Type | Notes |
+|---|---|---|
+| `item_id` | internal PK | not shown to users |
+| `item_code` | string, unique | system-generated (e.g. `M001`), never reused, immutable once created |
+| `item_name` | string | editable |
+| `price` | decimal | > 0, editable, no manual override by staff |
+| `unit` | string | e.g. "Plate", "Bowl", "Piece", "Cup" |
+| `status` | enum: `Active` \| `Inactive` | controls visibility for new bills only |
 
 ### 2.2 Bill
-
 Represents one person's visit/meal transaction.
 
-| Field                | Type                                       | Notes                                                        |
-| -------------------- | ------------------------------------------ | ------------------------------------------------------------ |
-| `bill_id`            | internal PK                                | not shown to users                                           |
-| `bill_number`        | string, unique                             | system-generated, sequential, immutable (e.g. `BILL-000001`) |
-| `person_name`        | string                                     | bill-level only, editable while Open (A5), locked after      |
-| `status`             | enum: `Open` \| `Finalized` \| `Cancelled` | see Section 8                                                |
-| `payment_status`     | enum: `Unpaid` \| `Paid`                   | default `Unpaid`, independent of bill status                 |
-| `created_at`         | datetime                                   | auto-captured                                                |
-| `created_by`         | user ref                                   | auto-captured (A3)                                           |
-| `finalized_at`       | datetime, nullable                         | auto-captured on finalize                                    |
-| `finalized_by`       | user ref, nullable                         | auto-captured (A3)                                           |
-| `cancelled_at`       | datetime, nullable                         | auto-captured on cancel                                      |
-| `cancelled_by`       | user ref, nullable                         | auto-captured (A3)                                           |
-| `payment_updated_by` | user ref, nullable                         | auto-captured on payment status change (A3)                  |
-| `total_amount`       | decimal                                    | always derived, never manually entered                       |
-| `bill_items`         | list of Bill Item                          | see below                                                    |
+| Field | Type | Notes |
+|---|---|---|
+| `bill_id` | internal PK | not shown to users |
+| `bill_number` | string, unique | system-generated, sequential, immutable (e.g. `BILL-000001`) |
+| `person_name` | string | bill-level only, editable while Open (A5), locked after |
+| `status` | enum: `Open` \| `Finalized` \| `Cancelled` | see Section 8 |
+| `payment_status` | enum: `Unpaid` \| `Paid` | default `Unpaid`, independent of bill status |
+| `created_at` | datetime | auto-captured |
+| `created_by` | user ref | auto-captured (A3) |
+| `finalized_at` | datetime, nullable | auto-captured on finalize |
+| `finalized_by` | user ref, nullable | auto-captured (A3) |
+| `cancelled_at` | datetime, nullable | auto-captured on cancel |
+| `cancelled_by` | user ref, nullable | auto-captured (A3) |
+| `payment_updated_by` | user ref, nullable | auto-captured on payment status change (A3) |
+| `total_amount` | decimal | always derived, never manually entered |
+| `bill_items` | list of Bill Item | see below |
 
 ### 2.3 Bill Item
-
 Represents a menu item added to a specific bill, with a full historical snapshot.
 
-| Field                 | Type                   | Notes                                                            |
-| --------------------- | ---------------------- | ---------------------------------------------------------------- |
-| `bill_item_id`        | internal PK            |                                                                  |
-| `menu_item_ref`       | reference to Menu Item | for traceability only; never used to recompute historical values |
-| `item_code_snapshot`  | string                 | copied at time of add, immutable thereafter                      |
-| `item_name_snapshot`  | string                 | copied at time of add, immutable thereafter                      |
-| `unit_snapshot`       | string                 | copied at time of add, immutable thereafter                      |
-| `unit_price_snapshot` | decimal                | copied at time of add, immutable thereafter                      |
-| `quantity`            | integer ≥ 1            | editable while bill is Open                                      |
-| `line_total`          | decimal                | = `quantity × unit_price_snapshot`, always derived               |
+| Field | Type | Notes |
+|---|---|---|
+| `bill_item_id` | internal PK | |
+| `menu_item_ref` | reference to Menu Item | for traceability only; never used to recompute historical values |
+| `item_code_snapshot` | string | copied at time of add, immutable thereafter |
+| `item_name_snapshot` | string | copied at time of add, immutable thereafter |
+| `unit_snapshot` | string | copied at time of add, immutable thereafter |
+| `unit_price_snapshot` | decimal | copied at time of add, immutable thereafter |
+| `quantity` | integer ≥ 1 | editable while bill is Open |
+| `line_total` | decimal | = `quantity × unit_price_snapshot`, always derived |
 
 **Critical rule:** Once a bill item is created, its `*_snapshot` fields must never change even if the underlying Menu Item is later edited, deactivated, or deleted. See Section 12 (Historical Data Protection).
 
@@ -140,7 +136,6 @@ Represents a menu item added to a specific bill, with a full historical snapshot
   - Line total = `quantity × current menu price at time of selection`, captured immediately into the bill item snapshot.
 
 ### Duplicate item handling
-
 If staff adds a menu item that is already present as a line on the same Open bill, **update the existing line's quantity** (add the new quantity to the existing one) rather than creating a second line for the same item. Exception: if the menu price for that item has changed since the existing line was added, do **not** merge — create a new separate line at the new price, leaving the original line's snapshot untouched (see Section 12).
 
 ---
@@ -148,7 +143,6 @@ If staff adds a menu item that is already present as a line on the same Open bil
 ## 6. Editing an Open Bill
 
 While `status = Open`, staff may:
-
 - Add items (per Section 5 rules).
 - Change quantities on any line (must remain ≥ 1; to remove a line, use explicit removal, not quantity = 0).
 - Remove items entirely, including the last remaining item (bill becomes an empty Open bill — A6).
@@ -164,11 +158,9 @@ Staff must never be able to manually type or override the bill's `total_amount` 
 Triggered by staff action **Finalize Bill** on an Open bill.
 
 Preconditions:
-
 - Bill must have at least one bill item (Section 8 — no zero-total finalized bills).
 
 Flow:
-
 1. Show confirmation dialog: total amount + "Once finalized, the bill can no longer be edited." Staff can confirm or cancel the dialog.
 2. On confirm:
    - Recompute and lock `total_amount`.
@@ -187,7 +179,6 @@ Flow:
 Triggered by staff action **Cancel Bill** on an Open bill.
 
 Flow:
-
 1. Show a confirmation dialog before cancelling, especially if the bill has items (A4) — mirror the finalize confirmation pattern.
 2. On confirm:
    - Set `status = Cancelled`.
@@ -235,14 +226,12 @@ PAYMENT: <Paid|Unpaid>
 - Revenue must never be manually entered or edited — it is always a derived query over Finalized bills.
 
 ### Admin Daily Billing View must show:
-
 - Total Revenue for the selected date.
 - Total count of Finalized bills for the selected date.
 - A table of all Finalized bills for that date: Bill No., Person, Time, Total, Payment status.
 - Clicking a bill opens full historical bill detail (Section 9 format, using stored snapshots only — never re-derived from current menu data).
 
 ### Date filtering
-
 At minimum: select a specific date. Ranges like "This week/month" are optional future enhancements — do not build them unless separately requested.
 
 ---

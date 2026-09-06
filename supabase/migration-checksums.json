@@ -94,5 +94,11 @@
     "state": "applied",
     "appliedTo": "yenxlcrtlmnfotfqqabo",
     "appliedAt": "2026-08-30"
+  },
+  "20260906000017_subscription_no_overlap.sql": {
+    "sha256": "5bda734117692c370a3dd382f2db24944a72075b0e3360b79c3423c288876847",
+    "state": "applied",
+    "appliedTo": "yenxlcrtlmnfotfqqabo",
+    "appliedAt": "2026-09-06"
   }
 }

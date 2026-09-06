@@ -20,16 +20,16 @@ This spec is intended to be handed directly to a coding agent. It includes data 
 
 ## 2. Terminology
 
-| Term                   | Meaning                                                                        |
-| ---------------------- | ------------------------------------------------------------------------------ |
-| Meal Price             | Standard selling price of one meal (Breakfast / Lunch / Snacks / Dinner)       |
-| Plan Price             | Package price for a selected set of meal types + a default duration            |
-| Assignment Price       | Actual price charged to a particular student for a particular duration         |
-| Base Premium           | Auto-calculated (and admin-editable) starting price of a plan, before discount |
-| Discount               | Flat amount subtracted from Base Premium                                       |
-| Final Price            | `Base Premium − Discount`; the frozen price of the plan                        |
-| Calculated Price       | System-computed price for a student assignment, derived from Final Price       |
-| Final Assignment Price | The price actually charged — either the Calculated Price or an admin override  |
+| Term | Meaning |
+|---|---|
+| Meal Price | Standard selling price of one meal (Breakfast / Lunch / Snacks / Dinner) |
+| Plan Price | Package price for a selected set of meal types + a default duration |
+| Assignment Price | Actual price charged to a particular student for a particular duration |
+| Base Premium | Auto-calculated (and admin-editable) starting price of a plan, before discount |
+| Discount | Flat amount subtracted from Base Premium |
+| Final Price | `Base Premium − Discount`; the frozen price of the plan |
+| Calculated Price | System-computed price for a student assignment, derived from Final Price |
+| Final Assignment Price | The price actually charged — either the Calculated Price or an admin override |
 
 ---
 
@@ -52,12 +52,12 @@ Meal Price  →  Plan Price  →  Assignment Price
 
 Table: `meal_prices`
 
-| Field      | Type                                   | Notes                     |
-| ---------- | -------------------------------------- | ------------------------- |
-| id         | PK                                     |                           |
-| meal_type  | enum(Breakfast, Lunch, Snacks, Dinner) | unique                    |
-| price      | decimal                                | current master rate, in ₹ |
-| updated_at | timestamp                              |                           |
+| Field | Type | Notes |
+|---|---|---|
+| id | PK | |
+| meal_type | enum(Breakfast, Lunch, Snacks, Dinner) | unique |
+| price | decimal | current master rate, in ₹ |
+| updated_at | timestamp | |
 
 ### 4.2 Behavior
 
@@ -79,18 +79,18 @@ Table: `meal_prices`
 
 Table: `plans`
 
-| Field                 | Type                            | Notes                                                                                                                  |
-| --------------------- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| id                    | PK                              |                                                                                                                        |
-| name                  | string                          |                                                                                                                        |
-| meal_types            | array/enum set                  | subset of {Breakfast, Lunch, Snacks, Dinner}                                                                           |
-| default_duration_days | integer                         | admin-entered                                                                                                          |
-| base_premium          | decimal                         | auto-calculated, then admin-editable before save                                                                       |
-| discount              | decimal                         | flat amount, admin-entered                                                                                             |
-| final_price           | decimal                         | `base_premium − discount`, computed and frozen at creation                                                             |
-| status                | enum(Active, Retired)           | see §8                                                                                                                 |
-| created_at            | timestamp                       |                                                                                                                        |
-| meal_prices_snapshot  | JSON (optional but recommended) | the individual meal rates used to compute base_premium, for audit/display purposes only — never used for recalculation |
+| Field | Type | Notes |
+|---|---|---|
+| id | PK | |
+| name | string | |
+| meal_types | array/enum set | subset of {Breakfast, Lunch, Snacks, Dinner} |
+| default_duration_days | integer | admin-entered |
+| base_premium | decimal | auto-calculated, then admin-editable before save |
+| discount | decimal | flat amount, admin-entered |
+| final_price | decimal | `base_premium − discount`, computed and frozen at creation |
+| status | enum(Active, Retired) | see §8 |
+| created_at | timestamp | |
+| meal_prices_snapshot | JSON (optional but recommended) | the individual meal rates used to compute base_premium, for audit/display purposes only — never used for recalculation |
 
 **Important:** `base_premium`, `discount`, and `final_price` are stored columns, not computed/virtual fields. Once written at creation time, they never change automatically.
 
@@ -153,18 +153,18 @@ The plan permanently stores `base_premium = 3800`, `discount = 200`, `final_pric
 
 Table: `assignments`
 
-| Field                     | Type      | Notes                                                            |
-| ------------------------- | --------- | ---------------------------------------------------------------- |
-| id                        | PK        |                                                                  |
-| student_id                | FK        |                                                                  |
-| plan_id                   | FK        |                                                                  |
-| plan_final_price_snapshot | decimal   | copy of the plan's `final_price` at time of assignment           |
-| plan_duration_snapshot    | integer   | copy of the plan's `default_duration_days` at time of assignment |
-| assignment_duration_days  | integer   | admin-entered, ≤ plan_duration_snapshot                          |
-| calculated_price          | decimal   | system-computed, see §6.3                                        |
-| final_assignment_price    | decimal   | equals calculated_price unless admin overrides                   |
-| is_overridden             | boolean   | true if admin manually changed the price                         |
-| created_at                | timestamp |                                                                  |
+| Field | Type | Notes |
+|---|---|---|
+| id | PK | |
+| student_id | FK | |
+| plan_id | FK | |
+| plan_final_price_snapshot | decimal | copy of the plan's `final_price` at time of assignment |
+| plan_duration_snapshot | integer | copy of the plan's `default_duration_days` at time of assignment |
+| assignment_duration_days | integer | admin-entered, ≤ plan_duration_snapshot |
+| calculated_price | decimal | system-computed, see §6.3 |
+| final_assignment_price | decimal | equals calculated_price unless admin overrides |
+| is_overridden | boolean | true if admin manually changed the price |
+| created_at | timestamp | |
 
 **Important:** `plan_final_price_snapshot` and `plan_duration_snapshot` must be copied onto the assignment record at creation time. The assignment must never join to the live `plans` table to compute or re-display its price.
 
@@ -202,7 +202,6 @@ Calculated Price = ₹1,927
 ```
 
 If the admin overrides to ₹1,900:
-
 - `final_assignment_price = 1900`
 - `is_overridden = true`
 - This override applies **only** to this one assignment record. It must not write back to the plan or affect any other student's assignment on the same plan.
@@ -232,16 +231,15 @@ const assignmentPrice = Math.ceil(rawPrice - 1e-9); // epsilon guards against fl
 
 This is the section a coding agent should treat as **non-negotiable**, cutting across all layers:
 
-| Action                                  | Effect on Plans                                             | Effect on Assignments                                                |
-| --------------------------------------- | ----------------------------------------------------------- | -------------------------------------------------------------------- |
-| Change a Meal Price                     | No effect on existing plans                                 | No effect on existing assignments                                    |
+| Action | Effect on Plans | Effect on Assignments |
+|---|---|---|
+| Change a Meal Price | No effect on existing plans | No effect on existing assignments |
 | Change a Plan's Base Premium / Discount | Affects only that plan (if edit is even allowed — see §5.5) | **No effect** on existing assignments already made against that plan |
-| Change/override a Student's Assignment  | N/A                                                         | Affects **only** that one assignment record                          |
+| Change/override a Student's Assignment | N/A | Affects **only** that one assignment record |
 
 Concretely, for implementation:
-
 - Never compute Plan pricing at read-time from `meal_prices`. Compute once at creation, store, and read from storage thereafter.
-- Never compute Assignment pricing at read-time from `plans`. Compute once at creation (using the plan's values _at that moment_), store both the snapshot inputs and the result, and read from storage thereafter.
+- Never compute Assignment pricing at read-time from `plans`. Compute once at creation (using the plan's values *at that moment*), store both the snapshot inputs and the result, and read from storage thereafter.
 - Any report, invoice, or history screen that shows a past plan or past assignment must display the **frozen stored values**, not a live recalculation.
 
 ### 7.1 Acceptance Criteria
@@ -291,17 +289,17 @@ Concretely, for implementation:
 
 ## 9. Edge Cases Checklist
 
-| Case                                                                        | Expected Behavior                                                                                                                                                                                                                                                                               |
-| --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Discount entered equal to Base Premium                                      | Final Price = 0 → **rejected** by validation (Final Price cannot be ₹0)                                                                                                                                                                                                                         |
-| Discount entered greater than Base Premium                                  | **Rejected** by validation                                                                                                                                                                                                                                                                      |
-| Assignment duration equals plan default duration                            | Assignment Price should equal the plan's Final Price exactly (no rounding artifact, since duration ratio = 1)                                                                                                                                                                                   |
-| Assignment duration = 1 day                                                 | Calculated using the same formula; rounds up as normal                                                                                                                                                                                                                                          |
-| Division result already a whole number                                      | Round-up has no visible effect; price = exact value                                                                                                                                                                                                                                             |
-| Admin overrides Final Assignment Price to same value as Calculated Price    | `is_overridden` can be `true` or `false` depending on implementation preference — recommend setting `false` if the value matches exactly, `true` if the admin explicitly interacted with the override field and changed it, even to an equal value. Pick one convention and apply consistently. |
-| Meal price changed after a plan was created but before any assignment on it | Plan retains its original Base Premium/Final Price; unaffected                                                                                                                                                                                                                                  |
-| Multiple students assigned to the same plan with different durations        | Each gets an independently calculated `calculated_price`; none affect each other                                                                                                                                                                                                                |
-| Plan retired while it still has active (ongoing) assignments                | Existing assignments continue unaffected; only new assignment creation is blocked                                                                                                                                                                                                               |
+| Case | Expected Behavior |
+|---|---|
+| Discount entered equal to Base Premium | Final Price = 0 → **rejected** by validation (Final Price cannot be ₹0) |
+| Discount entered greater than Base Premium | **Rejected** by validation |
+| Assignment duration equals plan default duration | Assignment Price should equal the plan's Final Price exactly (no rounding artifact, since duration ratio = 1) |
+| Assignment duration = 1 day | Calculated using the same formula; rounds up as normal |
+| Division result already a whole number | Round-up has no visible effect; price = exact value |
+| Admin overrides Final Assignment Price to same value as Calculated Price | `is_overridden` can be `true` or `false` depending on implementation preference — recommend setting `false` if the value matches exactly, `true` if the admin explicitly interacted with the override field and changed it, even to an equal value. Pick one convention and apply consistently. |
+| Meal price changed after a plan was created but before any assignment on it | Plan retains its original Base Premium/Final Price; unaffected |
+| Multiple students assigned to the same plan with different durations | Each gets an independently calculated `calculated_price`; none affect each other |
+| Plan retired while it still has active (ongoing) assignments | Existing assignments continue unaffected; only new assignment creation is blocked |
 
 ---
 

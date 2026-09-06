@@ -11,6 +11,10 @@ supabase/.temp
 # The client's original requirement documents. Never reformat and never edit
 # these -- they are the record of what was asked for, not project source.
 # Deviations belong in docs/new_features/TRACKER.md.
-docs/new_features/meal-billing-feature-spec.md
-docs/new_features/meal-pricing-feature-spec.md
-docs/new_features/student_subscription_grace_period_feature.md
+# Matched at either path, so moving them cannot silently un-protect them.
+docs/**/meal-billing-feature-spec.md
+docs/**/meal-pricing-feature-spec.md
+docs/**/student_subscription_grace_period_feature.md
+docs/meal-billing-feature-spec.md
+docs/meal-pricing-feature-spec.md
+docs/student_subscription_grace_period_feature.md
