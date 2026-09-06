@@ -276,6 +276,39 @@ always allowed it, the UI never rendered the control), the student sees both the
 resume date (§12, §24), and a completed pause is still visible with the subscription end
 date (§23).
 
+### NF-9 — Import a menu from a spreadsheet ✅
+
+Requested 6 Sep 2026 with the mess's own weekly menu sheet. Upload once, publish across a
+month.
+
+- [x] `menu-import.policy.ts` + 25 tests, written first
+- [x] Preview-then-commit at `/admin/menu/import`, matching the student importer
+- [x] Weekly rotation expanded across any date range, both ends inclusive
+- [x] The extras block becomes counter items (D-26)
+- [x] `npm run verify:menu-import` — live probe against the client's actual sheet
+
+**One sheet, two things.** The document a mess hands you holds a weekly rotation of dishes
+_and_ a short list of separately-priced extras — tea, chapati, a plate of rice. A row is
+told apart by whether it names a day and a meal. The "Extras" section heading and the blank
+separator rows a spreadsheet leaves behind are skipped; anything that fits neither shape is
+reported with its row number rather than guessed at.
+
+**D-25: the per-meal price column is ignored.** Monday breakfast ₹40, Friday dinner ₹120 —
+this describes what a walk-in would pay for that day's food, and nothing charges for that
+yet. `menus` has no price, `meal_prices` holds one rate per slot for the whole mess rather
+than per day, and `counter_items` are fixed-price named things. Finding it a home would
+have meant inventing a business rule.
+
+**D-26: the extras block becomes counter items.** Tea, Coffee, Milk, Bhaji, Chapati, Rice,
+Dal, Veg Fried Rice, Veg Soyabean Chilli. Campus Crave had none set up, so this is what
+makes the Counter sales screen usable at all. Matched by name on re-import, so a second
+upload reprices rather than creating a second Tea, and the `item_code` is never reassigned.
+
+**Live-verified against the client's real sheet:** all 28 cells and 9 extras parse with
+zero errors; quoted comma lists split correctly; a month expands to 124 rows; re-importing
+the same file replaces rather than duplicating; and a mess that serves only lunch gets 21
+rows refused rather than a menu for counters that never open.
+
 ### NF-7 — WhatsApp integration 🔒 provider undecided
 
 Requested 4 Sep 2026 and now **mandatory**, superseding the earlier deferral and the
@@ -347,6 +380,8 @@ there once resolved.
 | D-22  | Overlapping renewal: refuse, not truncate   | NF-6   | ✅ resolved |
 | D-23  | WhatsApp provider                           | NF-7   | ⏳ open     |
 | D-24  | Mobile: PWA / Capacitor / Flutter           | NF-8   | ⏳ open     |
+| D-25  | Menu import ignores the per-meal price      | NF-9   | ✅ resolved |
+| D-26  | Extras block becomes counter items          | NF-9   | ✅ resolved |
 
 ### D-15 — A pause may start today, never in the past
 

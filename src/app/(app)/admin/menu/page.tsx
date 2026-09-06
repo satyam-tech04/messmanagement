@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, UtensilsCrossed } from "lucide-react";
+import { ChevronLeft, ChevronRight, Upload, UtensilsCrossed } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
@@ -73,6 +73,10 @@ export default async function MenuPage(props: { searchParams: Promise<{ from?: s
         description="What the kitchen is serving. Publish ahead — students see it the moment you do."
         action={
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" render={<Link href="/admin/menu/import" />}>
+              <Upload className="size-4" aria-hidden="true" />
+              Import
+            </Button>
             <Button
               variant="outline"
               size="sm"
