@@ -113,11 +113,13 @@ export function PauseDialog({
   studentId,
   today,
   planEndDate,
+  planStartDate,
   existing,
 }: {
   studentId: string;
   today: string;
   planEndDate: string;
+  planStartDate: string;
   existing: CurrentPause | null;
 }) {
   const [open, setOpen] = useState(false);
@@ -176,7 +178,7 @@ export function PauseDialog({
                   name="startDate"
                   type="date"
                   required
-                  min={today}
+                  min={planStartDate > today ? planStartDate : today}
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
                 />
@@ -390,14 +392,23 @@ export function PauseSection({
   studentId,
   today,
   planEndDate,
+  planStartDate,
+  planState,
   pause,
 }: {
   studentId: string;
   today: string;
   planEndDate: string;
+  planStartDate: string;
+  /** RUNNING or SCHEDULED — an upcoming plan can be paused too (§3, §9). */
+  planState: string;
   pause: CurrentPause | null;
 }) {
   const live = pause && (pause.state === "SCHEDULED" || pause.state === "RUNNING") ? pause : null;
+  // §23 lists "Completed → view status/details" as its own row. Without this a
+  // finished pause vanishes, and an admin asking "was he paused in September?"
+  // has nowhere to look.
+  const finished = pause && pause.state === "COMPLETED" ? pause : null;
 
   return (
     <div className="border-border mt-4 rounded-lg border p-4">
@@ -411,19 +422,40 @@ export function PauseSection({
             ) : null}
           </div>
           {live ? (
+            <>
+              <p className="text-muted-foreground text-sm">
+                {live.state === "RUNNING" ? "Paused since " : "Paused from "}
+                <span className="tabular-nums">{formatServiceDate(live.startDate)}</span>, back on{" "}
+                <span className="tabular-nums">{formatServiceDate(live.resumeDate)}</span> —{" "}
+                {live.graceDays === 1 ? "1 day" : `${live.graceDays} days`}.
+              </p>
+              {/* §23: the interface must expose the subscription end date. */}
+              <p className="text-muted-foreground text-sm">
+                Plan now ends <span className="tabular-nums">{formatServiceDate(planEndDate)}</span>
+                .
+              </p>
+            </>
+          ) : finished ? (
             <p className="text-muted-foreground text-sm">
-              {live.state === "RUNNING" ? "Paused since " : "Paused from "}
-              <span className="tabular-nums">{formatServiceDate(live.startDate)}</span>, back on{" "}
-              <span className="tabular-nums">{formatServiceDate(live.resumeDate)}</span> —{" "}
-              {live.graceDays === 1 ? "1 day" : `${live.graceDays} days`}.
+              Was paused{" "}
+              <span className="tabular-nums">{formatServiceDate(finished.startDate)}</span> to{" "}
+              <span className="tabular-nums">{formatServiceDate(finished.resumeDate)}</span> —{" "}
+              {finished.graceDays === 1 ? "1 day" : `${finished.graceDays} days`}. Plan ends{" "}
+              <span className="tabular-nums">{formatServiceDate(planEndDate)}</span>.
+            </p>
+          ) : planState === "SCHEDULED" ? (
+            <p className="text-muted-foreground text-sm">
+              Not paused. This plan starts{" "}
+              <span className="tabular-nums">{formatServiceDate(planStartDate)}</span> — you can set
+              a pause now for a student you already know will be away.
             </p>
           ) : (
             <p className="text-muted-foreground text-sm">
               Not paused. Pausing stops meals and adds the missed days to the end of the plan.
             </p>
           )}
-          {live?.remarks ? (
-            <p className="text-muted-foreground text-sm italic">“{live.remarks}”</p>
+          {(live ?? finished)?.remarks ? (
+            <p className="text-muted-foreground text-sm italic">“{(live ?? finished)!.remarks}”</p>
           ) : null}
         </div>
 
@@ -432,6 +464,7 @@ export function PauseSection({
             studentId={studentId}
             today={today}
             planEndDate={planEndDate}
+            planStartDate={planStartDate}
             existing={live}
           />
           {live?.state === "RUNNING" ? (

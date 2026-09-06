@@ -30,7 +30,12 @@ import {
   StatusCard,
   type StudentDetail,
 } from "./student-detail-client";
-import { AssignPlanDialog, EndPlanButton, type AssignablePlan } from "./plan-actions";
+import {
+  AssignPlanDialog,
+  EndPlanButton,
+  RenewPlanDialog,
+  type AssignablePlan,
+} from "./plan-actions";
 
 export const metadata: Metadata = { title: "Student · Mess OS" };
 
@@ -51,7 +56,7 @@ export default async function StudentDetailPage(props: PageProps<"/admin/student
     .select(
       `id, roll_number, block, room_number, status, joined_at,
        profiles!inner ( full_name, phone, email, must_change_password, photo_url ),
-       subscriptions ( id, status, start_date, end_date, price_paise_snapshot,
+       subscriptions ( id, plan_id, status, start_date, end_date, price_paise_snapshot,
                        included_meal_slots_snapshot, plans ( name ) )`,
     )
     // Tenant filter first, so another hostel's id is a 404 rather than a leak.
@@ -99,6 +104,7 @@ export default async function StudentDetailPage(props: PageProps<"/admin/student
 
   const subscriptions = (student.subscriptions ?? []) as unknown as Array<{
     id: string;
+    plan_id: string | null;
     status: string;
     start_date: string;
     end_date: string;
@@ -141,14 +147,19 @@ export default async function StudentDetailPage(props: PageProps<"/admin/student
     );
   const active = subscriptions.find((s) => stateOf(s) === "RUNNING");
 
+  // Spec §3 and §9: a pause may be configured on an UPCOMING subscription too,
+  // not only a running one. Keyed off this rather than `active`, which is
+  // RUNNING-only and is what the "End plan" and "Assign" controls key off.
+  const pausable = active ?? subscriptions.find((s) => stateOf(s) === "SCHEDULED") ?? null;
+
   // Only the non-cancelled pause matters here: a cancelled one frees its dates
   // and must not be offered as the pause to modify (§23).
-  const { data: pauseRow } = active
+  const { data: pauseRow } = pausable
     ? await supabase
         .from("subscription_pauses")
         .select("start_date, resume_date, end_date_before_pause, remarks, status")
         .eq("tenant_id", user.tenantId)
-        .eq("subscription_id", active.id)
+        .eq("subscription_id", pausable.id)
         .eq("status", "ACTIVE")
         .order("start_date", { ascending: false })
         .limit(1)
@@ -178,16 +189,16 @@ export default async function StudentDetailPage(props: PageProps<"/admin/student
       }
     : null;
 
-  // Only offered when there is no active plan — the database enforces one at a
-  // time, so showing the button otherwise would promise something that fails.
-  const { data: planRows } = active
-    ? { data: null }
-    : await supabase
-        .from("plans")
-        .select("id, name, price_paise, duration_days, included_meal_slots")
-        .eq("tenant_id", user.tenantId)
-        .eq("is_active", true)
-        .order("price_paise", { ascending: true });
+  // Always loaded now. Renewal offers the plan list even while a term is still
+  // running, because renewing early is the ordinary case — before migration 017
+  // the one-active-per-student index made that impossible, so the list was only
+  // fetched when there was nothing active.
+  const { data: planRows } = await supabase
+    .from("plans")
+    .select("id, name, price_paise, duration_days, included_meal_slots")
+    .eq("tenant_id", user.tenantId)
+    .eq("is_active", true)
+    .order("price_paise", { ascending: true });
 
   const assignablePlans: AssignablePlan[] = (planRows ?? []).map((p) => ({
     id: p.id,
@@ -289,11 +300,20 @@ export default async function StudentDetailPage(props: PageProps<"/admin/student
                       </TableCell>
                       <TableCell className="text-right">
                         {stateOf(s) === "RUNNING" ? (
-                          <EndPlanButton
-                            studentId={student.id}
-                            subscriptionId={s.id}
-                            planName={s.plans?.name ?? "this plan"}
-                          />
+                          <div className="flex justify-end gap-2">
+                            <RenewPlanDialog
+                              studentId={student.id}
+                              plans={assignablePlans}
+                              today={today}
+                              currentPlanId={s.plan_id ?? null}
+                              currentEndDate={s.end_date}
+                            />
+                            <EndPlanButton
+                              studentId={student.id}
+                              subscriptionId={s.id}
+                              planName={s.plans?.name ?? "this plan"}
+                            />
+                          </div>
                         ) : null}
                       </TableCell>
                     </TableRow>
@@ -303,13 +323,17 @@ export default async function StudentDetailPage(props: PageProps<"/admin/student
             </TableShell>
           )}
 
-          {/* Pausing only means anything while a plan is actually running — there
-              is nothing to pause on an expired or scheduled one. */}
-          {active ? (
+          {/* Running OR upcoming. A mess told in advance that a student will be
+              away next month must be able to record it now — §9 of the spec is
+              an entire section about exactly that case. Only an expired or
+              cancelled plan has nothing left to pause. */}
+          {pausable ? (
             <PauseSection
               studentId={student.id}
               today={today}
-              planEndDate={active.end_date}
+              planEndDate={pausable.end_date}
+              planStartDate={pausable.start_date}
+              planState={stateOf(pausable)}
               pause={currentPause}
             />
           ) : null}

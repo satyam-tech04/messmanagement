@@ -68,17 +68,41 @@ try {
   );
   check(codeA !== codeB, `two allocations never collide (${codeA} vs ${codeB})`);
 
+  const counterFor = async (tenantId: string) => {
+    const { data } = await admin
+      .from("tenants")
+      .select("next_bill_number")
+      .eq("id", tenantId)
+      .single();
+    return data!.next_bill_number;
+  };
+
+  const homeBefore = await counterFor(home.id);
+  const otherBefore = await counterFor(other.id);
   const { data: billHome } = await admin.rpc("allocate_bill_number", { p_tenant_id: home.id });
-  const { data: billOther } = await admin.rpc("allocate_bill_number", { p_tenant_id: other.id });
+  const homeAfter = await counterFor(home.id);
+  const otherAfter = await counterFor(other.id);
+
   check(
-    typeof billHome === "string" && billHome.startsWith("BILL-"),
+    typeof billHome === "string" && /^BILL-\d{6}$/.test(billHome),
     `bill numbers look like BILL-000001 (${billHome})`,
   );
-  // The spec asked for one global sequence. On a multi-tenant system that would
-  // interleave two messes' books; each mess counts from its own 1.
+  // The spec asked for ONE global sequence. On a multi-tenant system that would
+  // interleave two messes' books and leave each owner with gaps they cannot
+  // explain. The property is independence, not equality: allocating for one
+  // mess must leave every other mess's counter exactly where it was.
+  //
+  // An earlier version of this check asserted both messes issued the SAME
+  // number, which only held while the two counters happened to have advanced
+  // equally — a coincidence that broke the moment one probe run allocated from
+  // one mess and not the other.
   check(
-    billHome === billOther,
-    `each mess has its own sequence — both messes issued ${billHome} independently`,
+    homeAfter === homeBefore + 1,
+    `allocating advances this mess's own counter by one (${homeBefore} -> ${homeAfter})`,
+  );
+  check(
+    otherAfter === otherBefore,
+    `and leaves the other mess's counter untouched (${otherBefore} -> ${otherAfter})`,
   );
 
   // --- Catalogue ------------------------------------------------------------

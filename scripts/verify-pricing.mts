@@ -138,7 +138,7 @@ try {
   const activation = activateSubscription({
     actorRole: "ADMIN",
     studentStatus: "ACTIVE",
-    hasActiveSubscription: false,
+    existingPeriods: [],
     plan: {
       id: planId!,
       isActive: true,

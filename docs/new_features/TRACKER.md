@@ -226,6 +226,81 @@ Specified in §2–§5 of the spec and additive only — plan beyond the current
 week without overwriting, show unplanned slots. `/admin/menu` and `menus` already exist and
 must not be rebuilt.
 
+### NF-6 — Renew a subscription ✅
+
+Requested by Harshal, 4 Sep 2026. An admin renews a student's plan for another term,
+picking the start date from a calendar that defaults to today.
+
+- [x] `subscriptions_no_overlap` exclusion constraint — migration **017, applied + sealed**
+- [x] `overlappingPeriod()` in `plan.policy.ts`, mirroring the constraint's WHERE clause exactly
+- [x] `hasActiveSubscription` boolean replaced by `existingPeriods` — one rule, one place
+- [x] Retire-on-assign workaround **removed** from `assignPlan`
+- [x] `renewSubscription` action + Renew dialog on the student page
+- [x] `npm run verify:renewal` — live probe
+
+**The constraint change is the substance.** The old
+`subscriptions_one_active_per_student` partial unique index allowed one row with
+`status = 'ACTIVE'` per student. But "scheduled" is derived from dates here, not stored, so
+a term starting next month sits at `ACTIVE` today — which made the commonest renewal
+impossible: a student paying on the 25th for a term starting the 1st needs two
+subscriptions to exist at once.
+
+The real rule is that **no two subscriptions may cover the same day**. Consecutive terms
+are exactly what a renewal is. `CANCELLED` and explicit `EXPIRED` release their dates; a
+term that has merely run out does not, so nobody can backdate a second plan over days
+already served.
+
+**Decided (D-22):** an overlapping renewal is **refused**, never truncated — the owner's
+call. The error names the first free date. No paid day is ever silently discarded, and the
+previous term is not touched at all.
+
+**Live-verified:** a student holds this term and next term simultaneously; a 10-day
+overlap and even a single-day overlap on the final day are both refused with `23P01`; the
+policy catches it first and names the date; cancelling frees the dates again.
+
+**Also fixed here** — the three grace-period gaps found in the spec audit and left
+uncommitted at the time: upcoming subscriptions can now be paused (§3, §9 — the policy
+always allowed it, the UI never rendered the control), the student sees both the start and
+resume date (§12, §24), and a completed pause is still visible with the subscription end
+date (§23).
+
+### NF-7 — WhatsApp integration 🔒 provider undecided
+
+Requested 4 Sep 2026 and now **mandatory**, superseding the earlier deferral and the
+grace-period spec §26 ("no notification system").
+
+**Decided:** each mess brings its own WhatsApp number, not one platform sender. Onboarding
+therefore includes Meta Business verification and template approval per mess, credentials
+live per-tenant in `tenant_secrets`, and the reminder cron must degrade quietly for a mess
+that has not finished setup.
+
+**Open (D-23):** provider — Meta Cloud API direct vs an Indian BSP vs Twilio. The per-mess
+decision above argues for a BSP, whose dashboard lets each owner self-serve verification
+and templates rather than us building that UI.
+
+**Blocking data problem, independent of the provider.** On Campus Crave: 5 of 25 students
+have no phone number at all, and all 20 that do are stored as bare 10 digits
+(`8767488814`). WhatsApp needs `+919876543210`. Collecting the missing five is the client's
+job; normalising the rest is a small migration.
+
+- [ ] Choose a provider (D-23)
+- [ ] Normalise stored numbers to E.164; collect the five missing
+- [ ] `Notifier` port in `src/core/ports`, adapter in `src/infra/whatsapp`
+- [ ] Per-tenant credentials in `tenant_secrets` + an admin screen with a test-message button
+- [ ] `notification_log` with a unique constraint so a retried cron cannot double-message
+- [ ] Daily expiry-reminder cron, fired against each tenant's local date
+
+### NF-8 — Android and iOS apps ⏸️ recommendation given
+
+Requested 4 Sep 2026. Client already holds both store subscriptions.
+
+**Recommendation, not yet decided:** installable PWA first (days, same codebase, covers the
+whole student surface), then Capacitor for the staff scanner, where native genuinely pays —
+`@capacitor-mlkit/barcode-scanning` instead of `getUserMedia` at a counter doing 200 scans
+in 20 minutes. Flutter was considered and advised against: it cannot use `src/core`, so it
+forces building a REST/tRPC surface that does not exist today before a line of Dart is
+written, then splits the product across two stacks permanently.
+
 ### NF-5 — WhatsApp credential delivery ⏸️ deferred
 
 **Deferred 2026-08-30 by the project owner.** Not cancelled — parked.
@@ -257,6 +332,9 @@ there once resolved.
 | D-19  | What "special meal for selected days" means | NF-4a  | ✅ resolved |
 | D-19b | Feedback vs. the read-only student app      | NF-4c  | ✅ resolved |
 | D-20  | WhatsApp: `wa.me` link or Business API?     | NF-5   | ⏸️ defer    |
+| D-22  | Overlapping renewal: refuse, not truncate   | NF-6   | ✅ resolved |
+| D-23  | WhatsApp provider                           | NF-7   | ⏳ open     |
+| D-24  | Mobile: PWA / Capacitor / Flutter           | NF-8   | ⏳ open     |
 
 ### D-15 — A pause may start today, never in the past
 

@@ -89,6 +89,9 @@ export function checkMealEligibility(
     return err(
       domainError("SUBSCRIPTION_PAUSED", `${student.fullName}'s plan is paused.`, {
         rollNumber: student.rollNumber,
+        // Both dates: §12 and §24 require the student to see when the pause
+        // began as well as when they eat again.
+        startDate: pause.startDate,
         resumeDate: pause.resumeDate,
       }),
     );

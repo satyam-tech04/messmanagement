@@ -60,6 +60,9 @@ const REQUIRED_CONSTRAINTS = [
   // One verdict per student per meal — a constraint, so re-submitting
   // replaces an answer instead of stacking a second one.
   ["meal_feedback", "meal_feedback_one_per_meal"],
+  // Replaced the one-active-per-student index in migration 017: the real
+  // rule is that no two subscriptions may cover the same day.
+  ["subscriptions", "subscriptions_no_overlap"],
   // The identity that stops a plan's stated derivation drifting from its price.
   ["plans", "plans_price_is_base_less_discount"],
   ["menus", "menus_tenant_date_slot_key"],
@@ -156,13 +159,17 @@ for (const [table, constraint] of REQUIRED_CONSTRAINTS) {
   rows.length ? pass(`${table}.${constraint}`) : fail(`${table}.${constraint} — MISSING`);
 }
 
+// Migration 017 replaced the one-active-per-student index with a non-overlap
+// exclusion constraint (asserted above). The index must be GONE, not merely
+// superseded: leaving both would silently re-block the renewals 017 exists to
+// allow, and the failure would look like a bug in the renewal form.
 const { rows: partial } = await client.query(
   `select 1 from pg_indexes
     where schemaname='public' and indexname='subscriptions_one_active_per_student'`,
 );
 partial.length
-  ? pass("subscriptions_one_active_per_student (partial unique)")
-  : fail("subscriptions_one_active_per_student — MISSING");
+  ? fail("subscriptions_one_active_per_student still exists — 017 should have dropped it")
+  : pass("subscriptions_one_active_per_student dropped (replaced by subscriptions_no_overlap)");
 
 // Attendance idempotency moved from a plain constraint to a partial unique
 // index when reversals landed (migration 006). The guarantee is identical for

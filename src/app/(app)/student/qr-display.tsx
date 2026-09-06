@@ -72,7 +72,8 @@ type State =
       readonly kind: "denied";
       readonly code: string;
       readonly message: string;
-      /** Set for SUBSCRIPTION_PAUSED — the day meals start again (§12). */
+      /** Set for SUBSCRIPTION_PAUSED — §12 asks for both dates. */
+      readonly startDate?: string;
       readonly resumeDate?: string;
     }
   | {
@@ -160,6 +161,9 @@ export function QrDisplay({ timeZone, counter }: { timeZone: string; counter: Co
           kind: "denied",
           code: body.error?.code ?? "UNKNOWN",
           message: body.error?.message ?? "Your QR code is unavailable.",
+          ...(typeof body.error?.details?.startDate === "string"
+            ? { startDate: body.error.details.startDate }
+            : {}),
           ...(typeof body.error?.details?.resumeDate === "string"
             ? { resumeDate: body.error.details.resumeDate }
             : {}),

@@ -219,7 +219,6 @@ describe("activateSubscription", () => {
   const base: ActivationRequest = {
     actorRole: UserRole.ADMIN,
     studentStatus: StudentStatus.ACTIVE,
-    hasActiveSubscription: false,
     plan,
     timeZone: "Asia/Kolkata",
     now: new Date("2026-07-20T06:00:00Z"),
@@ -252,8 +251,20 @@ describe("activateSubscription", () => {
     }
   });
 
-  it("refuses a second active subscription — it would double-count the headcount", () => {
-    const r = activateSubscription({ ...base, hasActiveSubscription: true });
+  it("refuses a second subscription covering the same days — it would double-count the headcount", () => {
+    // Two plans over one day makes "which plan paid for this meal?"
+    // unanswerable and counts the student twice in every headcount. Terms that
+    // merely follow one another are fine; see the overlap suite below.
+    const r = activateSubscription({
+      ...base,
+      existingPeriods: [
+        {
+          status: "ACTIVE",
+          startDate: toServiceDate("2026-07-01"),
+          endDate: toServiceDate("2026-07-31"),
+        },
+      ],
+    });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error.code).toBe("CONFLICT");
   });
@@ -334,7 +345,6 @@ describe("activateSubscription — when the plan starts", () => {
     return {
       actorRole: UserRole.ADMIN,
       studentStatus: StudentStatus.ACTIVE,
-      hasActiveSubscription: false,
       plan: {
         id: "11111111-1111-1111-1111-111111111111",
         isActive: true,
@@ -430,7 +440,6 @@ describe("activateSubscription — partial terms", () => {
   const base: ActivationRequest = {
     actorRole: UserRole.ADMIN,
     studentStatus: StudentStatus.ACTIVE,
-    hasActiveSubscription: false,
     plan,
     timeZone: "Asia/Kolkata",
     now: new Date("2026-07-20T06:00:00Z"),
@@ -508,5 +517,163 @@ describe("activateSubscription — partial terms", () => {
     if (!r.ok) return;
     // ₹1,700 over 17 days × 2 meals = 34 meals → ₹50 a meal exactly.
     expect(r.value.perMealPaise).toBe(5000);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Renewal, and the overlap rule that replaced "one active subscription"
+//
+// The old rule was a partial unique index: one row with status ACTIVE per
+// student. That is not the domain rule, it is a proxy for it, and it made the
+// commonest renewal impossible — a student paying on the 25th for a term that
+// starts on the 1st needs two subscriptions to exist at once.
+//
+// The real rule is that no two subscriptions may cover the same DAY.
+// Consecutive terms are exactly what renewal is.
+// ---------------------------------------------------------------------------
+
+describe("activateSubscription — overlap with an existing subscription", () => {
+  const plan = {
+    id: "11111111-1111-4111-8111-111111111111",
+    isActive: true,
+    pricePaise: toPaise(360000),
+    durationDays: 30,
+    mealSlots: [MealSlot.LUNCH, MealSlot.DINNER],
+  };
+
+  const base: ActivationRequest = {
+    actorRole: UserRole.ADMIN,
+    studentStatus: StudentStatus.ACTIVE,
+    plan,
+    timeZone: "Asia/Kolkata",
+    // 6 Sep 2026, 11:30 IST.
+    now: new Date("2026-09-06T06:00:00Z"),
+  };
+
+  /** A term running 1–30 September, as stored: the column still says ACTIVE. */
+  const currentTerm = {
+    status: "ACTIVE",
+    startDate: toServiceDate("2026-09-01"),
+    endDate: toServiceDate("2026-09-30"),
+  };
+
+  it("refuses a renewal that starts while the current term is still running", () => {
+    // The case the owner asked to reject rather than silently truncate: the
+    // student has 24 paid days left and must not lose them.
+    const r = activateSubscription({
+      ...base,
+      existingPeriods: [currentTerm],
+      startDate: toServiceDate("2026-09-06"),
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error.code).toBe("CONFLICT");
+  });
+
+  it("names the first date they CAN renew from", () => {
+    // An error that says "no" is a support call; one that says "1 Oct" is not.
+    const r = activateSubscription({
+      ...base,
+      existingPeriods: [currentTerm],
+      startDate: toServiceDate("2026-09-06"),
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error.message).toContain("2026-10-01");
+  });
+
+  it("accepts a renewal starting the day after the current term ends", () => {
+    // The whole point: two subscriptions coexist, back to back, neither touched.
+    const r = activateSubscription({
+      ...base,
+      existingPeriods: [currentTerm],
+      startDate: toServiceDate("2026-10-01"),
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.value.startDate).toBe(toServiceDate("2026-10-01"));
+    expect(r.value.endDate).toBe(toServiceDate("2026-10-30"));
+  });
+
+  it("accepts a renewal after a term that has already finished", () => {
+    const finished = {
+      status: "ACTIVE",
+      startDate: toServiceDate("2026-07-01"),
+      endDate: toServiceDate("2026-07-30"),
+    };
+    const r = activateSubscription({
+      ...base,
+      existingPeriods: [finished],
+      startDate: toServiceDate("2026-09-06"),
+    });
+    expect(r.ok).toBe(true);
+  });
+
+  it("refuses a renewal that would overlap a finished term's own dates", () => {
+    // Backdating onto days another subscription already covered would
+    // double-count the student in revenue and make "which plan paid for this
+    // meal?" unanswerable. A finished plan's column still reads ACTIVE, so it
+    // still holds its dates.
+    const finished = {
+      status: "ACTIVE",
+      startDate: toServiceDate("2026-07-01"),
+      endDate: toServiceDate("2026-07-30"),
+    };
+    const r = activateSubscription({
+      ...base,
+      existingPeriods: [finished],
+      startDate: toServiceDate("2026-07-15"),
+    });
+    expect(r.ok).toBe(false);
+  });
+
+  it("ignores a cancelled subscription — cancelling frees its dates", () => {
+    const cancelled = { ...currentTerm, status: "CANCELLED" };
+    const r = activateSubscription({
+      ...base,
+      existingPeriods: [cancelled],
+      startDate: toServiceDate("2026-09-06"),
+    });
+    expect(r.ok).toBe(true);
+  });
+
+  it("ignores one explicitly marked EXPIRED — the deliberate escape hatch", () => {
+    const expired = { ...currentTerm, status: "EXPIRED" };
+    const r = activateSubscription({
+      ...base,
+      existingPeriods: [expired],
+      startDate: toServiceDate("2026-09-06"),
+    });
+    expect(r.ok).toBe(true);
+  });
+
+  it("checks every existing period, not just the first", () => {
+    const r = activateSubscription({
+      ...base,
+      existingPeriods: [
+        {
+          status: "ACTIVE",
+          startDate: toServiceDate("2026-07-01"),
+          endDate: toServiceDate("2026-07-30"),
+        },
+        currentTerm,
+      ],
+      startDate: toServiceDate("2026-09-15"),
+    });
+    expect(r.ok).toBe(false);
+  });
+
+  it("catches an overlap at the far end, not only the start", () => {
+    // A 30-day term starting 20 Sep ends 19 Oct; its first ten days collide
+    // with a term ending 30 Sep even though its start date does not.
+    const r = activateSubscription({
+      ...base,
+      existingPeriods: [currentTerm],
+      startDate: toServiceDate("2026-09-20"),
+    });
+    expect(r.ok).toBe(false);
+  });
+
+  it("treats no existing subscriptions as no obstacle", () => {
+    const r = activateSubscription({ ...base, existingPeriods: [] });
+    expect(r.ok).toBe(true);
   });
 });

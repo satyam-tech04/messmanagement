@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { AlertCircle, Check, Loader2, Plus, XCircle } from "lucide-react";
+import { AlertCircle, Check, Loader2, Plus, RefreshCw, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,8 +16,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { addDays, isServiceDate, toServiceDate } from "@/core/time";
 import { cn } from "@/lib/utils";
-import { assignPlan, endSubscription, type ActionState } from "./actions";
+import { assignPlan, endSubscription, renewSubscription, type ActionState } from "./actions";
 
 export interface AssignablePlan {
   readonly id: string;
@@ -346,4 +347,232 @@ export function EndPlanButton({
       </DialogContent>
     </Dialog>
   );
+}
+
+/**
+ * Renews a student's plan for another term.
+ *
+ * The start date defaults to today and is freely pickable, because the two real
+ * cases pull in opposite directions: a lapsed student renewing on the spot
+ * wants today, and a student paying early for next month wants the day after
+ * their current term ends. The dialog shows that date so it is one click rather
+ * than a calculation.
+ *
+ * Overlapping an existing term is refused by the server, which names the first
+ * free date. Nothing is truncated and no paid day is ever discarded.
+ */
+export function RenewPlanDialog({
+  studentId,
+  plans,
+  today,
+  currentPlanId,
+  currentEndDate,
+}: {
+  studentId: string;
+  plans: readonly AssignablePlan[];
+  today: string;
+  /** Pre-selected, because most renewals stay on the same plan. */
+  currentPlanId: string | null;
+  /** The term being renewed from, when one is still running. */
+  currentEndDate: string | null;
+}) {
+  const [state, formAction] = useActionState<ActionState, FormData>(
+    renewSubscription.bind(null, studentId),
+    {},
+  );
+  const [open, setOpen] = useState(false);
+
+  // The day after the current term ends — the other date an admin plausibly
+  // wants, offered as a shortcut rather than left to mental arithmetic.
+  const dayAfter = currentEndDate ? addDaysTo(currentEndDate, 1) : null;
+  const suggested = dayAfter && dayAfter > today ? dayAfter : today;
+
+  const [planId, setPlanId] = useState(currentPlanId ?? "");
+  const [startDate, setStartDate] = useState(suggested);
+  const [days, setDays] = useState("");
+  const [override, setOverride] = useState("");
+
+  const plan = plans.find((p) => p.id === planId) ?? null;
+
+  if (state.success && open) setOpen(false);
+
+  const choosePlan = (next: AssignablePlan) => {
+    setPlanId(next.id);
+    setDays(String(next.durationDays));
+    setOverride("");
+  };
+
+  const boughtDays = Number(days) || (plan?.durationDays ?? 0);
+  const withinPlan = plan !== null && boughtDays >= 1 && boughtDays <= plan.durationDays;
+
+  const calculatedPaise =
+    plan === null || !withinPlan
+      ? 0
+      : boughtDays === plan.durationDays
+        ? plan.pricePaise
+        : Math.floor(
+            (plan.pricePaise * boughtDays + plan.durationDays * 100 - 1) /
+              (plan.durationDays * 100),
+          ) * 100;
+
+  const endDate = withinPlan ? addDaysTo(startDate, boughtDays - 1) : null;
+
+  if (plans.length === 0) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger render={<Button variant="outline" size="sm" />}>
+        <RefreshCw className="size-4" aria-hidden="true" />
+        Renew
+      </DialogTrigger>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+        <form action={formAction}>
+          <DialogHeader>
+            <DialogTitle>Renew this plan</DialogTitle>
+            <DialogDescription>
+              Starts a fresh term with today&apos;s price frozen onto it. The current term is left
+              exactly as it is.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <input type="hidden" name="planId" value={planId} />
+            <div className="space-y-2" role="radiogroup" aria-label="Plan">
+              {plans.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={planId === option.id}
+                  onClick={() => choosePlan(option)}
+                  className={cn(
+                    "w-full rounded-lg border px-4 py-3 text-left text-sm transition-colors",
+                    "focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none",
+                    planId === option.id ? "border-primary bg-primary/5" : "hover:bg-muted/50",
+                  )}
+                >
+                  <span className="flex items-center justify-between gap-3">
+                    <span className="font-medium">
+                      {option.name}
+                      {option.id === currentPlanId ? (
+                        <span className="text-muted-foreground ml-2 text-xs font-normal">
+                          current
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className="tabular-nums">{formatRupees(option.pricePaise)}</span>
+                  </span>
+                  <span className="text-muted-foreground mt-0.5 block text-xs">
+                    {option.durationDays} days ·{" "}
+                    {option.mealSlots.map((s) => s.toLowerCase()).join(", ")}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="renewStartDate">Starts on</Label>
+              <Input
+                id="renewStartDate"
+                name="startDate"
+                type="date"
+                required
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="tabular-nums"
+              />
+              {currentEndDate ? (
+                <p className="text-muted-foreground text-xs">
+                  The current term runs to {currentEndDate}. Renewing from {dayAfter} continues it
+                  without a gap; an earlier date will be refused rather than cutting the current
+                  term short.
+                </p>
+              ) : (
+                <p className="text-muted-foreground text-xs">Defaults to today.</p>
+              )}
+            </div>
+
+            {plan ? (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="renewDays">Days</Label>
+                  <Input
+                    id="renewDays"
+                    name="assignmentDurationDays"
+                    type="number"
+                    min="1"
+                    max={plan.durationDays}
+                    value={days}
+                    onChange={(e) => setDays(e.target.value)}
+                    className="tabular-nums"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="renewOverride">Price (₹)</Label>
+                  <Input
+                    id="renewOverride"
+                    name="overrideRupees"
+                    type="number"
+                    min="1"
+                    step="1"
+                    inputMode="numeric"
+                    value={override}
+                    onChange={(e) => setOverride(e.target.value)}
+                    placeholder={withinPlan ? String(Math.round(calculatedPaise / 100)) : ""}
+                    className="tabular-nums"
+                  />
+                  <p className="text-muted-foreground text-xs">
+                    Leave blank to charge the calculated price.
+                  </p>
+                </div>
+
+                <div className="bg-muted/50 space-y-1.5 rounded-lg border p-3.5 text-sm">
+                  {withinPlan && endDate ? (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">New term</span>
+                        <span className="tabular-nums">
+                          {startDate} to {endDate}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Price</span>
+                        <span className="font-medium tabular-nums">
+                          {formatRupees(
+                            override.trim() === ""
+                              ? calculatedPaise
+                              : Math.round(Number(override) * 100),
+                          )}
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-muted-foreground text-xs">
+                      Enter between 1 and {plan.durationDays} days to see the term and price.
+                    </p>
+                  )}
+                </div>
+              </>
+            ) : null}
+
+            <Feedback state={state} />
+          </div>
+
+          <DialogFooter>
+            <DialogClose render={<Button type="button" variant="ghost" />}>Cancel</DialogClose>
+            <Button type="submit" disabled={!planId || !withinPlan}>
+              <Submitting idle="Renew plan" busy="Renewing…" />
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Plain calendar-date arithmetic, borrowed from the domain rather than rewritten. */
+function addDaysTo(date: string, days: number): string {
+  if (!isServiceDate(date)) return date;
+  return addDays(toServiceDate(date), days);
 }

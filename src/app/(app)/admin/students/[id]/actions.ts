@@ -18,8 +18,7 @@ import type { MealSlot, StudentStatus } from "@/core/domain/enums";
 import { toPaise } from "@/core/money";
 import { activateSubscription } from "@/core/policies/plan.policy";
 import { changeStudentStatus } from "@/core/policies/student-admin.policy";
-import { isReplaceable, subscriptionStateOf } from "@/core/policies/subscription-state";
-import { serviceDateOf, toServiceDate } from "@/core/time";
+import { toServiceDate } from "@/core/time";
 import { createAdminClient } from "@/infra/supabase/admin";
 import { getSessionUser } from "@/infra/auth/session";
 import { SupabaseAuditLogRepository } from "@/infra/supabase/repositories";
@@ -326,58 +325,28 @@ export async function assignPlan(
 
   if (!plan) return { error: "That plan does not exist in this mess." };
 
-  // Nothing marks a finished plan EXPIRED (that job is Phase 2), so a row can
-  // sit at ACTIVE months after it ended. Judge by the dates, and retire an
-  // already-finished one rather than making the admin "End plan" on something
-  // that ended weeks ago.
-  const today = serviceDateOf(user.timezone, new Date());
-  const { data: existing } = await admin
+  // Every subscription this student holds, so the policy can refuse an overlap
+  // and name the first free date. Replaces an older dance that retired the
+  // previous plan to EXPIRED purely to free a one-active-per-student index —
+  // that index is gone (migration 017), and marking a plan finished as a side
+  // effect of assigning another was never honest.
+  const { data: existingRows } = await admin
     .from("subscriptions")
-    .select("id, status, start_date, end_date")
+    .select("status, start_date, end_date")
     .eq("tenant_id", user.tenantId)
-    .eq("student_id", student.id)
-    .eq("status", "ACTIVE")
-    .maybeSingle();
+    .eq("student_id", student.id);
 
-  const current = existing
-    ? {
-        status: existing.status,
-        startDate: toServiceDate(existing.start_date),
-        endDate: toServiceDate(existing.end_date),
-      }
-    : null;
-
-  if (existing && !isReplaceable(current, today)) {
-    const state = subscriptionStateOf(current!, today);
-    return {
-      error:
-        state === "SCHEDULED"
-          ? "This student already has a plan scheduled to start. End it before assigning another."
-          : "This student already has an active plan. End it before assigning another.",
-    };
-  }
-
-  // Retire the finished one so the unique index has room. Its dates and frozen
-  // price are untouched — only the status moves ACTIVE -> EXPIRED, which is a
-  // legal transition and what the Phase 2 job will do anyway.
-  if (existing) {
-    const { error: expireError } = await admin
-      .from("subscriptions")
-      .update({ status: "EXPIRED" })
-      .eq("id", existing.id)
-      .eq("status", "ACTIVE");
-    if (expireError) {
-      return { error: `Could not retire the previous plan: ${expireError.message}` };
-    }
-  }
-
-  const count = 0;
+  const existingPeriods = (existingRows ?? []).map((row) => ({
+    status: row.status,
+    startDate: toServiceDate(row.start_date),
+    endDate: toServiceDate(row.end_date),
+  }));
 
   // The policy decides; this action only gathers the facts it needs.
   const decision = activateSubscription({
     actorRole: user.role,
     studentStatus: student.status as StudentStatus,
-    hasActiveSubscription: count > 0,
+    existingPeriods,
     plan: {
       id: plan.id,
       isActive: plan.is_active,
@@ -423,8 +392,11 @@ export async function assignPlan(
   if (insertError) {
     // The partial unique index is the real guarantee — the count check above can
     // lose a race between two admins assigning at once.
-    if (insertError.code === "23505") {
-      return { error: "This student already has an active plan. Reload the page." };
+    // 23P01 is the exclusion constraint: another plan already covers those
+    // days. Normally the policy catches this first, but the constraint is the
+    // real guarantee when two admins assign at the same instant.
+    if (insertError.code === "23P01") {
+      return { error: "Another plan already covers those dates. Reload the page." };
     }
     return { error: `Could not assign the plan: ${insertError.message}` };
   }
@@ -600,4 +572,140 @@ export async function removeStudentPhoto(studentId: string): Promise<ActionState
 
   revalidatePath(`/admin/students/${student.id}`);
   return { success: "Photo removed." };
+}
+
+// --- Renew a subscription --------------------------------------------------
+
+const renewSchema = z.object({
+  planId: z.string().uuid("Choose a plan."),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Enter a valid start date"),
+  assignmentDurationDays: z.string().trim(),
+  overrideRupees: z.string().trim(),
+});
+
+/**
+ * Renews a student's plan for another term.
+ *
+ * Mechanically the same as assigning one — a brand-new subscription row with
+ * its own frozen price, per the pricing spec §8.3 — and deliberately kept as a
+ * separate action so the audit log records a renewal rather than an assignment,
+ * and so the previous term can be named in it.
+ *
+ * It does NOT touch the previous subscription. Since migration 017 the rule is
+ * simply that no two subscriptions may cover the same day, so the old term runs
+ * to its natural end and the new one begins after it. Nothing is truncated and
+ * no paid day is discarded — an overlapping date is refused outright, with the
+ * first free date named.
+ */
+export async function renewSubscription(
+  studentId: string,
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const loaded = await loadOwnedStudent(studentId);
+  if ("error" in loaded) return { error: loaded.error };
+  const { user, admin, student } = loaded;
+
+  const parsed = renewSchema.safeParse({
+    planId: formData.get("planId"),
+    startDate: formData.get("startDate") ?? "",
+    assignmentDurationDays: formData.get("assignmentDurationDays") ?? "",
+    overrideRupees: formData.get("overrideRupees") ?? "",
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Check the form." };
+  }
+
+  const { data: plan } = await admin
+    .from("plans")
+    .select("id, name, is_active, price_paise, duration_days, included_meal_slots")
+    .eq("id", parsed.data.planId)
+    .eq("tenant_id", user.tenantId)
+    .maybeSingle();
+  if (!plan) return { error: "That plan does not exist in this mess." };
+
+  const { data: existingRows } = await admin
+    .from("subscriptions")
+    .select("id, status, start_date, end_date")
+    .eq("tenant_id", user.tenantId)
+    .eq("student_id", student.id);
+
+  const existingPeriods = (existingRows ?? []).map((row) => ({
+    status: row.status,
+    startDate: toServiceDate(row.start_date),
+    endDate: toServiceDate(row.end_date),
+  }));
+
+  const decision = activateSubscription({
+    actorRole: user.role,
+    studentStatus: student.status as StudentStatus,
+    existingPeriods,
+    plan: {
+      id: plan.id,
+      isActive: plan.is_active,
+      pricePaise: toPaise(plan.price_paise),
+      durationDays: plan.duration_days,
+      mealSlots: plan.included_meal_slots as MealSlot[],
+    },
+    timeZone: user.timezone,
+    now: new Date(),
+    startDate: toServiceDate(parsed.data.startDate),
+    ...(parsed.data.assignmentDurationDays
+      ? { assignmentDurationDays: Number(parsed.data.assignmentDurationDays) }
+      : {}),
+    ...(parsed.data.overrideRupees ? { overrideRupees: Number(parsed.data.overrideRupees) } : {}),
+  });
+  if (!decision.ok) return { error: decision.error.message };
+  const activation = decision.value;
+
+  const { data: created, error: insertError } = await admin
+    .from("subscriptions")
+    .insert({
+      tenant_id: user.tenantId,
+      student_id: student.id,
+      plan_id: activation.planId,
+      price_paise_snapshot: activation.pricePaiseSnapshot,
+      included_meal_slots_snapshot: [...activation.mealSlotsSnapshot],
+      plan_duration_days_snapshot: activation.planDurationDaysSnapshot,
+      assignment_duration_days: activation.assignmentDurationDays,
+      calculated_price_paise: activation.calculatedPricePaise,
+      is_price_overridden: activation.isPriceOverridden,
+      start_date: activation.startDate,
+      end_date: activation.endDate,
+      status: "ACTIVE",
+    })
+    .select("id")
+    .single();
+
+  if (insertError) {
+    if (insertError.code === "23P01") {
+      return { error: "Another plan already covers those dates. Reload the page." };
+    }
+    return { error: `Could not renew the plan: ${insertError.message}` };
+  }
+
+  await new SupabaseAuditLogRepository(admin).write({
+    tenantId: user.tenantId,
+    actorProfileId: user.actorProfileId,
+    action: "SUBSCRIPTION_RENEWED",
+    entityType: "subscription",
+    entityId: created.id,
+    after: {
+      studentId: student.id,
+      planId: activation.planId,
+      planName: plan.name,
+      pricePaise: activation.pricePaiseSnapshot,
+      startDate: activation.startDate,
+      endDate: activation.endDate,
+      // Which term this follows, so the chain is readable in the log.
+      renewedFrom: existingPeriods.length,
+    },
+  });
+
+  revalidatePath(`/admin/students/${student.id}`);
+  revalidatePath("/admin/students");
+
+  return {
+    success: `Renewed on ${plan.name} — ${activation.startDate} to ${activation.endDate}.`,
+  };
 }

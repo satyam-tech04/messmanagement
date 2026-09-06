@@ -34,7 +34,8 @@
     "verify:pause": "tsx scripts/verify-pause.mts",
     "verify:pricing": "tsx scripts/verify-pricing.mts",
     "verify:counter-sales": "tsx scripts/verify-counter-sales.mts",
-    "verify:announcements": "tsx scripts/verify-announcements-feedback.mts"
+    "verify:announcements": "tsx scripts/verify-announcements-feedback.mts",
+    "verify:renewal": "tsx scripts/verify-renewal.mts"
   },
   "lint-staged": {
     "*.{ts,tsx}": [

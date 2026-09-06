@@ -23,7 +23,8 @@ import { domainError, forbidden, type DomainError } from "@/core/errors";
 import { perMealPaise, type Paise } from "@/core/money";
 import { err, ok, type Result } from "@/core/result";
 import { validateSubscriptionStart } from "@/core/policies/student-admin.policy";
-import { serviceDateOf, type ServiceDate } from "@/core/time";
+import type { SubscriptionDates } from "@/core/policies/subscription-state";
+import { addDays, compareServiceDates, serviceDateOf, type ServiceDate } from "@/core/time";
 import { parseAssignmentPricing, parsePlanPricing } from "@/core/policies/pricing.policy";
 
 /** Matches the 1–400 day CHECK constraint on `plans.duration_days`. */
@@ -170,6 +171,30 @@ export function planMealsInPeriod(slotCount: number, durationDays: number): numb
   return slotCount * durationDays;
 }
 
+/**
+ * The first existing subscription whose days collide with `[startDate, endDate]`.
+ *
+ * Inclusive at both ends, matching how a subscription is read everywhere else:
+ * a 30-day plan from the 1st runs through the 30th.
+ */
+export function overlappingPeriod(
+  existing: readonly SubscriptionDates[],
+  startDate: ServiceDate,
+  endDate: ServiceDate,
+): SubscriptionDates | null {
+  return (
+    existing.find((other) => {
+      // Deliberately matches the exclusion constraint's WHERE clause, so the
+      // policy and the database can never disagree about what blocks what.
+      if (other.status !== "ACTIVE" && other.status !== "PENDING_PAYMENT") return false;
+      return (
+        compareServiceDates(startDate, other.endDate) <= 0 &&
+        compareServiceDates(endDate, other.startDate) >= 0
+      );
+    }) ?? null
+  );
+}
+
 // --- Activation -----------------------------------------------------------
 
 export interface ActivationPlan {
@@ -183,8 +208,20 @@ export interface ActivationPlan {
 export interface ActivationRequest {
   readonly actorRole: UserRole;
   readonly studentStatus: StudentStatus;
-  /** Checked in the database too, by a partial unique index; this is the friendly path. */
-  readonly hasActiveSubscription: boolean;
+  /**
+   * Every subscription this student already holds.
+   *
+   * Replaces an earlier `hasActiveSubscription` boolean. That flag was a proxy
+   * for a partial unique index allowing one ACTIVE row per student, and the
+   * proxy was wrong: the real rule is that no two subscriptions may cover the
+   * same DAY. Consecutive terms are exactly what a renewal is, and the boolean
+   * made the commonest one — paying on the 25th for a term starting the 1st —
+   * impossible to express.
+   *
+   * Mirrored by the exclusion constraint in migration 017, which is the real
+   * guarantee when two admins act at once.
+   */
+  readonly existingPeriods?: readonly SubscriptionDates[];
   readonly plan: ActivationPlan;
   readonly timeZone: string;
   readonly now: Date;
@@ -243,15 +280,6 @@ export function activateSubscription(
     );
   }
 
-  if (request.hasActiveSubscription) {
-    return err(
-      domainError(
-        "CONFLICT",
-        "This student already has an active plan. End it before assigning another.",
-      ),
-    );
-  }
-
   // Backdating is legitimate and necessary — a mess entering students a
   // fortnight after it opened must record when they actually started eating, or
   // every end date is pushed out by that fortnight. But the field was
@@ -282,6 +310,22 @@ export function activateSubscription(
   });
   if (!checked.ok) return checked;
   const period = checked.value;
+
+  // No two subscriptions may cover the same day. A cancelled or explicitly
+  // expired row releases its dates; anything else still holds them, including a
+  // term that has simply run out — nothing writes to the status column when
+  // time passes, so a finished plan's row still reads ACTIVE.
+  const clash = overlappingPeriod(request.existingPeriods ?? [], period.startDate, period.endDate);
+  if (clash) {
+    const firstFree = addDays(clash.endDate, 1);
+    return err(
+      domainError(
+        "CONFLICT",
+        `This student already has a plan covering ${clash.startDate} to ${clash.endDate}. Start the new one on ${firstFree} or later.`,
+        { from: clash.startDate, to: clash.endDate, firstFree },
+      ),
+    );
+  }
 
   // Copied, not referenced: a later mutation of the plan object must not reach
   // back into a subscription that has already been agreed.
