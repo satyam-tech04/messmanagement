@@ -43,6 +43,7 @@ conversation: everything needed to continue correctly is here or linked from her
 | **Counter photo from the camera**     | ✅ getUserMedia capture, same upload action as a picked file        |
 | **Mobile app — Slice 0 (transport)**  | ✅ `/api/*` reachable over a bearer token, 4 live checks pass       |
 | **Mobile app — Slice 1a (auth API)**  | ✅ login / change-password / logout / me, 9 live checks pass        |
+| **Mobile app — Slice 1b (Flutter)**   | 🚧 `mobile/` scaffolded, builds for Android; not yet run on device  |
 
 **Phase 0 is done.** Three roles sign in against the live database and land on their own
 shell; cross-tenant isolation is proven with real data. Phase 1 domain logic (QR policy,
@@ -478,12 +479,36 @@ Two traps found by running it, not by reading it:
 - **`profiles_phone_format` is `^\+?[0-9]{7,15}$`** — digits only. `+91 98765 43210` cannot
   be stored at all; the `mobile` generated column strips separators that never get in.
 
-### Next: Slice 1b — Flutter foundation
+### 🚧 Slice 1b — Flutter foundation (2026-09-09)
 
-Flutter project (`com.messos.app`), Riverpod + go_router, dio with a bearer/refresh
-interceptor, `flutter_secure_storage`, and the `DESIGN.md` system port: four list states,
-`₹1,00,000` grouping via `intl` `en_IN`, the fixed status-colour vocabulary, light and dark.
-Then login → forced password change → role-routed shell.
+The app lives in **`mobile/`**, in this repo. Bundle id `com.messos.app` on both platforms.
+Excluded from the Next pipeline (`.prettierignore`, `eslint.config.mjs`, `tsconfig.json`) —
+Dart has its own analyzer and formatter, and the Gradle/Xcode files are tool-owned.
+
+Built: secure token store, `ApiClient` (bearer + single refresh-and-replay on 401, domain
+codes not HTTP statuses), `AuthRepository`, Riverpod session controller, the DESIGN.md port
+(four states, status vocabulary, light/dark, 44px targets), login, forced password change,
+and the role-routed shell. `flutter analyze` clean; 12 unit tests on money formatting.
+
+`POST /api/auth/refresh` was added server-side so the binary needs **one** base URL and no
+Supabase config — two hosts in a mobile client is two things to get wrong per environment.
+
+**Not yet proven: the app has never talked to the API.** It compiles and its unit tests
+pass; the login flow has not been exercised on a device. That is the next thing to do.
+
+Traps found while building it:
+
+- **`flutter_secure_storage` is pinned to 10.3.1.** v11 hardcodes `compileSdk = 37`, a
+  _preview_ Android SDK that AGP cannot resolve (it installs as `android-37.0`) and that Play
+  will not accept as a release target.
+- **The toolchain is on Flutter's `main` channel.** Fine for building, wrong for shipping —
+  `stable` is the production channel. Switching later does not invalidate the project.
+- **A debug APK is ~152 MB and that is normal**: 76 MB of it is `kernel_blob.bin` (the Dart
+  source, for hot reload), plus a JIT engine and Vulkan validation layers. Release arm64 is
+  **17.8 MB**; the 50 MB `.aab` is an upload artifact, not a download size.
+- **`API_BASE_URL` is a `--dart-define`**, defaulting to `http://localhost:3000`. Running the
+  scheme straight from Xcode does not pass it. A physical device cannot reach `localhost` —
+  it needs the host's LAN address, or the production URL.
 
 Full plan: `~/.claude-profiles/personal/plans/quiet-sparking-stardust.md`.
 

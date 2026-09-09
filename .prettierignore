@@ -18,3 +18,8 @@ docs/**/student_subscription_grace_period_feature.md
 docs/meal-billing-feature-spec.md
 docs/meal-pricing-feature-spec.md
 docs/student_subscription_grace_period_feature.md
+
+# The Flutter app. Dart has its own formatter (`dart format`), and the
+# generated Android/iOS project files are tool-owned -- reformatting either
+# would fight the toolchain that regenerates them.
+mobile

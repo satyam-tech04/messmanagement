@@ -165,6 +165,10 @@ const eslintConfig = defineConfig([
     "coverage/**",
     "next-env.d.ts",
     "src/infra/supabase/database.types.ts",
+    // The Flutter app is Dart, with its own analyzer and formatter
+    // (`mobile/analysis_options.yaml`). Nothing here can lint it, and the
+    // generated Gradle/Xcode files are owned by the toolchain.
+    "mobile/**",
   ]),
 ]);
 
