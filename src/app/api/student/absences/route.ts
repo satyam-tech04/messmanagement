@@ -105,8 +105,5 @@ export async function POST(request: Request) {
     return fail(result.error.code, result.error.message, status, result.error.details);
   }
 
-  return NextResponse.json(
-    { absence: result.value },
-    { headers: { "Cache-Control": "no-store" } },
-  );
+  return NextResponse.json({ absence: result.value }, { headers: { "Cache-Control": "no-store" } });
 }

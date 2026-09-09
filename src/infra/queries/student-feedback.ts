@@ -37,10 +37,9 @@ export async function readStudentFeedback(
   user: SessionUser,
 ): Promise<StudentFeedback> {
   const today = serviceDateOf(user.timezone, new Date());
-  const settings = await new SupabaseTenantRepository(
-    supabase,
-    createAdminClient(),
-  ).getSettings(user.tenantId);
+  const settings = await new SupabaseTenantRepository(supabase, createAdminClient()).getSettings(
+    user.tenantId,
+  );
 
   // Off by default. The screen must say so rather than show an empty list,
   // which would read as "nothing to rate" instead of "not collected here".

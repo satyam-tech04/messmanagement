@@ -56,9 +56,7 @@ export async function readStudentPlan(
     .order("start_date", { ascending: false });
 
   const all = (data ?? []).map((row): StudentSubscription => {
-    const plan = firstRelated<{ name: string; duration_days: number }>(
-      row.plans as never,
-    );
+    const plan = firstRelated<{ name: string; duration_days: number }>(row.plans as never);
     const slots = (row.included_meal_slots_snapshot as string[]) ?? [];
 
     // Meals the plan actually promises across its whole period. Dividing by
@@ -82,8 +80,7 @@ export async function readStudentPlan(
         },
         today,
       ),
-      perMealPaise:
-        meals > 0 ? Math.floor(row.price_paise_snapshot / meals) : null,
+      perMealPaise: meals > 0 ? Math.floor(row.price_paise_snapshot / meals) : null,
     };
   });
 

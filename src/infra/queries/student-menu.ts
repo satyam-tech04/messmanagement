@@ -44,10 +44,9 @@ export async function readStudentMenu(
   supabase: SupabaseClient<Database>,
   user: SessionUser,
 ): Promise<StudentMenu> {
-  const settings = await new SupabaseTenantRepository(
-    supabase,
-    createAdminClient(),
-  ).getSettings(user.tenantId);
+  const settings = await new SupabaseTenantRepository(supabase, createAdminClient()).getSettings(
+    user.tenantId,
+  );
 
   const today = serviceDateOf(user.timezone, new Date());
   const to = addDays(today, DAYS_AHEAD);

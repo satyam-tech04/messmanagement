@@ -60,8 +60,5 @@ export async function POST(
     );
   }
 
-  return NextResponse.json(
-    { absence: cancelled },
-    { headers: { "Cache-Control": "no-store" } },
-  );
+  return NextResponse.json({ absence: cancelled }, { headers: { "Cache-Control": "no-store" } });
 }

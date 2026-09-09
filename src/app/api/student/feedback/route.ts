@@ -64,9 +64,7 @@ export async function POST(request: Request) {
   if (!parsed.success) return fail("VALIDATION_FAILED", "Check your rating.", 400);
 
   const admin = createAdminClient();
-  const settings = await new SupabaseTenantRepository(supabase, admin).getSettings(
-    user.tenantId,
-  );
+  const settings = await new SupabaseTenantRepository(supabase, admin).getSettings(user.tenantId);
   if (!settings) return fail("INFRASTRUCTURE_ERROR", "Try again in a moment.", 503);
 
   const draft = parseFeedbackDraft({

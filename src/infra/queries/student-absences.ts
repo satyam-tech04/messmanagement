@@ -15,10 +15,7 @@ import { subscriptionStateOf } from "@/core/policies/subscription-state";
 import { serviceDateOf, toServiceDate } from "@/core/time";
 import type { SessionUser } from "@/infra/auth/session";
 import { createAdminClient } from "@/infra/supabase/admin";
-import {
-  SupabaseMessCutRepository,
-  SupabaseTenantRepository,
-} from "@/infra/supabase/repositories";
+import { SupabaseMessCutRepository, SupabaseTenantRepository } from "@/infra/supabase/repositories";
 import type { Database } from "@/infra/supabase/database.types";
 
 export interface AbsenceRow {
@@ -58,9 +55,7 @@ export async function readStudentAbsences(
   if (!user.studentId) return null;
 
   const admin = createAdminClient();
-  const settings = await new SupabaseTenantRepository(supabase, admin).getSettings(
-    user.tenantId,
-  );
+  const settings = await new SupabaseTenantRepository(supabase, admin).getSettings(user.tenantId);
   if (!settings) return null;
 
   const today = serviceDateOf(user.timezone, new Date());

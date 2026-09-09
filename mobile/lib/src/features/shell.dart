@@ -16,6 +16,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/session.dart';
 import '../design/async_view.dart';
 import 'staff/scanner_screen.dart';
+import 'student/menu_screen.dart';
+import 'student/more_screen.dart';
+import 'student/plan_screen.dart';
 import 'student/qr_screen.dart';
 import '../state/auth_controller.dart';
 
@@ -46,19 +49,19 @@ const _studentTabs = <_Tab>[
     icon: Icons.restaurant_menu_rounded,
     label: 'Menu',
     title: "Today's menu",
-    pending: 'The menu for the next few days is coming soon.',
+    pending: null,
   ),
   _Tab(
     icon: Icons.card_membership_rounded,
     label: 'Plan',
     title: 'My plan',
-    pending: 'Your plan and payment history are coming soon.',
+    pending: null,
   ),
   _Tab(
     icon: Icons.more_horiz_rounded,
     label: 'More',
     title: 'More',
-    pending: 'Meal skips, time away and feedback are coming soon.',
+    pending: null,
   ),
 ];
 
@@ -113,6 +116,9 @@ class _AppShellState extends ConsumerState<AppShell> {
     }
     return switch (tab.label) {
       'My code' => QrScreen(session: widget.session),
+      'Menu' => const MenuScreen(),
+      'Plan' => const PlanScreen(),
+      'More' => const MoreScreen(),
       'Scan' => ScannerScreen(session: widget.session),
       _ => EmptyState(icon: tab.icon, title: tab.title, message: ''),
     };
