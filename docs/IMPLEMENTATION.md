@@ -43,7 +43,7 @@ conversation: everything needed to continue correctly is here or linked from her
 | **Counter photo from the camera**     | ✅ getUserMedia capture, same upload action as a picked file        |
 | **Mobile app — Slice 0 (transport)**  | ✅ `/api/*` reachable over a bearer token, 4 live checks pass       |
 | **Mobile app — Slice 1a (auth API)**  | ✅ login / change-password / logout / me, 9 live checks pass        |
-| **Mobile app — Slice 1b (Flutter)**   | 🚧 `mobile/` scaffolded, builds for Android; not yet run on device  |
+| **Mobile app — Slice 1b (Flutter)**   | ✅ login → role-routed shell, run on iOS against production         |
 
 **Phase 0 is done.** Three roles sign in against the live database and land on their own
 shell; cross-tenant isolation is proven with real data. Phase 1 domain logic (QR policy,
@@ -493,8 +493,9 @@ and the role-routed shell. `flutter analyze` clean; 12 unit tests on money forma
 `POST /api/auth/refresh` was added server-side so the binary needs **one** base URL and no
 Supabase config — two hosts in a mobile client is two things to get wrong per environment.
 
-**Not yet proven: the app has never talked to the API.** It compiles and its unit tests
-pass; the login flow has not been exercised on a device. That is the next thing to do.
+**Proven on device (iOS Simulator, against production):** a real Campus Crave student signs
+in with their mobile number and lands on the student shell. The auth probe also passes 9/9
+against `messmanagement-lime.vercel.app`.
 
 Traps found while building it:
 
@@ -506,9 +507,18 @@ Traps found while building it:
 - **A debug APK is ~152 MB and that is normal**: 76 MB of it is `kernel_blob.bin` (the Dart
   source, for hot reload), plus a JIT engine and Vulkan validation layers. Release arm64 is
   **17.8 MB**; the 50 MB `.aab` is an upload artifact, not a download size.
-- **`API_BASE_URL` is a `--dart-define`**, defaulting to `http://localhost:3000`. Running the
-  scheme straight from Xcode does not pass it. A physical device cannot reach `localhost` —
-  it needs the host's LAN address, or the production URL.
+- **Xcode does not pass `--dart-define`.** The first run failed because `API_BASE_URL` fell
+  back to `localhost:3000` and, on the iOS Simulator, `localhost` is the developer's Mac —
+  where another project was listening. The default is now **production**, so a forgotten flag
+  still produces a working app. Debug builds name the URL in the error; release builds do not.
+- **CocoaPods must run before Xcode can open the project.** `GeneratedPluginRegistrant.m`
+  imports each plugin's module and those exist only after `pod install`. `flutter build ios`
+  does it automatically; opening Xcode does not. Open `Runner.xcworkspace`, never
+  `Runner.xcodeproj`.
+- **The production URL is compiled into the binary.** `messmanagement-lime.vercel.app` is a
+  Vercel-generated name derived from the project name. It must become a custom domain before
+  the first store release: changing it later needs a store update that every installed app
+  has to receive before it works again.
 
 Full plan: `~/.claude-profiles/personal/plans/quiet-sparking-stardust.md`.
 

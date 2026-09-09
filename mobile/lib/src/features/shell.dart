@@ -15,6 +15,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/session.dart';
 import '../design/async_view.dart';
+import 'student/qr_screen.dart';
 import '../state/auth_controller.dart';
 
 class _Tab {
@@ -38,7 +39,7 @@ const _studentTabs = <_Tab>[
     icon: Icons.qr_code_2_rounded,
     label: 'My code',
     title: 'My meal code',
-    pending: 'Your rotating meal code arrives in the next update.',
+    pending: null,
   ),
   _Tab(
     icon: Icons.restaurant_menu_rounded,
@@ -99,6 +100,19 @@ class AppShell extends ConsumerStatefulWidget {
 class _AppShellState extends ConsumerState<AppShell> {
   int _index = 0;
 
+  /// A built screen, or the designed placeholder for a tab whose slice has not
+  /// landed. A blank body is indistinguishable from a broken one.
+  Widget _screenFor(_Tab tab) {
+    if (tab.pending == null && tab.label == 'My code') {
+      return QrScreen(session: widget.session);
+    }
+    return EmptyState(
+      icon: tab.icon,
+      title: tab.title,
+      message: tab.pending ?? '',
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final tabs = widget.session.role.usesStaffShell ? _staffTabs : _studentTabs;
@@ -137,11 +151,7 @@ class _AppShellState extends ConsumerState<AppShell> {
           ),
         ],
       ),
-      body: EmptyState(
-        icon: tab.icon,
-        title: tab.title,
-        message: tab.pending ?? '',
-      ),
+      body: _screenFor(tab),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
