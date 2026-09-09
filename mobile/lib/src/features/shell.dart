@@ -15,6 +15,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/session.dart';
 import '../design/async_view.dart';
+import 'staff/counts_screen.dart';
+import 'staff/sales_screen.dart';
 import 'staff/scanner_screen.dart';
 import 'student/menu_screen.dart';
 import 'student/more_screen.dart';
@@ -76,19 +78,19 @@ const _staffTabs = <_Tab>[
     icon: Icons.edit_note_rounded,
     label: 'Manual',
     title: 'Manual entry',
-    pending: 'The audited manual fallback is coming soon.',
+    pending: null,
   ),
   _Tab(
     icon: Icons.groups_rounded,
     label: 'Counts',
     title: 'Live counts',
-    pending: 'Projected and served counts are coming soon.',
+    pending: null,
   ),
   _Tab(
     icon: Icons.receipt_long_rounded,
     label: 'Sales',
     title: 'Counter sales',
-    pending: 'Counter billing is coming soon.',
+    pending: null,
   ),
 ];
 
@@ -120,6 +122,11 @@ class _AppShellState extends ConsumerState<AppShell> {
       'Plan' => const PlanScreen(),
       'More' => const MoreScreen(),
       'Scan' => ScannerScreen(session: widget.session),
+      // Manual entry is a sheet on the scanner, and also its own tab for a
+      // counter whose camera has given up entirely.
+      'Manual' => ScannerScreen(session: widget.session, manualOnly: true),
+      'Counts' => CountsScreen(session: widget.session),
+      'Sales' => const SalesScreen(),
       _ => EmptyState(icon: tab.icon, title: tab.title, message: ''),
     };
   }

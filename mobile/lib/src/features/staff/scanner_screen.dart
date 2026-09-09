@@ -52,9 +52,18 @@ final verifyRepositoryProvider = Provider<VerifyRepository>((ref) {
 });
 
 class ScannerScreen extends ConsumerStatefulWidget {
-  const ScannerScreen({super.key, required this.session});
+  const ScannerScreen({
+    super.key,
+    required this.session,
+    this.manualOnly = false,
+  });
 
   final Session session;
+
+  /// Skip the camera entirely, for a counter whose camera has failed — the web
+  /// app has a dedicated page for the same reason. The offline queue and the
+  /// audit trail behave identically either way.
+  final bool manualOnly;
 
   @override
   ConsumerState<ScannerScreen> createState() => _ScannerScreenState();
@@ -221,6 +230,41 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
   @override
   Widget build(BuildContext context) {
     final result = _result;
+
+    if (widget.manualOnly) {
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: FilledButton.icon(
+                onPressed: () => _openManual(),
+                icon: const Icon(Icons.edit_note_rounded),
+                label: const Text('Serve without a code'),
+              ),
+            ),
+          ),
+          if (result != null)
+            _ResultOverlay(result: result, onManual: _openManual),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: _CounterBar(
+              servedCount: _servedCount,
+              todayServed: _todayServed,
+              expiredCount: _expiredCount,
+              onManual: () => _openManual(),
+              onDismissExpired: () async {
+                await ref.read(scanQueueProvider).clearExpired();
+                if (mounted) setState(() => _expiredCount = 0);
+              },
+            ),
+          ),
+        ],
+      );
+    }
 
     return Stack(
       fit: StackFit.expand,

@@ -69,6 +69,36 @@ class AttendanceWatcher {
         .subscribe();
   }
 
+  /// Watch every meal served in this mess today, for the live count.
+  ///
+  /// The same socket as [watch], pointed at the tenant rather than one student.
+  /// RLS decides what arrives — `attendance_read_tenant` lets staff see their
+  /// own mess's rows and nobody else's — so the filter below is bandwidth, not
+  /// a security boundary.
+  Future<void> watchTenant({
+    required String accessToken,
+    required String serviceDate,
+    required void Function() onServed,
+  }) async {
+    await stop();
+
+    final client = Supabase.instance.client;
+    client.realtime.setAuth(accessToken);
+
+    _channel = client
+        .channel('counter-attendance:$serviceDate')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'attendance',
+          callback: (payload) {
+            if (payload.newRecord['service_date'] != serviceDate) return;
+            onServed();
+          },
+        )
+        .subscribe();
+  }
+
   Future<void> stop() async {
     final channel = _channel;
     _channel = null;
