@@ -10,12 +10,11 @@
  */
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { classifyLoginIdentifier, syntheticEmailFor } from "@/core/domain/identity";
 import { createClient } from "@/infra/supabase/server";
 import { createAdminClient } from "@/infra/supabase/admin";
 import { rateLimitBuckets, SupabaseRateLimiter } from "@/infra/supabase/repositories";
 import { homeRouteFor } from "@/infra/auth/session";
-import { firstRelated } from "@/infra/supabase/mappers";
+import { resolveLoginEmail } from "@/infra/auth/resolve-login-email";
 import type { UserRole } from "@/core/domain/enums";
 
 const loginSchema = z.object({
@@ -49,9 +48,6 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
     return { error: parsed.error.issues[0]?.message ?? "Check your details and try again." };
   }
 
-  const identifier = classifyLoginIdentifier(parsed.data.identifier);
-  if (!identifier) return { error: GENERIC_FAILURE };
-
   const admin = createAdminClient();
   const limiter = new SupabaseRateLimiter(admin);
 
@@ -63,49 +59,18 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
     return { error: "Too many attempts. Wait a few minutes and try again." };
   }
 
-  let email: string;
-
-  if (identifier.kind === "EMAIL") {
-    email = identifier.email;
-  } else {
-    // The student typed a mobile number, but their Supabase Auth address is
-    // still derived from their roll number — changing that would mean rewriting
-    // every auth user in the hostel. So the number is resolved to the student
-    // first, and the sign-in happens as the address they have always had.
-    //
-    // Runs with the service role because there is no session yet; RLS cannot
-    // help before authentication. `mobile` is a generated column holding the
-    // last ten digits, so `+91 98765-43210` and `9876543210` are one student.
-    const { data: matches, error } = await admin
-      .from("profiles")
-      .select("mobile, students!inner ( roll_number ), tenants!inner ( slug )")
-      .eq("role", "STUDENT")
-      .eq("mobile", identifier.mobile)
-      .limit(2);
-
-    if (error || !matches || matches.length === 0) return { error: GENERIC_FAILURE };
-
-    if (matches.length > 1) {
-      // Two students share this number. Never guess — signing someone into the
-      // wrong account is worse than refusing, and this is a real state until
-      // migration 012's unique index lands. Said plainly, because the student
-      // cannot fix it and the admin can.
-      return {
-        error:
-          "That mobile number is registered to more than one student. Ask your mess admin to correct it.",
-      };
-    }
-
-    // Both embeds are to-one (students.profile_id is unique, tenant_id is a FK),
-    // so PostgREST collapses each to an object rather than an array. Reading
-    // `[0]` here would silently yield undefined — see firstRelated().
-    const row = matches[0]!;
-    const tenant = firstRelated<{ slug: string }>(row.tenants as never);
-    const student = firstRelated<{ roll_number: string }>(row.students as never);
-    if (!tenant || !student) return { error: GENERIC_FAILURE };
-
-    email = syntheticEmailFor(tenant.slug, student.roll_number);
+  // Shared with `POST /api/auth/login` so the two transports can never disagree
+  // about which account a mobile number belongs to.
+  const resolved = await resolveLoginEmail(admin, parsed.data.identifier);
+  if (!resolved.ok) {
+    return {
+      error:
+        resolved.reason === "AMBIGUOUS_MOBILE"
+          ? "That mobile number is registered to more than one student. Ask your mess admin to correct it."
+          : GENERIC_FAILURE,
+    };
   }
+  const email = resolved.email;
 
   const supabase = await createClient();
   const { data: signIn, error: signInError } = await supabase.auth.signInWithPassword({

@@ -37,7 +37,8 @@
     "verify:announcements": "tsx scripts/verify-announcements-feedback.mts",
     "verify:renewal": "tsx scripts/verify-renewal.mts",
     "verify:menu-import": "tsx scripts/verify-menu-import.mts",
-    "verify:bearer": "tsx scripts/verify-bearer-api.mts"
+    "verify:bearer": "tsx scripts/verify-bearer-api.mts",
+    "verify:mobile-auth": "tsx scripts/verify-mobile-auth.mts"
   },
   "lint-staged": {
     "*.{ts,tsx}": [

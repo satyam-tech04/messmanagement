@@ -42,6 +42,7 @@ conversation: everything needed to continue correctly is here or linked from her
 | **Auto-assigned roll numbers**        | ✅ per-mess toggle, allocated under a row lock (010)                |
 | **Counter photo from the camera**     | ✅ getUserMedia capture, same upload action as a picked file        |
 | **Mobile app — Slice 0 (transport)**  | ✅ `/api/*` reachable over a bearer token, 4 live checks pass       |
+| **Mobile app — Slice 1a (auth API)**  | ✅ login / change-password / logout / me, 9 live checks pass        |
 
 **Phase 0 is done.** Three roles sign in against the live database and land on their own
 shell; cross-tenant isolation is proven with real data. Phase 1 domain logic (QR policy,
@@ -226,6 +227,7 @@ npm run verify        # typecheck + lint + tests
 npm run db:verify     # schema assertions + a real JWT claim check against the live DB
 npm run verify:phase1 # drives the whole service loop against the live DB (14 checks)
 npm run verify:bearer # /api/* reachable, authenticated and gated over a bearer token
+npm run verify:mobile-auth # login, forced password change, bootstrap, logout
 ```
 
 `verify:bearer` needs a running server and defaults to `http://localhost:3000`; point it
@@ -449,13 +451,39 @@ Applied to `/api/qr/token`, `/api/qr/verify`, and both photo routes.
 real student's token reaches the handler and gets `NO_ACTIVE_PLAN`; a garbage token → 401
 (fails closed); a student owing a password change → 403 `PASSWORD_CHANGE_REQUIRED`.
 
-### Next: Slice 1 — login and role routing
+### ✅ Slice 1a — mobile auth endpoints (2026-09-09)
 
-`POST /api/auth/login` must resolve a **mobile number** to the synthetic roll-number address
-(`cs21b001@campus-crave.mess.invalid`) server-side — that lookup needs the service-role key
-and can never ship in a Flutter binary. Reuses `classifyLoginIdentifier` and
-`rateLimitBuckets.login` (10 / 5 min per identifier). Then `/api/auth/change-password`,
-`/api/auth/logout`, `GET /api/me`, and the Flutter foundation + design-system port.
+`POST /api/auth/login` · `POST /api/auth/change-password` · `POST /api/auth/logout` ·
+`GET /api/me`. **Bundle id decided: `com.messos.app`, display name MessOS.**
+
+Identifier → Auth address is extracted to `src/infra/auth/resolve-login-email.ts` and the web
+Server Action now calls it too — two copies would eventually disagree about which student a
+mobile number belongs to, and signing someone into the wrong account is the worst outcome
+here. `toSessionPayload` deliberately omits `tenantId`, `actorProfileId` and `studentId`; the
+test asserts on their **absence**, because a tenant UUID in a binary invites a later endpoint
+to accept one back.
+
+**Proven by `npm run verify:mobile-auth`** (9/9): a mobile number resolves and issues tokens;
+a wrong password and an unknown number return **byte-identical 401s** (an API is a far better
+enumerator than a form); `must_change_password` blocks `/api/me` but not the change itself;
+logout revokes the refresh token so a lifted token does not outlive it.
+
+Two traps found by running it, not by reading it:
+
+- **`supabase.auth.updateUser()` cannot work on a bearer client.** It acts on the auth
+  client's _stored_ session, and `createBearerClient` keeps none by design — a persisted
+  session on a warm serverless instance would leak between requests. It fails with "Auth
+  session missing!". The password change goes to `PUT /auth/v1/user` with the caller's own
+  token instead, which keeps Supabase's refusal of a password identical to the current one.
+- **`profiles_phone_format` is `^\+?[0-9]{7,15}$`** — digits only. `+91 98765 43210` cannot
+  be stored at all; the `mobile` generated column strips separators that never get in.
+
+### Next: Slice 1b — Flutter foundation
+
+Flutter project (`com.messos.app`), Riverpod + go_router, dio with a bearer/refresh
+interceptor, `flutter_secure_storage`, and the `DESIGN.md` system port: four list states,
+`₹1,00,000` grouping via `intl` `en_IN`, the fixed status-colour vocabulary, light and dark.
+Then login → forced password change → role-routed shell.
 
 Full plan: `~/.claude-profiles/personal/plans/quiet-sparking-stardust.md`.
 
