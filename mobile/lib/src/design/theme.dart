@@ -67,8 +67,13 @@ class MessColors extends ThemeExtension<MessColors> {
   }
 }
 
-/// The one place a seed colour is chosen, so both schemes stay in step.
-const _seed = Color(0xFF0F766E);
+/// The brand blue, sampled from the logo, and the one place a seed colour is
+/// chosen so both schemes stay in step.
+///
+/// Material derives the whole scheme from this, which is what keeps buttons,
+/// selection and focus rings recognisably the same product as the mark on the
+/// icon rather than merely nearby.
+const _seed = Color(0xFF0D77FC);
 
 ThemeData _base(Brightness brightness, MessColors statuses) {
   final scheme = ColorScheme.fromSeed(

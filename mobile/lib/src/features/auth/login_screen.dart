@@ -16,6 +16,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_failure.dart';
+import '../../design/brand.dart';
 import '../../state/auth_controller.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -83,11 +84,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Icon(
-                      Icons.restaurant_rounded,
-                      size: 48,
-                      color: theme.colorScheme.primary,
-                    ),
+                    const BrandMark(size: 96),
                     const SizedBox(height: 20),
                     Text(
                       'MessOS',

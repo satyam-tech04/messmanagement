@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
@@ -127,9 +129,16 @@ export function AppShell({
 
   const brand = (
     <div className="flex items-center gap-2.5">
-      <div className="bg-primary text-primary-foreground flex size-8 items-center justify-center rounded-lg">
-        <Icons.UtensilsCrossed className="size-4" aria-hidden="true" />
-      </div>
+      {/* The real mark rather than a stand-in glyph, so the sidebar, the browser
+          tab and the phone's home screen are visibly one product. */}
+      <Image
+        src="/brand/mark.png"
+        alt=""
+        width={32}
+        height={32}
+        className="size-8 shrink-0 object-contain"
+        priority
+      />
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold tracking-tight">{user.tenantName}</p>
         <p className="text-muted-foreground truncate text-xs">Mess OS</p>

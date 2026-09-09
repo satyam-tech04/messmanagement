@@ -16,6 +16,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'design/async_view.dart';
+import 'design/brand.dart';
 import 'design/theme.dart';
 import 'features/auth/change_password_screen.dart';
 import 'features/auth/login_screen.dart';
@@ -65,18 +66,13 @@ class _Splash extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Scaffold(
       body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.restaurant_rounded,
-              size: 48,
-              color: theme.colorScheme.primary,
-            ),
-            const SizedBox(height: 24),
+            const BrandMark(size: 110),
+            const SizedBox(height: 28),
             const SizedBox(
               height: 24,
               width: 24,
