@@ -76,16 +76,27 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
   int _servedCount = 0;
   int _expiredCount = 0;
 
-  /// An audit label only. It must never key a rate limit: anything the caller
-  /// controls can be varied per request, so a runaway loop would mint a new
-  /// bucket each time and the limit would never bite. The counter identity that
-  /// cannot be forged is the signed-in staff account.
-  String get _deviceId =>
-      'counter-${widget.session.tenantSlug}-${widget.session.fullName.hashCode.abs() % 100000}';
+  /// Today's total across this counter, from the server.
+  ///
+  /// Distinct from [_servedCount], which counts only what this session did.
+  /// Staff reconcile against the day's number, not their own shift's.
+  int? _todayServed;
+
+  /// The audit label, **taken from the server** rather than invented here.
+  ///
+  /// It is derived from the staff profile so two tablets signed in as different
+  /// people are distinguishable, and taking it from `/api/staff/home` means a
+  /// scan recorded from the app carries the identical label as one recorded
+  /// from the web. It must never key a rate limit: anything the caller controls
+  /// can be varied per request, so a runaway loop would mint a fresh bucket
+  /// each time and the limit would never bite. The identity that cannot be
+  /// forged is the signed-in staff account.
+  String _deviceId = 'counter-app';
 
   @override
   void initState() {
     super.initState();
+    _loadToday();
     _flush();
     // Retry the buffered scans periodically as well as on demand: counter
     // Wi-Fi returns without anyone noticing, and nobody should have to
@@ -102,9 +113,27 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
     super.dispose();
   }
 
+  /// Today's totals, and the audit label to send with every scan.
+  ///
+  /// Failure is deliberately silent: the counter must keep scanning whether or
+  /// not it can show a headline number, so this never blocks or surfaces.
+  Future<void> _loadToday() async {
+    try {
+      final json = await ref.read(apiClientProvider).get('/api/staff/home');
+      if (!mounted) return;
+      setState(() {
+        _todayServed = (json['totalServed'] as num?)?.toInt();
+        _deviceId = json['deviceId'] as String? ?? _deviceId;
+      });
+    } catch (_) {
+      // See above.
+    }
+  }
+
   Future<void> _flush() async {
     final synced = await ref.read(verifyRepositoryProvider).flush();
     final stale = await ref.read(scanQueueProvider).expired();
+    if (synced > 0) unawaited(_loadToday());
     if (!mounted) return;
     setState(() {
       _servedCount += synced;
@@ -143,7 +172,12 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
 
     setState(() {
       _result = result;
-      if (result.code == 'SERVED' || result.queued) _servedCount++;
+      if (result.code == 'SERVED' || result.queued) {
+        _servedCount++;
+        // Advanced optimistically so the headline moves with the queue rather
+        // than lagging a poll behind. `_loadToday` reconciles it.
+        if (_todayServed != null) _todayServed = _todayServed! + 1;
+      }
     });
 
     _dismiss?.cancel();
@@ -215,6 +249,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
           bottom: 0,
           child: _CounterBar(
             servedCount: _servedCount,
+            todayServed: _todayServed,
             expiredCount: _expiredCount,
             onManual: () => _openManual(),
             onDismissExpired: () async {
@@ -341,12 +376,14 @@ class _NoPhoto extends StatelessWidget {
 class _CounterBar extends StatelessWidget {
   const _CounterBar({
     required this.servedCount,
+    required this.todayServed,
     required this.expiredCount,
     required this.onManual,
     required this.onDismissExpired,
   });
 
   final int servedCount;
+  final int? todayServed;
   final int expiredCount;
   final VoidCallback onManual;
   final VoidCallback onDismissExpired;
@@ -403,9 +440,13 @@ class _CounterBar extends StatelessWidget {
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
-                    'Served $servedCount',
+                    todayServed == null
+                        ? 'You: $servedCount'
+                        : 'Today $todayServed  ·  you $servedCount',
                     style: const TextStyle(
                       fontWeight: FontWeight.w700,
+                      // Tabular, so the number does not jitter sideways as it
+                      // climbs through a service.
                       fontFeatures: [FontFeature.tabularFigures()],
                     ),
                   ),

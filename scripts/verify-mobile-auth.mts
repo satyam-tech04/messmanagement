@@ -77,6 +77,30 @@ async function api(
   return { status: res.status, json };
 }
 
+async function createStaff(
+  tenantId: string,
+  label: string,
+): Promise<{ userId: string; email: string }> {
+  const email = `staff-${label}@${slug}.example.com`;
+  const res = await fetch(`${url}/auth/v1/admin/users`, {
+    method: "POST",
+    headers: {
+      apikey: serviceKey,
+      Authorization: `Bearer ${serviceKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ email, password, email_confirm: true }),
+  });
+  const created = await res.json();
+  if (!res.ok) throw new Error(`createUser failed: ${JSON.stringify(created)}`);
+
+  await client.query(
+    `insert into profiles (id, tenant_id, role, full_name) values ($1, $2, 'STAFF', $3)`,
+    [created.id, tenantId, `Auth Probe staff ${label}`],
+  );
+  return { userId: created.id as string, email };
+}
+
 async function createStudent(
   tenantId: string,
   rollNumber: string,
@@ -236,7 +260,38 @@ try {
     fail(`expected user + settings, got ${me.status} ${JSON.stringify(me.json)}`);
   }
 
-  // --- 5. Logout revokes the refresh token, not just the local copy ---
+  // --- 5. The counter endpoints ---
+  console.log("\nCounter totals");
+  const staff = await createStaff(tenantId, suffix);
+  userIds.push(staff.userId);
+
+  const staffLogin = await api("/api/auth/login", {
+    method: "POST",
+    body: { identifier: staff.email, password },
+  });
+  const staffToken = staffLogin.json.accessToken as unknown as string;
+
+  const home = await api("/api/staff/home", { token: staffToken });
+  if (home.status === 200 && typeof home.json.totalServed === "number") {
+    pass("staff can read today's totals for their own mess");
+  } else {
+    fail(`expected 200 with totals, got ${home.status} ${JSON.stringify(home.json)}`);
+  }
+
+  if (typeof home.json.deviceId === "string" && `${home.json.deviceId}`.startsWith("counter-")) {
+    pass("the audit device label is issued by the server, not invented by the client");
+  } else {
+    fail(`expected a server-issued deviceId, got ${JSON.stringify(home.json.deviceId)}`);
+  }
+
+  const studentPeek = await api("/api/staff/home", { token: accessToken });
+  if (studentPeek.status === 403) {
+    pass("a student cannot read how many people the mess served today");
+  } else {
+    fail(`expected 403 for a student, got ${studentPeek.status}`);
+  }
+
+  // --- 6. Logout revokes the refresh token, not just the local copy ---
   console.log("\nSigning out");
   const refreshToken = login.json.refreshToken as unknown as string;
   const loggedOut = await api("/api/auth/logout", { method: "POST", token: accessToken });

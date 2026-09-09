@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
 import { requireSessionUser } from "@/infra/auth/session";
 import { createClient } from "@/infra/supabase/server";
-import { serviceDateOf } from "@/core/time";
+import { readStaffHome } from "@/infra/queries/staff-home";
 import { Scanner } from "./scanner";
 
 export const metadata: Metadata = { title: "Scan · Mess OS" };
@@ -18,25 +18,15 @@ export const metadata: Metadata = { title: "Scan · Mess OS" };
 export default async function StaffPage() {
   const user = await requireSessionUser();
   const supabase = await createClient();
-  const today = serviceDateOf(user.timezone, new Date());
 
-  const { data: served } = await supabase
-    .from("attendance")
-    .select("meal_slot, method")
-    .eq("tenant_id", user.tenantId)
-    .eq("service_date", today)
-    // A reversed meal never happened.
-    .is("reversed_at", null);
-
-  const rows = served ?? [];
-  const lunch = rows.filter((r) => r.meal_slot === "LUNCH").length;
-  const dinner = rows.filter((r) => r.meal_slot === "DINNER").length;
-  const manual = rows.filter((r) => r.method === "MANUAL").length;
-
-  // Identifies which counter recorded a scan, for the audit trail and for
-  // rate limiting. Derived from the staff profile so two tablets signed in as
-  // different people are distinguishable without any device registration.
-  const deviceId = `counter-${user.actorProfileId.slice(0, 8)}`;
+  // Shared with `GET /api/staff/home`, so the web counter and the app can never
+  // disagree about what "served today" means -- or about the device label the
+  // audit trail carries.
+  const home = await readStaffHome(supabase, user);
+  const lunch = home.perSlot.LUNCH ?? 0;
+  const dinner = home.perSlot.DINNER ?? 0;
+  const manual = home.manualCount;
+  const deviceId = home.deviceId;
 
   return (
     <div className="space-y-8">
