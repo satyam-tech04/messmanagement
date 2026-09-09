@@ -15,6 +15,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/session.dart';
 import '../design/async_view.dart';
+import 'staff/scanner_screen.dart';
 import 'student/qr_screen.dart';
 import '../state/auth_controller.dart';
 
@@ -66,7 +67,7 @@ const _staffTabs = <_Tab>[
     icon: Icons.qr_code_scanner_rounded,
     label: 'Scan',
     title: 'Scan meal codes',
-    pending: 'The counter scanner is coming soon.',
+    pending: null,
   ),
   _Tab(
     icon: Icons.edit_note_rounded,
@@ -103,14 +104,18 @@ class _AppShellState extends ConsumerState<AppShell> {
   /// A built screen, or the designed placeholder for a tab whose slice has not
   /// landed. A blank body is indistinguishable from a broken one.
   Widget _screenFor(_Tab tab) {
-    if (tab.pending == null && tab.label == 'My code') {
-      return QrScreen(session: widget.session);
+    if (tab.pending != null) {
+      return EmptyState(
+        icon: tab.icon,
+        title: tab.title,
+        message: tab.pending!,
+      );
     }
-    return EmptyState(
-      icon: tab.icon,
-      title: tab.title,
-      message: tab.pending ?? '',
-    );
+    return switch (tab.label) {
+      'My code' => QrScreen(session: widget.session),
+      'Scan' => ScannerScreen(session: widget.session),
+      _ => EmptyState(icon: tab.icon, title: tab.title, message: ''),
+    };
   }
 
   @override

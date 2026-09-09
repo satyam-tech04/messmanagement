@@ -42,6 +42,9 @@ dependencies:
   qr_flutter: ^4.1.0
   screen_brightness: ^2.1.11
   supabase_flutter: ^2.17.2
+  shared_preferences: ^2.5.5
+  mobile_scanner: ^7.4.0
+  audioplayers: ^6.8.1
 
 dev_dependencies:
   flutter_test:
