@@ -12,16 +12,20 @@
  * rule underneath (rule 8) — so a bug here still cannot cross a mess boundary.
  */
 import { NextResponse } from "next/server";
-import { getSessionUser } from "@/infra/auth/session";
+import { authenticateApiRequest } from "@/infra/http/api-auth";
 import { createAdminClient } from "@/infra/supabase/admin";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export async function GET(_request: Request, context: RouteContext<"/api/students/[id]/photo">) {
+export async function GET(request: Request, context: RouteContext<"/api/students/[id]/photo">) {
   const { id } = await context.params;
 
-  const user = await getSessionUser();
-  if (!user) return new NextResponse(null, { status: 401 });
+  // The counter scanner fetches this from the app, so it must accept a bearer
+  // token as well as a cookie. The query below still runs tenant-scoped through
+  // the admin client, so the transport changes nothing about what is reachable.
+  const auth = await authenticateApiRequest(request);
+  if (!auth.ok) return new NextResponse(null, { status: auth.status });
+  const { user } = auth.caller;
 
   // Staff need this at the counter; the admin needs it on the student's page.
   // A student has no reason to fetch another student's photograph.

@@ -14,9 +14,8 @@ import { z } from "zod";
 import { verifyManualAttendance, verifyQrAttendance } from "@/core/services/verify-attendance";
 import { isErr } from "@/core/result";
 import { hmacTokenSigner } from "@/infra/crypto/hmac-signer";
-import { getSessionUser } from "@/infra/auth/session";
+import { authenticateApiRequest } from "@/infra/http/api-auth";
 import { createAdminClient } from "@/infra/supabase/admin";
-import { createClient } from "@/infra/supabase/server";
 import { createRepositories, rateLimitBuckets } from "@/infra/supabase/repositories";
 
 /**
@@ -43,13 +42,15 @@ const schema = z.discriminatedUnion("mode", [
 ]);
 
 export async function POST(request: Request) {
-  const user = await getSessionUser();
-  if (!user) {
+  const auth = await authenticateApiRequest(request);
+  if (!auth.ok) {
     return NextResponse.json(
-      { ok: false, code: "UNAUTHENTICATED", message: "Sign in again." },
-      { status: 401 },
+      { ok: false, code: auth.code, message: auth.message },
+      { status: auth.status },
     );
   }
+  const { user, supabase } = auth.caller;
+
   if (user.role !== "STAFF" && user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
     return NextResponse.json(
       { ok: false, code: "FORBIDDEN", message: "Only counter staff can verify meals." },
@@ -75,7 +76,6 @@ export async function POST(request: Request) {
     );
   }
 
-  const supabase = await createClient();
   const admin = createAdminClient();
   const repos = createRepositories(supabase, admin);
 

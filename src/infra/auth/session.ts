@@ -12,10 +12,13 @@
  */
 import "server-only";
 import { cache } from "react";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { TenantContext } from "@/core/domain/tenant-context";
 import type { UserRole } from "@/core/domain/enums";
 import { createClient } from "../supabase/server";
+import { createBearerClient } from "../supabase/bearer";
 import { firstRelated } from "../supabase/mappers";
+import type { Database } from "../supabase/database.types";
 
 export interface SessionUser extends TenantContext {
   /** Gates every route until the user chooses their own password (D-02). */
@@ -44,6 +47,50 @@ export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
   };
   if (!claims.sub) return null;
 
+  return resolveSessionUser(supabase, claims.sub);
+});
+
+/**
+ * The same user, resolved from an `Authorization: Bearer` token instead of a
+ * cookie — the mobile app's transport.
+ *
+ * Returns the **identical `SessionUser`**, so every use case, policy and route
+ * handler behind this function is transport-agnostic and neither knows nor
+ * cares which client is calling.
+ *
+ * The token is verified, not trusted: `getClaims(accessToken)` checks the
+ * signature against the project's JWKS exactly as the cookie path does. An
+ * expired or forged token yields no claims and this returns null.
+ *
+ * Cached per token rather than per request. `cache()` keys on arguments, so two
+ * different callers in one render cannot collide — but note the key is the
+ * token itself, which is what makes that safe.
+ */
+export const getSessionUserFromToken = cache(
+  async (accessToken: string): Promise<SessionUser | null> => {
+    const supabase = createBearerClient(accessToken);
+
+    const { data, error } = await supabase.auth.getClaims(accessToken);
+    if (error || !data?.claims) return null;
+
+    const claims = data.claims as { sub?: string };
+    if (!claims.sub) return null;
+
+    return resolveSessionUser(supabase, claims.sub);
+  },
+);
+
+/**
+ * Claims → `SessionUser`, shared by both transports.
+ *
+ * Kept in one place deliberately: the fail-closed rules below are the whole
+ * authorization story for a suspended tenant or a disabled account, and a
+ * second copy that drifted would be a silent way back in.
+ */
+async function resolveSessionUser(
+  supabase: SupabaseClient<Database>,
+  sub: string,
+): Promise<SessionUser | null> {
   // Profile, tenant and student in one round trip. This runs on every
   // authenticated request, so a second query here would be felt everywhere.
   const { data: profile, error: profileError } = await supabase
@@ -53,7 +100,7 @@ export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
        tenants!inner ( slug, timezone, status ),
        students ( id )`,
     )
-    .eq("id", claims.sub)
+    .eq("id", sub)
     .maybeSingle();
 
   // Fail closed (§2.7). A session whose profile cannot be read is
@@ -87,7 +134,7 @@ export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
     fullName: profile.full_name,
     profileStatus: profile.status,
   };
-});
+}
 
 /**
  * The current user, or throws.

@@ -125,11 +125,30 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   /**
-   * Skip static assets and image optimisation. Without this the proxy runs on
-   * every CSS, JS and font request — which both wastes work and, because the
-   * unauthenticated branch redirects, would break asset loading on /login.
+   * Two kinds of path are excluded, for two different reasons.
+   *
+   * **`api`** — route handlers must reach their own code. This branch redirects
+   * an unauthenticated request to `/login`, and a bearer-token client sends no
+   * cookie, so while `/api/*` was matched every mobile request was answered
+   * with a 307 to an HTML page. Each handler already resolves its own session
+   * and returns 401 JSON; `/api/cron/*` authenticates with `CRON_SECRET`
+   * instead. Excluding them loses no protection.
+   *
+   * The cost this accepts: the proxy is also where the access token is
+   * refreshed, so an API request no longer rotates the session cookie. Browsers
+   * still load pages, which do refresh it, and a mobile client refreshes its
+   * own token through the Supabase grant, which needs no cookie at all.
+   *
+   * **Static assets and image optimisation** — without this the proxy runs on
+   * every CSS, JS and font request, which both wastes work and, because the
+   * unauthenticated branch redirects, would break asset loading on `/login`.
+   *
+   * ⚠️ This must stay an inline literal. Next statically analyses `matcher` at
+   * build time and **silently ignores a variable**, so hoisting this string into
+   * a shared constant leaves the proxy running on every path with no error —
+   * which is exactly how the `/api` exclusion failed to take effect once already.
    */
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };

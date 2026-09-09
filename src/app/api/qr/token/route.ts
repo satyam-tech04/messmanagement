@@ -13,9 +13,8 @@ import { randomBytes } from "node:crypto";
 import { issueQrToken } from "@/core/services/issue-qr-token";
 import { isErr } from "@/core/result";
 import { hmacTokenSigner } from "@/infra/crypto/hmac-signer";
-import { getSessionUser } from "@/infra/auth/session";
+import { authenticateApiRequest } from "@/infra/http/api-auth";
 import { createAdminClient } from "@/infra/supabase/admin";
-import { createClient } from "@/infra/supabase/server";
 import { createRepositories, rateLimitBuckets } from "@/infra/supabase/repositories";
 
 /** Denial codes the student's own screen should explain, not retry. */
@@ -32,16 +31,16 @@ const DENIAL_STATUS: Record<string, number> = {
   INFRASTRUCTURE_ERROR: 503,
 };
 
-export async function GET() {
-  const user = await getSessionUser();
-  if (!user) {
+export async function GET(request: Request) {
+  const auth = await authenticateApiRequest(request);
+  if (!auth.ok) {
     return NextResponse.json(
-      { error: { code: "UNAUTHENTICATED", message: "Sign in again." } },
-      { status: 401, headers: { "Cache-Control": "no-store" } },
+      { error: { code: auth.code, message: auth.message } },
+      { status: auth.status, headers: { "Cache-Control": "no-store" } },
     );
   }
+  const { user, supabase } = auth.caller;
 
-  const supabase = await createClient();
   const admin = createAdminClient();
   const repos = createRepositories(supabase, admin);
 

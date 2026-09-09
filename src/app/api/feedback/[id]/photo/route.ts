@@ -11,16 +11,17 @@
  * here still cannot cross a mess boundary.
  */
 import { NextResponse } from "next/server";
-import { getSessionUser } from "@/infra/auth/session";
+import { authenticateApiRequest } from "@/infra/http/api-auth";
 import { createAdminClient } from "@/infra/supabase/admin";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export async function GET(_request: Request, context: RouteContext<"/api/feedback/[id]/photo">) {
+export async function GET(request: Request, context: RouteContext<"/api/feedback/[id]/photo">) {
   const { id } = await context.params;
 
-  const user = await getSessionUser();
-  if (!user) return new NextResponse(null, { status: 401 });
+  const auth = await authenticateApiRequest(request);
+  if (!auth.ok) return new NextResponse(null, { status: auth.status });
+  const { user } = auth.caller;
   if (!UUID.test(id)) return new NextResponse(null, { status: 404 });
 
   const admin = createAdminClient();

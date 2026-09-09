@@ -41,6 +41,7 @@ conversation: everything needed to continue correctly is here or linked from her
 | **Students sign in with a mobile**    | ✅ generated `profiles.mobile`, login resolves it to their account  |
 | **Auto-assigned roll numbers**        | ✅ per-mess toggle, allocated under a row lock (010)                |
 | **Counter photo from the camera**     | ✅ getUserMedia capture, same upload action as a picked file        |
+| **Mobile app — Slice 0 (transport)**  | ✅ `/api/*` reachable over a bearer token, 4 live checks pass       |
 
 **Phase 0 is done.** Three roles sign in against the live database and land on their own
 shell; cross-tenant isolation is proven with real data. Phase 1 domain logic (QR policy,
@@ -224,7 +225,12 @@ the pilot runs on it:
 npm run verify        # typecheck + lint + tests
 npm run db:verify     # schema assertions + a real JWT claim check against the live DB
 npm run verify:phase1 # drives the whole service loop against the live DB (14 checks)
+npm run verify:bearer # /api/* reachable, authenticated and gated over a bearer token
 ```
+
+`verify:bearer` needs a running server and defaults to `http://localhost:3000`; point it
+elsewhere with `PROBE_BASE_URL`. It creates and destroys its own `bearerprobe-…` tenant, so
+it never touches Campus Crave or the demo hostel.
 
 ### Already learned the hard way — do not rediscover
 
@@ -268,6 +274,13 @@ npm run verify:phase1 # drives the whole service loop against the live DB (14 ch
   `never` and must be named at the call site. Always unwrap with `firstRelated<T>()`: the
   embed is an **object** for a to-one relation and an **array** for to-many, and reading that
   wrong once already left every student session without a `studentId` in production.
+- **`proxy.ts`'s `matcher` must be an inline literal.** Next statically analyses it at build
+  time and, in its own words, "dynamic values such as variables will be ignored" — with no
+  warning. Hoisting the pattern into a shared constant for testability left the proxy running
+  on every path while a unit suite testing that constant went green; `/api/*` kept answering
+  bearer requests with a 307 to the HTML login page. Assert against the real `config` export
+  (`tests/unit/proxy-matcher.test.ts`) and confirm with a request to a running server —
+  `npm run verify:bearer`. A passing unit test is not evidence here.
 
 ### Unresolved, and who owns it
 
@@ -395,6 +408,56 @@ row is touched, and cleans up afterwards.
 5. **Headcount** — a snapshot per served meal; re-running the cron does not duplicate rows;
    a locked count never moves even when the underlying subscriptions change.
 6. **Multi-tenancy** — another mess cannot serve this student by roll number.
+
+## Mobile app (Flutter) — student + staff 🚧
+
+One Flutter binary for both roles, routed by the role the server returns at login. Admin
+stays on the Next.js web console — it is 13,219 lines across 63 files (72% of the app's UI),
+built on dense desktop tables that Flutter Web is worst at. The Next project remains the
+backend regardless: it hosts `src/core`, the API routes, service-role access and the crons.
+
+**No domain policy is reimplemented in Dart.** The mobile client calls the same
+`src/core` services through JSON endpoints; only formatting, the status-colour vocabulary and
+the denial-code presentation map cross over.
+
+### ✅ Slice 0 — bearer transport (2026-09-09)
+
+Three defects made the backend unreachable from any non-browser client. All fixed and
+**verified against a running server**, not just unit-tested:
+
+1. **`/api/*` was redirected, not served.** `proxy.ts`'s matcher covered `/api`, so a
+   bearer request with no cookie got a 307 to the HTML login page and never reached the
+   handler. See the matcher entry under "learned the hard way" — the first fix silently
+   did nothing.
+2. **No bearer client.** `src/infra/supabase/bearer.ts` — anon key, no cookie adapter,
+   `Authorization` header. RLS applies identically; it is not privileged.
+3. **`must_change_password` was unenforced on the API.** It lived only in
+   `src/app/(app)/layout.tsx`, which `/api/*` sits outside of — so the app would have been a
+   permanent way around the forced change, on passwords derived from the student's own
+   mobile number and known to whoever created the account.
+
+`getSessionUser()` keeps its signature; `getSessionUserFromToken()` returns the **identical
+`SessionUser`**, so all 115 call sites are transport-agnostic. The shared guard
+`authenticateApiRequest()` (`src/infra/http/api-auth.ts`) returns the user **and the
+correctly-scoped Supabase client together** — handing them back separately is how a route
+ends up authenticating one way and querying another, which would have failed every mobile
+request under RLS.
+
+Applied to `/api/qr/token`, `/api/qr/verify`, and both photo routes.
+
+**Proven by `npm run verify:bearer`** (4/4): unauthenticated → 401 JSON not a redirect; a
+real student's token reaches the handler and gets `NO_ACTIVE_PLAN`; a garbage token → 401
+(fails closed); a student owing a password change → 403 `PASSWORD_CHANGE_REQUIRED`.
+
+### Next: Slice 1 — login and role routing
+
+`POST /api/auth/login` must resolve a **mobile number** to the synthetic roll-number address
+(`cs21b001@campus-crave.mess.invalid`) server-side — that lookup needs the service-role key
+and can never ship in a Flutter binary. Reuses `classifyLoginIdentifier` and
+`rateLimitBuckets.login` (10 / 5 min per identifier). Then `/api/auth/change-password`,
+`/api/auth/logout`, `GET /api/me`, and the Flutter foundation + design-system port.
+
+Full plan: `~/.claude-profiles/personal/plans/quiet-sparking-stardust.md`.
 
 ## Phase 2 — Money ⏸️ _out of MVP scope_
 
