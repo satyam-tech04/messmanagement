@@ -17,6 +17,7 @@ library;
 import 'dart:async';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 import '../core/api_failure.dart';
 import '../core/config.dart';
@@ -165,15 +166,19 @@ class ApiClient {
       // A transport failure is not a refusal. The counter's scan queue depends
       // on telling them apart: a denial must never be queued for replay, and a
       // dropped connection must never be shown as a denial.
+      final plain = switch (e.type) {
+        DioExceptionType.connectionTimeout ||
+        DioExceptionType.sendTimeout ||
+        DioExceptionType.receiveTimeout =>
+          'The mess server is slow to answer. Try again.',
+        _ => 'No connection to the mess server.',
+      };
       throw ApiFailure(
         code: 'NETWORK_ERROR',
-        message: switch (e.type) {
-          DioExceptionType.connectionTimeout ||
-          DioExceptionType.sendTimeout ||
-          DioExceptionType.receiveTimeout =>
-            'The mess server is slow to answer. Try again.',
-          _ => 'No connection to the mess server.',
-        },
+        // Same reasoning as the non-JSON branch: in development, "no
+        // connection" is nearly always the wrong address rather than a real
+        // outage, and the address is the one fact that settles it.
+        message: kDebugMode ? '$plain (${AppConfig.apiBaseUrl})' : plain,
       );
     }
   }
@@ -183,12 +188,21 @@ class ApiClient {
     final data = response.data;
 
     if (data is! Map) {
-      // HTML where JSON was expected almost always means the request was
-      // redirected to a login page — the exact failure the `/api` proxy
-      // exclusion exists to prevent. Say so, rather than "unexpected error".
+      // Not JSON. Two causes, and they look identical without the URL: the
+      // request was redirected to an HTML login page (the failure the `/api`
+      // proxy exclusion exists to prevent), or the app is pointed at something
+      // that is not this server at all — a stale `API_BASE_URL`, or another
+      // process on the same port.
+      //
+      // Naming the address in debug builds turns ten minutes of guessing into
+      // one glance. Release builds keep the plain sentence: a student has no
+      // use for a hostname.
       throw ApiFailure(
         code: 'INFRASTRUCTURE_ERROR',
-        message: 'The mess server sent an unexpected response.',
+        message: kDebugMode
+            ? 'Unexpected response from ${AppConfig.apiBaseUrl} '
+                  '(HTTP $status, not JSON). Check API_BASE_URL.'
+            : 'The mess server sent an unexpected response.',
         status: status,
       );
     }
