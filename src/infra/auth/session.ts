@@ -27,6 +27,10 @@ export interface SessionUser extends TenantContext {
   readonly mustChangePassword: boolean;
   readonly fullName: string;
   readonly profileStatus: "ACTIVE" | "DISABLED";
+  /** The mess's own name, shown to its members in place of ours. */
+  readonly tenantName: string;
+  /** Storage path of the mess's logo, if it has uploaded one. */
+  readonly tenantLogoPath: string | null;
 }
 
 /**
@@ -111,7 +115,7 @@ async function resolveSessionUser(
     .from("profiles")
     .select(
       `id, tenant_id, role, full_name, status, must_change_password,
-       tenants!inner ( slug, timezone, status ),
+       tenants!inner ( slug, name, timezone, status, logo_path ),
        students ( id )`,
     )
     .eq("id", sub)
@@ -121,9 +125,13 @@ async function resolveSessionUser(
   // indeterminate, and indeterminate means unauthenticated.
   if (profileError || !profile) return null;
 
-  const tenant = firstRelated<{ slug: string; timezone: string; status: string }>(
-    profile.tenants as never,
-  );
+  const tenant = firstRelated<{
+    slug: string;
+    name: string;
+    timezone: string;
+    status: string;
+    logo_path: string | null;
+  }>(profile.tenants as never);
   if (!tenant) return null;
 
   // A suspended tenant or a disabled account must not hold a usable session,
@@ -140,6 +148,8 @@ async function resolveSessionUser(
   return {
     tenantId: profile.tenant_id,
     tenantSlug: tenant.slug,
+    tenantName: tenant.name,
+    tenantLogoPath: tenant.logo_path,
     timezone: tenant.timezone,
     actorProfileId: profile.id,
     role: profile.role as UserRole,

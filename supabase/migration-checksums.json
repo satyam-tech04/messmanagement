@@ -100,5 +100,11 @@
     "state": "applied",
     "appliedTo": "yenxlcrtlmnfotfqqabo",
     "appliedAt": "2026-09-06"
+  },
+  "20260909000018_tenant_branding.sql": {
+    "sha256": "ca5de0a5a0df7ad4dbad2f0ec3c6687e40bc275407cec606e4058f3919c95b01",
+    "state": "applied",
+    "appliedTo": "yenxlcrtlmnfotfqqabo",
+    "appliedAt": "2026-09-09"
   }
 }

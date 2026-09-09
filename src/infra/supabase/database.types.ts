@@ -851,6 +851,7 @@ export type Database = {
         next_roll_number: number;
         next_bill_number: number;
         next_counter_item_code: number;
+        logo_path: string | null;
       };
       Insert: {
         id?: string;
@@ -864,6 +865,7 @@ export type Database = {
         next_roll_number?: number;
         next_bill_number?: number;
         next_counter_item_code?: number;
+        logo_path?: string | null;
       };
       Update: {
         id?: string;
@@ -877,6 +879,7 @@ export type Database = {
         next_roll_number?: number;
         next_bill_number?: number;
         next_counter_item_code?: number;
+        logo_path?: string | null;
       };
       Relationships: [];
     };

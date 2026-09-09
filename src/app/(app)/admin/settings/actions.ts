@@ -163,3 +163,110 @@ export async function updateSettings(
 
   return { success: "Settings saved. Meal times apply within about 30 seconds." };
 }
+
+// ---------------------------------------------------------------------------
+// Branding
+//
+// A mess's own name and logo are what its members see once they sign in — the
+// MessOS mark stays on the store listing and the login screen, the two places a
+// person has not yet identified which hostel they belong to.
+//
+// Deliberately no per-tenant colour. Colours would mean re-verifying every
+// contrast pairing in the app for every hostel that signs up, and one would
+// eventually choose something unreadable on a counter tablet.
+// ---------------------------------------------------------------------------
+
+const MAX_LOGO_BYTES = 1_048_576;
+const ALLOWED_LOGO_TYPES = ["image/jpeg", "image/png", "image/webp", "image/svg+xml"];
+
+const nameSchema = z
+  .string()
+  .trim()
+  .min(1, "Enter the name of your mess")
+  .max(120, "Use a shorter name");
+
+export async function updateBranding(
+  _prev: SettingsActionState,
+  formData: FormData,
+): Promise<SettingsActionState> {
+  const user = await getSessionUser();
+  if (!user) return { error: "Your session has expired. Sign in again." };
+  if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
+    return { error: "Only an admin can change how your mess appears." };
+  }
+
+  const parsedName = nameSchema.safeParse(formData.get("tenantName"));
+  if (!parsedName.success) {
+    return { error: parsedName.error.issues[0]?.message ?? "Check the name." };
+  }
+
+  const admin = createAdminClient();
+  const logo = formData.get("logo");
+  let logoPath: string | undefined;
+
+  if (logo instanceof File && logo.size > 0) {
+    if (!ALLOWED_LOGO_TYPES.includes(logo.type)) {
+      return { error: "Use a PNG, JPEG, WebP or SVG image." };
+    }
+    if (logo.size > MAX_LOGO_BYTES) {
+      return { error: "That image is over 1 MB. Use a smaller one." };
+    }
+
+    // `{tenant_id}/logo` — the first path segment IS the tenancy boundary, which
+    // is what the storage policies enforce on (rule 8). Fixed filename so a
+    // replacement overwrites rather than accumulating orphans nobody deletes.
+    logoPath = `${user.tenantId}/logo`;
+    const { error } = await admin.storage
+      .from("tenant-logos")
+      .upload(logoPath, logo, { upsert: true, contentType: logo.type });
+
+    if (error) return { error: "Could not upload that image. Try again." };
+  }
+
+  const { error: updateError } = await admin
+    .from("tenants")
+    .update({
+      name: parsedName.data,
+      ...(logoPath ? { logo_path: logoPath } : {}),
+    })
+    .eq("id", user.tenantId);
+
+  if (updateError) return { error: "Could not save. Try again." };
+
+  await new SupabaseAuditLogRepository(admin).write({
+    tenantId: user.tenantId,
+    actorProfileId: user.actorProfileId,
+    action: "TENANT_BRANDING_UPDATED",
+    entityType: "tenant",
+    entityId: user.tenantId,
+    after: { name: parsedName.data, logoChanged: Boolean(logoPath) },
+  });
+
+  invalidateTenantCache(user.tenantId);
+  revalidatePath("/admin/settings");
+  revalidatePath("/", "layout");
+
+  return { success: "Saved. Your members will see this the next time they open the app." };
+}
+
+/** Remove the logo, falling back to showing the mess's name as text. */
+export async function removeLogo(): Promise<SettingsActionState> {
+  const user = await getSessionUser();
+  if (!user) return { error: "Your session has expired. Sign in again." };
+  if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
+    return { error: "Only an admin can change how your mess appears." };
+  }
+
+  const admin = createAdminClient();
+  // Clear the column first: an object that outlives its reference is harmless,
+  // whereas a reference that outlives its object is a broken image on every
+  // member's screen.
+  await admin.from("tenants").update({ logo_path: null }).eq("id", user.tenantId);
+  await admin.storage.from("tenant-logos").remove([`${user.tenantId}/logo`]);
+
+  invalidateTenantCache(user.tenantId);
+  revalidatePath("/admin/settings");
+  revalidatePath("/", "layout");
+
+  return { success: "Logo removed." };
+}

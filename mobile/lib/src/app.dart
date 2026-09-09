@@ -22,6 +22,7 @@ import 'features/auth/change_password_screen.dart';
 import 'features/auth/login_screen.dart';
 import 'features/shell.dart';
 import 'state/auth_controller.dart';
+import 'state/theme_controller.dart';
 
 class MessOsApp extends ConsumerWidget {
   const MessOsApp({super.key});
@@ -35,9 +36,10 @@ class MessOsApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       theme: messLightTheme(),
       darkTheme: messDarkTheme(),
-      // Follows the device. DESIGN.md treats both schemes as first-class, so
-      // there is no in-app override to get out of step with the system.
-      themeMode: ThemeMode.system,
+      // Both schemes are first-class (DESIGN.md), and the choice is the user's:
+      // a counter tablet under kitchen lights and a student's phone at 9pm are
+      // genuinely different situations. Defaults to the device.
+      themeMode: ref.watch(themeModeProvider),
       home: auth.when(
         loading: () => const _Splash(),
         error: (error, _) => Scaffold(

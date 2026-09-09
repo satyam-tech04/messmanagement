@@ -40,6 +40,8 @@ class Session {
     required this.fullName,
     required this.mustChangePassword,
     required this.tenantSlug,
+    required this.tenantName,
+    required this.tenantLogoUrl,
     required this.timezone,
     required this.isStudent,
   });
@@ -51,6 +53,14 @@ class Session {
   final bool mustChangePassword;
 
   final String tenantSlug;
+
+  /// The mess's own name. Shown throughout the app in place of ours — once
+  /// somebody has signed in they are inside *their hostel's* app.
+  final String tenantName;
+
+  /// Route to the mess's logo, or null if it has not uploaded one, in which
+  /// case its name stands in.
+  final String? tenantLogoUrl;
 
   /// IANA zone of the **mess**, not the device. Every date rendered anywhere in
   /// the app derives from this — a student travelling, or a phone with its
@@ -64,6 +74,8 @@ class Session {
     fullName: json['fullName'] as String? ?? '',
     mustChangePassword: json['mustChangePassword'] as bool? ?? false,
     tenantSlug: json['tenantSlug'] as String? ?? '',
+    tenantName: json['tenantName'] as String? ?? '',
+    tenantLogoUrl: json['tenantLogoUrl'] as String?,
     timezone: json['timezone'] as String? ?? 'Asia/Kolkata',
     isStudent: json['isStudent'] as bool? ?? false,
   );
@@ -73,6 +85,8 @@ class Session {
     fullName: fullName,
     mustChangePassword: mustChangePassword ?? this.mustChangePassword,
     tenantSlug: tenantSlug,
+    tenantName: tenantName,
+    tenantLogoUrl: tenantLogoUrl,
     timezone: timezone,
     isStudent: isStudent,
   );

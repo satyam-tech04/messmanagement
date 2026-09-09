@@ -25,6 +25,16 @@ export interface SessionPayload {
   /** Human-facing mess identity; not a key the client may send back. */
   readonly tenantSlug: string;
   /**
+   * The mess's own name, shown to its members in place of ours.
+   *
+   * Once someone has signed in they are inside *their hostel's* app. The MessOS
+   * mark stays on the store listing and the login screen — the two places a
+   * person has not yet identified which mess they belong to.
+   */
+  readonly tenantName: string;
+  /** Where to fetch the mess's logo, or null if it has not uploaded one. */
+  readonly tenantLogoUrl: string | null;
+  /**
    * IANA zone of the mess, not the device. Every date the app renders derives
    * from this — a student travelling must still see the mess's service dates.
    */
@@ -39,6 +49,10 @@ export function toSessionPayload(user: SessionUser): SessionPayload {
     fullName: user.fullName,
     mustChangePassword: user.mustChangePassword,
     tenantSlug: user.tenantSlug,
+    tenantName: user.tenantName,
+    // A route, not a storage path: the bucket is private and the client must
+    // not learn its layout.
+    tenantLogoUrl: user.tenantLogoPath ? "/api/tenant/logo" : null,
     timezone: user.timezone,
     isStudent: Boolean(user.studentId),
   };

@@ -22,6 +22,8 @@ function sessionUser(over: Partial<SessionUser> = {}): SessionUser {
   return {
     tenantId: "11111111-1111-1111-1111-111111111111",
     tenantSlug: "campus-crave",
+    tenantName: "Campus Crave",
+    tenantLogoPath: null,
     timezone: "Asia/Kolkata",
     actorProfileId: "22222222-2222-2222-2222-222222222222",
     role: "STUDENT",
@@ -40,6 +42,27 @@ describe("toSessionPayload — what the app is given", () => {
     expect(payload.fullName).toBe("Asha Rao");
     expect(payload.tenantSlug).toBe("campus-crave");
     expect(payload.mustChangePassword).toBe(false);
+  });
+
+  it("carries the mess's own name, which the app shows in place of ours", () => {
+    // Once signed in, a member is inside their hostel's app. Our mark stays on
+    // the store listing and the login screen.
+    expect(toSessionPayload(sessionUser()).tenantName).toBe("Campus Crave");
+  });
+
+  it("gives a route for the logo, never the storage path", () => {
+    // The bucket is private, and the client must not learn its layout.
+    const withLogo = toSessionPayload(
+      sessionUser({ tenantLogoPath: "11111111-1111-1111-1111-111111111111/logo" }),
+    );
+    expect(withLogo.tenantLogoUrl).toBe("/api/tenant/logo");
+    // The storage path embeds the tenant id, so serialising it would leak the
+    // very identifier the rest of this file exists to keep out.
+    expect(JSON.stringify(withLogo)).not.toContain("11111111-1111-1111-1111-111111111111");
+  });
+
+  it("says null when the mess has not uploaded one, so the app shows its name", () => {
+    expect(toSessionPayload(sessionUser()).tenantLogoUrl).toBeNull();
   });
 
   it("carries the tenant's timezone, so the app never formats in the device's", () => {

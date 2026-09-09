@@ -21,6 +21,8 @@ function sessionUser(over: Partial<SessionUser> = {}): SessionUser {
   return {
     tenantId: "11111111-1111-1111-1111-111111111111",
     tenantSlug: "campus-crave",
+    tenantName: "Campus Crave",
+    tenantLogoPath: null,
     timezone: "Asia/Kolkata",
     actorProfileId: "22222222-2222-2222-2222-222222222222",
     role: "STUDENT",

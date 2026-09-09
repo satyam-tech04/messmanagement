@@ -13,6 +13,8 @@ library;
 import 'package:flutter/material.dart';
 
 import '../core/api_failure.dart';
+import 'components.dart';
+import 'tokens.dart';
 
 /// A skeleton block sized like the content it stands in for.
 ///
@@ -23,7 +25,7 @@ class Skeleton extends StatefulWidget {
     super.key,
     this.height = 16,
     this.width = double.infinity,
-    this.radius = 8,
+    this.radius = Radii.sm,
   });
 
   final double height;
@@ -38,7 +40,7 @@ class _SkeletonState extends State<Skeleton>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 1100),
+    duration: Motion.shimmer,
   )..repeat(reverse: true);
 
   @override
@@ -90,18 +92,18 @@ class EmptyState extends StatelessWidget {
     final theme = Theme.of(context);
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(Space.xxxl),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 44, color: theme.colorScheme.outline),
-            const SizedBox(height: 16),
+            Icon(icon, size: Sizes.stateIcon, color: theme.colorScheme.outline),
+            const Gap.lg(),
             Text(
               title,
               style: theme.textTheme.titleMedium,
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 8),
+            const Gap.sm(),
             Text(
               message,
               style: theme.textTheme.bodyMedium?.copyWith(
@@ -110,7 +112,7 @@ class EmptyState extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             if (actionLabel != null && onAction != null) ...[
-              const SizedBox(height: 20),
+              const Gap.xl(),
               FilledButton(onPressed: onAction, child: Text(actionLabel!)),
             ],
           ],
@@ -141,22 +143,22 @@ class ErrorState extends StatelessWidget {
 
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(Space.xxxl),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               offline ? Icons.wifi_off_rounded : Icons.error_outline_rounded,
-              size: 44,
+              size: Sizes.stateIcon,
               color: theme.colorScheme.error,
             ),
-            const SizedBox(height: 16),
+            const Gap.lg(),
             Text(
               offline ? 'No connection' : 'Something needs attention',
               style: theme.textTheme.titleMedium,
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 8),
+            const Gap.sm(),
             Text(
               message,
               style: theme.textTheme.bodyMedium?.copyWith(
@@ -165,7 +167,7 @@ class ErrorState extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             if (onRetry != null) ...[
-              const SizedBox(height: 20),
+              const Gap.xl(),
               FilledButton.tonalIcon(
                 onPressed: onRetry,
                 icon: const Icon(Icons.refresh_rounded),

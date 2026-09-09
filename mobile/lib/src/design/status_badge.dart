@@ -9,6 +9,7 @@ library;
 import 'package:flutter/material.dart';
 
 import 'theme.dart';
+import 'tokens.dart';
 
 enum StatusTone { active, warning, danger, neutral }
 
@@ -55,11 +56,11 @@ class StatusBadge extends StatelessWidget {
       // decorative label detached from what it describes.
       label: 'Status: $label',
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: background,
-          borderRadius: BorderRadius.circular(999),
+        padding: const EdgeInsets.symmetric(
+          horizontal: Space.sm + 2,
+          vertical: Space.xs,
         ),
+        decoration: BoxDecoration(color: background, borderRadius: Radii.pillAll),
         child: Text(
           label,
           style: TextStyle(

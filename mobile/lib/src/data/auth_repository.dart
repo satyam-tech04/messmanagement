@@ -59,6 +59,8 @@ class AuthRepository {
           fullName: '',
           mustChangePassword: true,
           tenantSlug: '',
+          tenantName: '',
+          tenantLogoUrl: null,
           timezone: 'Asia/Kolkata',
           isStudent: true,
         );

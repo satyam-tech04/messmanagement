@@ -14,7 +14,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/session.dart';
+import '../core/config.dart';
 import '../design/async_view.dart';
+import '../design/brand.dart';
+import '../design/theme.dart';
+import '../design/tokens.dart';
 import 'staff/counts_screen.dart';
 import 'staff/sales_screen.dart';
 import 'staff/scanner_screen.dart';
@@ -23,6 +27,7 @@ import 'student/more_screen.dart';
 import 'student/plan_screen.dart';
 import 'student/qr_screen.dart';
 import '../state/auth_controller.dart';
+import '../state/theme_controller.dart';
 
 class _Tab {
   const _Tab({
@@ -138,7 +143,34 @@ class _AppShellState extends ConsumerState<AppShell> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(tab.title),
+        titleSpacing: Space.lg,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // The hostel's identity, not ours. Ours is on the store listing and
+            // the login screen only.
+            DefaultTextStyle.merge(
+              style: context.texts.titleSmall ?? const TextStyle(),
+              child: TenantMark(
+                name: widget.session.tenantName,
+                logoUrl: widget.session.tenantLogoUrl,
+                baseUrl: AppConfig.apiBaseUrl,
+                authHeader: {
+                  'Authorization':
+                      'Bearer ${ref.read(apiClientProvider).currentTokens?.accessToken ?? ''}',
+                },
+                size: 24,
+              ),
+            ),
+            Text(
+              tab.title,
+              style: context.texts.bodySmall?.copyWith(
+                color: context.colors.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
         actions: [
           PopupMenuButton<String>(
             icon: const Icon(Icons.account_circle_outlined),
@@ -146,26 +178,57 @@ class _AppShellState extends ConsumerState<AppShell> {
             onSelected: (value) {
               if (value == 'signOut') {
                 ref.read(authControllerProvider.notifier).signOut();
+                return;
+              }
+              final mode = ThemeMode.values.asNameMap()[value];
+              if (mode != null) {
+                ref.read(themeModeProvider.notifier).set(mode);
               }
             },
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                enabled: false,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(widget.session.fullName),
-                    Text(
-                      widget.session.tenantSlug,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
+            itemBuilder: (context) {
+              final current = ref.read(themeModeProvider);
+              return [
+                PopupMenuItem(
+                  enabled: false,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(widget.session.fullName),
+                      Text(
+                        widget.session.tenantName,
+                        style: context.texts.bodySmall,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const PopupMenuDivider(),
-              const PopupMenuItem(value: 'signOut', child: Text('Sign out')),
-            ],
+                const PopupMenuDivider(),
+                // Appearance lives here rather than behind a settings screen:
+                // it is the only preference the app has, and burying one switch
+                // under a screen of its own helps nobody.
+                for (final mode in ThemeMode.values)
+                  PopupMenuItem(
+                    value: mode.name,
+                    child: Row(
+                      children: [
+                        Icon(themeModeIcon(mode), size: 18),
+                        const SizedBox(width: Space.md),
+                        Expanded(child: Text(themeModeLabel(mode))),
+                        // A tick as well as the highlight — the selected item
+                        // must be identifiable without relying on colour.
+                        if (mode == current)
+                          Icon(
+                            Icons.check_rounded,
+                            size: 18,
+                            color: context.colors.primary,
+                          ),
+                      ],
+                    ),
+                  ),
+                const PopupMenuDivider(),
+                const PopupMenuItem(value: 'signOut', child: Text('Sign out')),
+              ];
+            },
           ),
         ],
       ),
