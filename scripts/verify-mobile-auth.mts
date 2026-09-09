@@ -291,6 +291,57 @@ try {
     fail(`expected 403 for a student, got ${studentPeek.status}`);
   }
 
+  const counts = await api("/api/staff/counts", { token: staffToken });
+  if (counts.status === 200 && Array.isArray(counts.json.slots)) {
+    pass("projected-against-served comes back per meal slot");
+  } else {
+    fail(`expected 200 with slots, got ${counts.status} ${JSON.stringify(counts.json)}`);
+  }
+
+  // --- 5b. Counter sales, which reuse the web's Server Actions ---
+  console.log("\nCounter sales");
+  const sales = await api("/api/staff/sales", { token: staffToken });
+  if (sales.status === 200 && Array.isArray(sales.json.openBills)) {
+    pass("open bills, catalogue and today's takings load");
+  } else {
+    fail(`expected 200 with openBills, got ${sales.status} ${JSON.stringify(sales.json)}`);
+  }
+
+  // The real question: a Server Action invoked from a route handler. It
+  // typechecks either way; only running it proves `revalidatePath` and the
+  // transport-aware session hold up outside a form post.
+  const made = await api("/api/staff/sales", {
+    method: "POST",
+    token: staffToken,
+    body: { action: "createBill", fields: { personName: "Probe Guest" } },
+  });
+  if (made.status === 200 && typeof made.json.billId === "string") {
+    pass("createBill runs as a Server Action called from a route handler");
+  } else {
+    fail(`expected a bill, got ${made.status} ${JSON.stringify(made.json)}`);
+  }
+
+  const madeBillId = made.json.billId as unknown as string | null;
+  if (madeBillId) {
+    const cancelled = await api("/api/staff/sales", {
+      method: "POST",
+      token: staffToken,
+      body: { action: "cancelBill", billId: madeBillId },
+    });
+    if (cancelled.status === 200) {
+      pass("cancelBill closes it again, so the probe leaves no open bill");
+    } else {
+      fail(`could not cancel the probe bill: ${JSON.stringify(cancelled.json)}`);
+    }
+  }
+
+  const studentSales = await api("/api/staff/sales", { token: accessToken });
+  if (studentSales.status === 403) {
+    pass("a student cannot open the till");
+  } else {
+    fail(`expected 403 for a student, got ${studentSales.status}`);
+  }
+
   // --- 6. Logout revokes the refresh token, not just the local copy ---
   console.log("\nSigning out");
   const refreshToken = login.json.refreshToken as unknown as string;

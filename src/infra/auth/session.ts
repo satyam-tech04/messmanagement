@@ -12,12 +12,14 @@
  */
 import "server-only";
 import { cache } from "react";
+import { headers } from "next/headers";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { TenantContext } from "@/core/domain/tenant-context";
 import type { UserRole } from "@/core/domain/enums";
 import { createClient } from "../supabase/server";
 import { createBearerClient } from "../supabase/bearer";
 import { firstRelated } from "../supabase/mappers";
+import { parseBearerToken } from "@/lib/bearer-token";
 import type { Database } from "../supabase/database.types";
 
 export interface SessionUser extends TenantContext {
@@ -35,6 +37,18 @@ export interface SessionUser extends TenantContext {
  * The cache is per-request, so it cannot leak one user's context into another's.
  */
 export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
+  // A bearer token wins when one is present, so **every** existing caller —
+  // pages, Server Actions and route handlers alike — serves the mobile app
+  // without being rewritten. There are 115 of them; making the chokepoint
+  // transport-aware is the only version of this that does not mean touching
+  // each one and getting one wrong.
+  //
+  // A browser never sends this header, so the cookie path is untouched. And a
+  // header alone grants nothing: the token below is signature-verified, so
+  // inventing one gets you no further than inventing a cookie would.
+  const token = parseBearerToken((await headers()).get("authorization"));
+  if (token) return getSessionUserFromToken(token);
+
   const supabase = await createClient();
 
   const { data, error } = await supabase.auth.getClaims();
