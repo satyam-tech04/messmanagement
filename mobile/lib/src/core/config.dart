@@ -42,6 +42,26 @@ class AppConfig {
     defaultValue: _productionBaseUrl,
   );
 
+  /// Supabase, used for **one thing only**: the realtime channel that flips the
+  /// meal-code screen to a receipt the moment staff scan. Every read and write
+  /// still goes through our own API.
+  ///
+  /// Both values below are public by design and already ship in the web app's
+  /// client bundle, so putting them in a binary exposes nothing new. The anon
+  /// key grants nothing on its own — RLS decides what a session can see, and
+  /// `attendance_read_own` restricts this subscription to the signed-in
+  /// student's own rows. The service-role key, which does bypass RLS, must
+  /// never come near this file.
+  static const String supabaseUrl = String.fromEnvironment(
+    'SUPABASE_URL',
+    defaultValue: 'https://yenxlcrtlmnfotfqqabo.supabase.co',
+  );
+
+  static const String supabaseAnonKey = String.fromEnvironment(
+    'SUPABASE_ANON_KEY',
+    defaultValue: 'sb_publishable_aiA8hIQIi9jS8UCeKXkTEg_2UENTGdT',
+  );
+
   /// Fails loudly at startup rather than on the first request, where the error
   /// would surface as a confusing network failure on the login screen.
   static void assertConfigured() {

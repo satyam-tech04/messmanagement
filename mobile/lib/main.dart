@@ -4,6 +4,7 @@ import 'package:intl/date_symbol_data_local.dart';
 
 import 'src/app.dart';
 import 'src/core/config.dart';
+import 'src/data/attendance_watcher.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -13,6 +14,8 @@ Future<void> main() async {
   // in the wrong locale while the data arrives. `en_IN` is what puts the
   // separators in the lakh and crore positions.
   await initializeDateFormatting('en_IN');
+
+  await initRealtime();
 
   runApp(const ProviderScope(child: MessOsApp()));
 }

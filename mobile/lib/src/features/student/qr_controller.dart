@@ -12,6 +12,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_failure.dart';
+import '../../data/attendance_watcher.dart';
 import '../../data/qr_token.dart';
 import '../../state/auth_controller.dart';
 import 'qr_state.dart';
@@ -21,9 +22,18 @@ class QrController extends Notifier<QrState> {
   DateTime? _revealedAt;
   bool _foreground = true;
 
+  final _watcher = AttendanceWatcher();
+
+  /// What the socket is currently watching, so a rotation does not tear down
+  /// and rebuild it. The code changes every few seconds; the meal does not.
+  String? _watching;
+
   @override
   QrState build() {
-    ref.onDispose(() => _timer?.cancel());
+    ref.onDispose(() {
+      _timer?.cancel();
+      _watcher.stop();
+    });
     return const QrHidden();
   }
 
@@ -38,7 +48,46 @@ class QrController extends Notifier<QrState> {
     _timer?.cancel();
     _timer = null;
     _revealedAt = null;
+    _stopWatching();
     state = const QrHidden();
+  }
+
+  /// Subscribe to this student's own attendance for the meal now on screen.
+  ///
+  /// Keyed on the meal rather than the token, so the socket survives a rotation
+  /// instead of being rebuilt every few seconds.
+  Future<void> _watch(QrToken token) async {
+    final key = '${token.serviceDate}:${token.mealSlot}';
+    if (_watching == key) return;
+
+    final accessToken = ref.read(apiClientProvider).currentTokens?.accessToken;
+    if (accessToken == null) return;
+
+    _watching = key;
+    try {
+      await _watcher.watch(
+        accessToken: accessToken,
+        serviceDate: token.serviceDate,
+        mealSlot: token.mealSlot,
+        onServed: (scannedAt) {
+          // Polling would reach the same conclusion within a refresh interval;
+          // this is the same answer, immediately.
+          if (state is! QrReady) return;
+          state = QrServed(mealSlot: token.mealSlot, servedAt: scannedAt);
+          _stopWatching();
+        },
+      );
+    } catch (_) {
+      // The socket is an accelerator, not a dependency. If it cannot be
+      // established the rotation loop still notices ALREADY_SERVED on its next
+      // poll, so a failure here must not surface to the student at all.
+      _watching = null;
+    }
+  }
+
+  void _stopWatching() {
+    _watching = null;
+    _watcher.stop();
   }
 
   /// A phone asleep in a pocket wakes with a dead code on screen. Refresh the
@@ -76,6 +125,7 @@ class QrController extends Notifier<QrState> {
     if (DateTime.now().difference(revealedAt) > kVisibleWindow) {
       state = const QrExpired();
       _timer = null;
+      _stopWatching();
       return;
     }
 
@@ -96,6 +146,7 @@ class QrController extends Notifier<QrState> {
       final json = await ref.read(apiClientProvider).get('/api/qr/token');
       final token = QrToken.fromJson(json);
       state = QrReady(token);
+      _watch(token);
       return backoffSecondsFor(state, refreshSeconds: token.refreshSeconds);
     } on ApiFailure catch (e) {
       // Being fed is not a failure. Render it as a receipt so the student puts
@@ -115,6 +166,7 @@ class QrController extends Notifier<QrState> {
         return backoffSecondsFor(state);
       }
 
+      _stopWatching();
       state = QrDenied(
         code: e.code,
         message: e.message,

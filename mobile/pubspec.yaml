@@ -41,6 +41,7 @@ dependencies:
   intl: ^0.20.3
   qr_flutter: ^4.1.0
   screen_brightness: ^2.1.11
+  supabase_flutter: ^2.17.2
 
 dev_dependencies:
   flutter_test:
