@@ -24,6 +24,7 @@ import 'features/shell.dart';
 import 'state/auth_controller.dart';
 import 'state/connectivity.dart';
 import 'state/theme_controller.dart';
+import 'core/app_info.dart';
 
 class MessOsApp extends ConsumerWidget {
   const MessOsApp({super.key});
@@ -38,7 +39,7 @@ class MessOsApp extends ConsumerWidget {
     final auth = ref.watch(authControllerProvider);
 
     return MaterialApp(
-      title: 'CampusMeals',
+      title: AppInfo.name,
       debugShowCheckedModeBanner: false,
       theme: messLightTheme(),
       darkTheme: messDarkTheme(),

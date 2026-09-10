@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageTitle } from "@/lib/app-info";
 
 /**
  * The privacy policy.
@@ -17,7 +18,7 @@ import type { Metadata } from "next";
  * professional opinion, since some students are under 18.
  */
 export const metadata: Metadata = {
-  title: "Privacy · CampusMeals",
+  title: pageTitle("Privacy"),
   description: "What CampusMeals collects, why, and who can see it.",
 };
 

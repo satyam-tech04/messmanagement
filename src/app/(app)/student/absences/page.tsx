@@ -23,8 +23,9 @@ import { SupabaseMessCutRepository, SupabaseTenantRepository } from "@/infra/sup
 import { formatServiceDate, todayIn } from "@/lib/format";
 import { AbsenceForm } from "./absence-form";
 import { CancelButton } from "./cancel-button";
+import { pageTitle } from "@/lib/app-info";
 
-export const metadata: Metadata = { title: "Absences · CampusMeals" };
+export const metadata: Metadata = { title: pageTitle("Absences") };
 
 export default async function StudentAbsencesPage() {
   const user = await requireSessionUser();

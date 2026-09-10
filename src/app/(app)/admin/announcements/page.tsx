@@ -24,8 +24,9 @@ import {
   EditAnnouncementDialog,
   type AnnouncementRow,
 } from "./announcement-form";
+import { pageTitle } from "@/lib/app-info";
 
-export const metadata: Metadata = { title: "Announcements · CampusMeals" };
+export const metadata: Metadata = { title: pageTitle("Announcements") };
 
 export default async function AnnouncementsPage() {
   const user = await requireSessionUser();

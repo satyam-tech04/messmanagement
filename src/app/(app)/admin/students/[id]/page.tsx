@@ -36,8 +36,9 @@ import {
   RenewPlanDialog,
   type AssignablePlan,
 } from "./plan-actions";
+import { pageTitle } from "@/lib/app-info";
 
-export const metadata: Metadata = { title: "Student · CampusMeals" };
+export const metadata: Metadata = { title: pageTitle("Student") };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

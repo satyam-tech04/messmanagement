@@ -6,8 +6,9 @@ import { PageHeader } from "@/components/page-header";
 import { requireSessionUser } from "@/infra/auth/session";
 import { createClient } from "@/infra/supabase/server";
 import { ImportClient } from "./import-client";
+import { pageTitle } from "@/lib/app-info";
 
-export const metadata: Metadata = { title: "Import students · CampusMeals" };
+export const metadata: Metadata = { title: pageTitle("Import students") };
 
 export default async function ImportStudentsPage() {
   const user = await requireSessionUser();

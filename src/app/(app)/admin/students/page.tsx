@@ -19,8 +19,9 @@ import { formatServiceDate } from "@/lib/format";
 import { subscriptionStateOf } from "@/core/policies/subscription-state";
 import { serviceDateOf, toServiceDate } from "@/core/time";
 import { StudentsFilters } from "./students-filters";
+import { pageTitle } from "@/lib/app-info";
 
-export const metadata: Metadata = { title: "Students · CampusMeals" };
+export const metadata: Metadata = { title: pageTitle("Students") };
 
 const PAGE_SIZE = 25;
 // "Meal plan" and "Account", not "Plan" and "Status". Both used to read as

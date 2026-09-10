@@ -14,8 +14,9 @@ import { addDays, isServiceDate, serviceDateOf, toServiceDate } from "@/core/tim
 import { formatServiceDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { RangePicker } from "./range-picker";
+import { pageTitle } from "@/lib/app-info";
 
-export const metadata: Metadata = { title: "Feedback · CampusMeals" };
+export const metadata: Metadata = { title: pageTitle("Feedback") };
 
 const DAYS = 14;
 

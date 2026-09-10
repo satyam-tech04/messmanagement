@@ -8,8 +8,9 @@ import { formatPaise, toPaise } from "@/core/money";
 import { summariseRevenue } from "@/core/policies/revenue.policy";
 import { requireSessionUser } from "@/infra/auth/session";
 import { createClient } from "@/infra/supabase/server";
+import { pageTitle } from "@/lib/app-info";
 
-export const metadata: Metadata = { title: "Reports · CampusMeals" };
+export const metadata: Metadata = { title: pageTitle("Reports") };
 
 /**
  * Where data leaves the system.

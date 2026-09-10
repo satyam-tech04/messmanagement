@@ -21,6 +21,7 @@
  * to serve is made in core; this decides how to say it.
  */
 import type { StatusTone } from "./tone";
+import { APP_NAME } from "@/lib/app-info";
 
 export interface ScanOutcome {
   readonly tone: StatusTone;
@@ -125,7 +126,7 @@ export const ALL_SCAN_OUTCOMES: Readonly<Record<string, ScanOutcome>> = {
   INVALID_TOKEN: {
     tone: "danger",
     title: "Invalid code",
-    action: "This is not a valid CampusMeals code. Rescan, or use manual entry.",
+    action: `This is not a valid ${APP_NAME} code. Rescan, or use manual entry.`,
     retryable: true,
     allowsManualOverride: true,
   },

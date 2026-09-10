@@ -1,0 +1,27 @@
+{
+  "$comment": [
+    "The product's identity, in one place.",
+    "",
+    "Change `name` here and run `npm run app:name` — it rewrites the Dart and",
+    "TypeScript constants, the Android string resource and the iOS plist. Nothing",
+    "else in the repo should ever contain the product name as a literal.",
+    "",
+    "This exists because app-store names must be globally unique, so finding an",
+    "available one takes several attempts, and a rename that touches 66 files is",
+    "a rename nobody wants to try twice.",
+    "",
+    "`bundleId` is NOT rewritten by that script. It is permanent once published —",
+    "both stores identify an app by it forever — so changing it is a deliberate",
+    "operation, not a side effect of picking a different display name. It is",
+    "recorded here so the two are visibly separate decisions.",
+    "",
+    "`storeName` is the App Store / Play listing title, which must be unique",
+    "across the whole store and is often longer than the name under the icon.",
+    "It is set in each console by hand and lives here only as a record."
+  ],
+
+  "name": "CampusMeals",
+  "storeName": "CampusMeals",
+  "bundleId": "com.campusmeals.app",
+  "supportEmail": "support@campusmeals.app"
+}

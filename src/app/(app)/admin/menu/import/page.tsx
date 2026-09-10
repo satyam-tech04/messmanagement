@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { requireSessionUser } from "@/infra/auth/session";
 import { endOfMonth, serviceDateOf, toServiceDate } from "@/core/time";
 import { MenuImportClient } from "./import-client";
+import { pageTitle } from "@/lib/app-info";
 
-export const metadata: Metadata = { title: "Import menu · CampusMeals" };
+export const metadata: Metadata = { title: pageTitle("Import menu") };
 
 export default async function MenuImportPage() {
   const user = await requireSessionUser();

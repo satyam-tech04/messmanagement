@@ -19,8 +19,9 @@ import { createClient } from "@/infra/supabase/server";
 import { createRepositories } from "@/infra/supabase/repositories";
 import { formatServiceDate } from "@/lib/format";
 import { LiveCount, type SlotCount } from "./live-count";
+import { pageTitle } from "@/lib/app-info";
 
-export const metadata: Metadata = { title: "Headcount · CampusMeals" };
+export const metadata: Metadata = { title: pageTitle("Headcount") };
 
 export default async function HeadcountPage() {
   const user = await requireSessionUser();

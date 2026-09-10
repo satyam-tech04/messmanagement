@@ -13,8 +13,9 @@ import { createClient } from "@/infra/supabase/server";
 import { SupabaseTenantRepository } from "@/infra/supabase/repositories";
 import { formatServiceDate } from "@/lib/format";
 import { ClearMenuButton, EditMenuDialog, PublishedTick, type MenuCell } from "./menu-editor";
+import { pageTitle } from "@/lib/app-info";
 
-export const metadata: Metadata = { title: "Menu · CampusMeals" };
+export const metadata: Metadata = { title: pageTitle("Menu") };
 
 const DAYS_SHOWN = 7;
 

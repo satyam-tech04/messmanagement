@@ -5,8 +5,9 @@ import { requireSessionUser } from "@/infra/auth/session";
 import { createClient } from "@/infra/supabase/server";
 import { serviceDateOf } from "@/core/time";
 import { SalesCounter } from "./sales-counter";
+import { pageTitle } from "@/lib/app-info";
 
-export const metadata: Metadata = { title: "Counter sales · CampusMeals" };
+export const metadata: Metadata = { title: pageTitle("Counter sales") };
 
 /**
  * The walk-in counter.

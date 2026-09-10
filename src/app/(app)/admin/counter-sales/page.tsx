@@ -20,8 +20,9 @@ import { isServiceDate, serviceDateOf, toServiceDate } from "@/core/time";
 import { formatServiceDate } from "@/lib/format";
 import { DatePicker } from "./date-picker";
 import { PaymentToggle } from "./payment-toggle";
+import { pageTitle } from "@/lib/app-info";
 
-export const metadata: Metadata = { title: "Counter sales · CampusMeals" };
+export const metadata: Metadata = { title: pageTitle("Counter sales") };
 
 /**
  * The day's takings from the counter.

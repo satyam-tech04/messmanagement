@@ -14,8 +14,9 @@ import { SupabaseTenantRepository } from "@/infra/supabase/repositories";
 import { formatServiceDate } from "@/lib/format";
 import { QrDisplay } from "./qr-display";
 import { AnnouncementsCard, type LiveAnnouncement } from "./announcements-card";
+import { pageTitle } from "@/lib/app-info";
 
-export const metadata: Metadata = { title: "My QR · CampusMeals" };
+export const metadata: Metadata = { title: pageTitle("My QR") };
 
 export default async function StudentPage() {
   const user = await requireSessionUser();

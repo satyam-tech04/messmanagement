@@ -8,8 +8,9 @@ import { StatusBadge } from "@/components/status-badge";
 import { requireSessionUser } from "@/infra/auth/session";
 import { createClient } from "@/infra/supabase/server";
 import { serviceDateOf } from "@/core/time";
+import { pageTitle } from "@/lib/app-info";
 
-export const metadata: Metadata = { title: "Dashboard · CampusMeals" };
+export const metadata: Metadata = { title: pageTitle("Dashboard") };
 
 export default async function AdminDashboardPage() {
   const user = await requireSessionUser();

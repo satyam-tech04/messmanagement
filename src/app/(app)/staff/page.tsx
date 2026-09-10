@@ -5,8 +5,9 @@ import { requireSessionUser } from "@/infra/auth/session";
 import { createClient } from "@/infra/supabase/server";
 import { readStaffHome } from "@/infra/queries/staff-home";
 import { Scanner } from "./scanner";
+import { pageTitle } from "@/lib/app-info";
 
-export const metadata: Metadata = { title: "Scan · CampusMeals" };
+export const metadata: Metadata = { title: pageTitle("Scan") };
 
 /**
  * Counter home.

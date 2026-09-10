@@ -18,8 +18,9 @@ import { createAdminClient } from "@/infra/supabase/admin";
 import { SupabaseTenantDirectory } from "@/infra/supabase/repositories";
 import { createClient } from "@/infra/supabase/server";
 import { SwitchMessButton } from "./switch-button";
+import { pageTitle } from "@/lib/app-info";
 
-export const metadata: Metadata = { title: "Messes · CampusMeals" };
+export const metadata: Metadata = { title: pageTitle("Messes") };
 
 // Never cached. The whole point of this screen is which mess you are in right
 // now, and a stale answer to that question is worse than no answer.

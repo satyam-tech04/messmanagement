@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { APP_NAME } from "@/lib/app-info";
 import "./globals.css";
 
 /**
@@ -33,7 +34,7 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "CampusMeals",
+    default: APP_NAME,
     template: "%s",
   },
   description:

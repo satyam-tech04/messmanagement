@@ -5,6 +5,32 @@ remembered — the parts that bite are marked.
 
 ---
 
+## Renaming the app
+
+App-store names must be globally unique, so finding a free one takes attempts.
+Everything the name touches is generated from one file:
+
+```bash
+# edit `name` in app.config.json, then
+npm run app:name
+```
+
+That rewrites the Dart constant, the TypeScript constant, the Android string
+resource and the iOS `CFBundleDisplayName`. Nothing else in the repo contains
+the product name as a literal, so no other file needs touching.
+
+Two things it deliberately leaves alone:
+
+- **The bundle id.** Permanent once published — both stores identify an app by
+  it forever — so changing it is a deliberate operation, not a side effect of
+  trying a different display name.
+- **The store listing titles.** Those live in each console, must be unique
+  across the whole store, and are usually longer than the name under the icon.
+  The listing may read "CampusMeals — Hostel Mess" while the icon says
+  "CampusMeals"; they are separate fields and only the listing has to be unique.
+
+---
+
 ## Before the first build, once
 
 ### 1. Switch Flutter to the stable channel ⚠️

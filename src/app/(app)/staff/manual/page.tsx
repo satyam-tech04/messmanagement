@@ -9,8 +9,9 @@ import { createAdminClient } from "@/infra/supabase/admin";
 import { createClient } from "@/infra/supabase/server";
 import { SupabaseTenantRepository } from "@/infra/supabase/repositories";
 import { ManualPageClient } from "./manual-page-client";
+import { pageTitle } from "@/lib/app-info";
 
-export const metadata: Metadata = { title: "Manual entry · CampusMeals" };
+export const metadata: Metadata = { title: pageTitle("Manual entry") };
 
 export default async function ManualEntryPage() {
   const user = await requireSessionUser();

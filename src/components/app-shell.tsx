@@ -19,6 +19,7 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/s
 import { navigationFor, roleLabel, type NavFeatures, type NavSection } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 import type { UserRole } from "@/core/domain/enums";
+import { APP_NAME } from "@/lib/app-info";
 
 /** Resolves a lucide icon name from the nav config. */
 function NavIcon({ name, className }: { name: string; className?: string }) {
@@ -141,7 +142,7 @@ export function AppShell({
       />
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold tracking-tight">{user.tenantName}</p>
-        <p className="text-muted-foreground truncate text-xs">CampusMeals</p>
+        <p className="text-muted-foreground truncate text-xs">{APP_NAME}</p>
       </div>
     </div>
   );

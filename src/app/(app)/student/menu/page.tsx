@@ -10,8 +10,9 @@ import { createAdminClient } from "@/infra/supabase/admin";
 import { createClient } from "@/infra/supabase/server";
 import { SupabaseTenantRepository } from "@/infra/supabase/repositories";
 import { formatServiceDate } from "@/lib/format";
+import { pageTitle } from "@/lib/app-info";
 
-export const metadata: Metadata = { title: "Menu · CampusMeals" };
+export const metadata: Metadata = { title: pageTitle("Menu") };
 
 const DAYS_AHEAD = 3;
 

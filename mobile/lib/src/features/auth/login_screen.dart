@@ -20,6 +20,7 @@ import '../../design/brand.dart';
 import '../../state/auth_controller.dart';
 import '../../design/components.dart';
 import '../../design/tokens.dart';
+import '../../core/app_info.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -92,7 +93,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     const BrandMark(size: 96),
                     const Gap.xl(),
                     Text(
-                      'CampusMeals',
+                      AppInfo.name,
                       style: theme.textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),

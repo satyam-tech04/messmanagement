@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { UtensilsCrossed } from "lucide-react";
+import { APP_NAME } from "@/lib/app-info";
 
 /**
  * Shell for unauthenticated screens.
@@ -16,7 +17,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
           <div className="bg-primary text-primary-foreground flex size-9 items-center justify-center rounded-lg">
             <UtensilsCrossed className="size-5" aria-hidden="true" />
           </div>
-          <span className="text-lg font-semibold tracking-tight">CampusMeals</span>
+          <span className="text-lg font-semibold tracking-tight">{APP_NAME}</span>
         </div>
 
         <div className="flex flex-1 items-center justify-center">
@@ -24,7 +25,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
         </div>
 
         <p className="text-muted-foreground text-center text-xs lg:text-left">
-          © {new Date().getFullYear()} CampusMeals
+          © {new Date().getFullYear()} {APP_NAME}
         </p>
       </div>
 

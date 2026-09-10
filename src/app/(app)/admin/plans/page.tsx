@@ -21,8 +21,9 @@ import { SupabaseTenantRepository } from "@/infra/supabase/repositories";
 import { createClient } from "@/infra/supabase/server";
 import { MealPricesCard } from "./meal-prices-card";
 import { CreatePlanDialog, EditPlanDialog, TogglePlanButton, type PlanRow } from "./plan-form";
+import { pageTitle } from "@/lib/app-info";
 
-export const metadata: Metadata = { title: "Plans · CampusMeals" };
+export const metadata: Metadata = { title: pageTitle("Plans") };
 
 const COLUMNS = ["Plan", "Meals", "Duration", "Price", "Per meal", "Students", "Status", ""];
 

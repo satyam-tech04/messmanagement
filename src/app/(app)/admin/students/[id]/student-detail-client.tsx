@@ -38,6 +38,7 @@ import {
   type ActionState,
 } from "./actions";
 import { CapturePhotoDialog } from "./photo-capture";
+import { APP_NAME } from "@/lib/app-info";
 
 export interface StudentDetail {
   readonly id: string;
@@ -361,7 +362,7 @@ export function ResetPasswordCard({ student }: { student: StudentDetail }) {
               size="sm"
               onClick={() => {
                 void navigator.clipboard.writeText(
-                  `CampusMeals login\nRoll number: ${student.rollNumber}\nPassword: ${state.temporaryPassword}`,
+                  `${APP_NAME} login\nRoll number: ${student.rollNumber}\nPassword: ${state.temporaryPassword}`,
                 );
                 setCopied(true);
                 setTimeout(() => setCopied(false), 2000);

@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { createStudent, type CreateStudentState } from "./actions";
+import { APP_NAME } from "@/lib/app-info";
 
 export interface PlanOption {
   readonly id: string;
@@ -92,7 +93,7 @@ function CredentialsIssued({ created }: { created: NonNullable<CreateStudentStat
   // The mobile number is the username now, so that is what goes on the slip.
   // The roll number is shown below for the admin's own records — it is what
   // staff type into the manual fallback — but the student never types it.
-  const text = `CampusMeals login\nMobile number: ${created.temporaryPassword}\nPassword: ${created.temporaryPassword}`;
+  const text = `${APP_NAME} login\nMobile number: ${created.temporaryPassword}\nPassword: ${created.temporaryPassword}`;
 
   return (
     <Card className="border-emerald-500/40">

@@ -9,8 +9,9 @@ import { createClient } from "@/infra/supabase/server";
 import { SupabaseTenantRepository } from "@/infra/supabase/repositories";
 import { BrandingForm } from "./branding-form";
 import { SettingsForm, type SlotSetting } from "./settings-form";
+import { pageTitle } from "@/lib/app-info";
 
-export const metadata: Metadata = { title: "Settings · CampusMeals" };
+export const metadata: Metadata = { title: pageTitle("Settings") };
 
 /** Sensible defaults for a meal the mess does not currently serve. */
 const DEFAULT_WINDOWS: Record<string, { start: string; end: string }> = {

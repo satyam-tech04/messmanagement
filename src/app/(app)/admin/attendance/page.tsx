@@ -20,8 +20,9 @@ import { createClient } from "@/infra/supabase/server";
 import { formatDateTime, formatServiceDate } from "@/lib/format";
 import { ReverseAttendanceButton } from "./reverse-button";
 import { firstRelated } from "@/infra/supabase/mappers";
+import { pageTitle } from "@/lib/app-info";
 
-export const metadata: Metadata = { title: "Attendance · CampusMeals" };
+export const metadata: Metadata = { title: pageTitle("Attendance") };
 
 const COLUMNS = ["Roll number", "Name", "Meal", "Method", "Scanned at", "Reason", ""];
 const VALID_SLOTS = ["BREAKFAST", "LUNCH", "SNACKS", "DINNER"] as const;

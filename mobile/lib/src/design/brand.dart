@@ -6,6 +6,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import '../core/app_info.dart';
 
 class BrandMark extends StatelessWidget {
   const BrandMark({super.key, this.size = 72});
@@ -19,7 +20,7 @@ class BrandMark extends StatelessWidget {
     // The mark is wider than it is tall, so height follows from the asset
     // rather than being forced square and squashing the cloud.
     fit: BoxFit.contain,
-    semanticLabel: 'CampusMeals',
+    semanticLabel: AppInfo.name,
     // A missing asset must not take down the login screen — it is decoration,
     // and the words beneath it already say what this is.
     errorBuilder: (context, _, _) => Icon(

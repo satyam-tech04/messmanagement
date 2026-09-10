@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { LoginForm } from "./login-form";
+import { pageTitle } from "@/lib/app-info";
 
 export const metadata: Metadata = {
-  title: "Sign in · CampusMeals",
+  title: pageTitle("Sign in"),
   description: "Sign in to your mess account.",
 };
 

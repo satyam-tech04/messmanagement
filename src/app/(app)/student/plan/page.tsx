@@ -19,8 +19,9 @@ import { subscriptionStateLabel, subscriptionStateOf } from "@/core/policies/sub
 import { requireSessionUser } from "@/infra/auth/session";
 import { createClient } from "@/infra/supabase/server";
 import { formatRelativeDay, formatServiceDate, todayIn } from "@/lib/format";
+import { pageTitle } from "@/lib/app-info";
 
-export const metadata: Metadata = { title: "My plan · CampusMeals" };
+export const metadata: Metadata = { title: pageTitle("My plan") };
 
 export default async function StudentPlanPage() {
   const user = await requireSessionUser();

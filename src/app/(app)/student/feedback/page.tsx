@@ -9,8 +9,9 @@ import { SupabaseTenantRepository } from "@/infra/supabase/repositories";
 import { addDays, serviceDateOf, toServiceDate } from "@/core/time";
 import { formatServiceDate } from "@/lib/format";
 import { FeedbackForm, type FeedbackTarget } from "./feedback-form";
+import { pageTitle } from "@/lib/app-info";
 
-export const metadata: Metadata = { title: "Feedback · CampusMeals" };
+export const metadata: Metadata = { title: pageTitle("Feedback") };
 
 /**
  * Which meals a student may comment on.

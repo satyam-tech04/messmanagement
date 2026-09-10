@@ -20,8 +20,9 @@ import { createClient } from "@/infra/supabase/server";
 import { firstRelated } from "@/infra/supabase/mappers";
 import { formatServiceDate, todayIn } from "@/lib/format";
 import { DecisionButtons } from "./decision-buttons";
+import { pageTitle } from "@/lib/app-info";
 
-export const metadata: Metadata = { title: "Absences · CampusMeals" };
+export const metadata: Metadata = { title: pageTitle("Absences") };
 
 const COLUMNS = ["Student", "Days", "Meals", "Requested", "Status", ""];
 const FILTERS = ["PENDING", "APPROVED", "REJECTED", "CANCELLED", "ALL"] as const;

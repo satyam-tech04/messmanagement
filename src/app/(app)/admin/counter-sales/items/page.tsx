@@ -17,8 +17,9 @@ import { createClient } from "@/infra/supabase/server";
 import { formatPaise } from "@/core/money";
 import { toPaise } from "@/core/money";
 import { CreateItemDialog, EditItemDialog, ToggleItemButton } from "./item-form";
+import { pageTitle } from "@/lib/app-info";
 
-export const metadata: Metadata = { title: "Counter items · CampusMeals" };
+export const metadata: Metadata = { title: pageTitle("Counter items") };
 
 export default async function CounterItemsPage() {
   const user = await requireSessionUser();

@@ -5,9 +5,10 @@ import { ChevronLeft, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getSessionUser, homeRouteFor } from "@/infra/auth/session";
 import { ChangePasswordForm } from "./change-password-form";
+import { pageTitle } from "@/lib/app-info";
 
 export const metadata: Metadata = {
-  title: "Choose a password · CampusMeals",
+  title: pageTitle("Choose a password"),
 };
 
 export default async function ChangePasswordPage() {

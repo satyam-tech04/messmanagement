@@ -8,8 +8,9 @@ import { createClient } from "@/infra/supabase/server";
 import { readStaffCounts } from "@/infra/queries/staff-counts";
 import { formatServiceDate } from "@/lib/format";
 import { LiveCount, type SlotCount } from "../../admin/headcount/live-count";
+import { pageTitle } from "@/lib/app-info";
 
-export const metadata: Metadata = { title: "Live count · CampusMeals" };
+export const metadata: Metadata = { title: pageTitle("Live count") };
 
 /**
  * The counter's view of the same figures the admin sees.

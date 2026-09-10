@@ -10,8 +10,9 @@ import { serviceDateOf } from "@/core/time";
 import { StudentForm, type PlanOption } from "./student-form";
 import { BulkStudentForm, type BulkPlanOption } from "./bulk-form";
 import { AddStudentTabs } from "./add-student-tabs";
+import { pageTitle } from "@/lib/app-info";
 
-export const metadata: Metadata = { title: "Add student · CampusMeals" };
+export const metadata: Metadata = { title: pageTitle("Add student") };
 
 export default async function NewStudentPage() {
   const user = await requireSessionUser();
