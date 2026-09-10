@@ -104,6 +104,56 @@ extension MessThemeX on BuildContext {
   TextTheme get texts => Theme.of(this).textTheme;
 }
 
+/// The type scale.
+///
+/// Inter, bundled rather than fetched. Two things make it read as designed
+/// rather than defaulted, and both are about large text:
+///
+///  - **Negative tracking on display and headline sizes.** Type set large keeps
+///    the letter-spacing it was drawn for at 16px, which looks loose and
+///    amateurish. Tightening it is most of the difference between a default
+///    theme and a considered one.
+///  - **Weight, not size, carries hierarchy** in the dense parts. A counter
+///    screen has no room to make things bigger, so 600 against 400 does the work
+///    that 20px against 16px would elsewhere.
+///
+/// Body sizes keep their natural tracking — tightening small text hurts
+/// legibility, which at a counter is the whole point.
+TextTheme _typography(ColorScheme scheme) {
+  const family = 'Inter';
+
+  TextStyle style(double size, FontWeight weight, double tracking) => TextStyle(
+    fontFamily: family,
+    fontSize: size,
+    fontWeight: weight,
+    letterSpacing: tracking,
+    height: size >= 28 ? 1.15 : 1.35,
+    color: scheme.onSurface,
+  );
+
+  return TextTheme(
+    displayLarge: style(48, FontWeight.w800, -1.2),
+    displayMedium: style(40, FontWeight.w800, -1.0),
+    displaySmall: style(34, FontWeight.w800, -0.8),
+    headlineLarge: style(30, FontWeight.w700, -0.6),
+    headlineMedium: style(26, FontWeight.w700, -0.5),
+    headlineSmall: style(22, FontWeight.w700, -0.4),
+    titleLarge: style(20, FontWeight.w700, -0.3),
+    titleMedium: style(17, FontWeight.w600, -0.2),
+    titleSmall: style(15, FontWeight.w600, -0.1),
+    bodyLarge: style(16, FontWeight.w400, 0),
+    bodyMedium: style(14.5, FontWeight.w400, 0),
+    bodySmall: style(
+      13,
+      FontWeight.w400,
+      0,
+    ).copyWith(color: scheme.onSurfaceVariant),
+    labelLarge: style(15, FontWeight.w600, 0),
+    labelMedium: style(12.5, FontWeight.w600, 0.2),
+    labelSmall: style(11.5, FontWeight.w600, 0.3),
+  );
+}
+
 ThemeData _build(Brightness brightness) {
   final scheme = ColorScheme.fromSeed(
     seedColor: kBrandSeed,
@@ -118,17 +168,15 @@ ThemeData _build(Brightness brightness) {
     colorScheme: scheme,
     extensions: [statuses],
     scaffoldBackgroundColor: scheme.surface,
+    fontFamily: 'Inter',
+    textTheme: _typography(scheme),
 
     appBarTheme: AppBarTheme(
       centerTitle: false,
       elevation: 0,
       scrolledUnderElevation: 0.5,
       backgroundColor: scheme.surface,
-      titleTextStyle: TextStyle(
-        color: scheme.onSurface,
-        fontSize: 20,
-        fontWeight: FontWeight.w700,
-      ),
+      titleTextStyle: _typography(scheme).titleLarge,
     ),
 
     // Flat, bordered cards rather than shadowed ones. At the density this app
@@ -148,7 +196,12 @@ ThemeData _build(Brightness brightness) {
       style: FilledButton.styleFrom(
         minimumSize: const Size.fromHeight(Sizes.buttonHeight),
         shape: const RoundedRectangleBorder(borderRadius: Radii.mdAll),
-        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        textStyle: const TextStyle(
+          fontFamily: 'Inter',
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          letterSpacing: -0.1,
+        ),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(

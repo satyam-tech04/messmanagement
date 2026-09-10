@@ -21,6 +21,7 @@ import 'package:screen_brightness/screen_brightness.dart';
 import '../../data/qr_token.dart';
 import '../../data/session.dart';
 import '../../design/async_view.dart';
+import '../../design/feedback.dart';
 import 'qr_controller.dart';
 import 'qr_state.dart';
 import '../../design/components.dart';
@@ -118,15 +119,17 @@ class _QrScreenState extends ConsumerState<QrScreen>
     );
   }
 
+  void _reveal() {
+    Haptics.tap();
+    ref.read(qrControllerProvider.notifier).reveal();
+  }
+
   Widget _body(BuildContext context, QrState state) => switch (state) {
-    QrHidden() => _Reveal(
-      name: widget.session.fullName,
-      onReveal: () => ref.read(qrControllerProvider.notifier).reveal(),
-    ),
+    QrHidden() => _Reveal(name: widget.session.fullName, onReveal: _reveal),
     QrExpired() => _Reveal(
       name: widget.session.fullName,
       expired: true,
-      onReveal: () => ref.read(qrControllerProvider.notifier).reveal(),
+      onReveal: _reveal,
     ),
     QrLoading() => const _LoadingCode(),
     QrReady(:final token) => _LiveCode(token: token, session: widget.session),

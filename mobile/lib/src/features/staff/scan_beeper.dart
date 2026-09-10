@@ -22,6 +22,7 @@ import 'dart:typed_data';
 
 import 'package:audioplayers/audioplayers.dart';
 
+import '../../design/feedback.dart';
 import '../../design/status_badge.dart';
 
 const int _sampleRate = 44100;
@@ -86,6 +87,10 @@ class ScanBeeper {
   late final Uint8List _warning = _wav([(hz: 520, ms: 200)]);
 
   Future<void> play(StatusTone tone) async {
+    // Touch as well as sound: at a counter the tablet is often not being looked
+    // at, and a buzz reaches a hand that a colour never will.
+    Haptics.forTone(tone);
+
     final bytes = switch (tone) {
       StatusTone.active => _success,
       StatusTone.danger => _danger,
