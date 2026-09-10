@@ -22,6 +22,7 @@ import '../../data/qr_token.dart';
 import '../../data/session.dart';
 import '../../design/async_view.dart';
 import '../../design/feedback.dart';
+import '../../design/motion.dart';
 import 'qr_controller.dart';
 import 'qr_state.dart';
 import '../../design/components.dart';
@@ -132,7 +133,12 @@ class _QrScreenState extends ConsumerState<QrScreen>
       onReveal: _reveal,
     ),
     QrLoading() => const _LoadingCode(),
-    QrReady(:final token) => _LiveCode(token: token, session: widget.session),
+    // The moment the product turns on. Keyed on the meal rather than the token
+    // so a rotation every fifteen seconds does not replay the animation.
+    QrReady(:final token) => FadeInUp(
+      key: ValueKey('${token.serviceDate}:${token.mealSlot}'),
+      child: _LiveCode(token: token, session: widget.session),
+    ),
     QrServed(:final mealSlot, :final servedAt) => _Served(
       mealSlot: mealSlot,
       servedAt: servedAt,

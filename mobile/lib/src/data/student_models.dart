@@ -82,6 +82,36 @@ class StudentSubscription {
   final int? perMealPaise;
   final int? durationDays;
 
+  /// A plan inside its last week.
+  ///
+  /// Presentation only, and deliberately so: the server decides whether a plan
+  /// is RUNNING, and this only decides whether to say so in orange. A student
+  /// who sees "ending soon" a week out can renew before the day they are turned
+  /// away at the counter, which is the entire point of surfacing it.
+  static const int endingSoonDays = 7;
+
+  int? get daysRemaining {
+    // Parsed as UTC, like every service date: these are plain calendar dates
+    // the mess already resolved, and reading them locally shifts them a day for
+    // anyone whose phone is in another zone.
+    final end = DateTime.tryParse('${endDate}T00:00:00Z');
+    if (end == null) return null;
+    final today = DateTime.now().toUtc();
+    return end
+        .difference(DateTime.utc(today.year, today.month, today.day))
+        .inDays;
+  }
+
+  bool get isEndingSoon {
+    if (state != 'RUNNING') return false;
+    final left = daysRemaining;
+    return left != null && left >= 0 && left <= endingSoonDays;
+  }
+
+  /// What the badge should say — the server's state, or the warning that
+  /// precedes it.
+  String get displayState => isEndingSoon ? 'ENDING_SOON' : state;
+
   factory StudentSubscription.fromJson(Map<String, dynamic> j) =>
       StudentSubscription(
         id: j['id'] as String? ?? '',

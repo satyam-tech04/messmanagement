@@ -56,12 +56,12 @@ class MessColors extends ThemeExtension<MessColors> {
   static const light = MessColors(
     statusActive: Color(0xFFD1FAE5),
     statusActiveFg: Color(0xFF065F46),
-    statusWarning: Color(0xFFFEF3C7),
-    statusWarningFg: Color(0xFF92400E),
+    statusWarning: Color(0xFFFFEDD5),
+    statusWarningFg: Color(0xFF9A3412),
     statusDanger: Color(0xFFFEE2E2),
     statusDangerFg: Color(0xFF991B1B),
-    statusNeutral: Color(0xFFE2E8F0),
-    statusNeutralFg: Color(0xFF334155),
+    statusNeutral: Color(0xFFE7E5E4),
+    statusNeutralFg: Color(0xFF44403C),
   );
 
   /// Not the light values dimmed: on a dark surface the container and the text
@@ -70,12 +70,12 @@ class MessColors extends ThemeExtension<MessColors> {
   static const dark = MessColors(
     statusActive: Color(0xFF064E3B),
     statusActiveFg: Color(0xFF6EE7B7),
-    statusWarning: Color(0xFF78350F),
-    statusWarningFg: Color(0xFFFCD34D),
+    statusWarning: Color(0xFF7C2D12),
+    statusWarningFg: Color(0xFFFDBA74),
     statusDanger: Color(0xFF7F1D1D),
     statusDangerFg: Color(0xFFFCA5A5),
-    statusNeutral: Color(0xFF334155),
-    statusNeutralFg: Color(0xFFCBD5E1),
+    statusNeutral: Color(0xFF3F3F46),
+    statusNeutralFg: Color(0xFFD4D4D8),
   );
 
   @override

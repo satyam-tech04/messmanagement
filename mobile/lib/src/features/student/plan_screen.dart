@@ -12,9 +12,11 @@ import '../../core/money.dart';
 import '../../data/student_models.dart';
 import '../../design/async_view.dart';
 import '../../design/status_badge.dart';
+import '../../design/theme.dart';
 import '../../state/student_providers.dart';
 import 'date_label.dart';
 import '../../design/components.dart';
+import '../../design/motion.dart';
 import '../../design/tokens.dart';
 
 class PlanScreen extends ConsumerWidget {
@@ -60,10 +62,14 @@ class PlanScreen extends ConsumerWidget {
           onRefresh: () async => ref.invalidate(studentPlanProvider),
           child: ListView(
             padding: Insets.list,
-            children: [
-              if (data.current != null)
-                _CurrentPlanCard(subscription: data.current!)
-              else
+            children: staggered([
+              if (data.current != null) ...[
+                _CurrentPlanCard(subscription: data.current!),
+                if (data.current!.isEndingSoon) ...[
+                  const Gap.md(),
+                  _EndingSoon(subscription: data.current!),
+                ],
+              ] else
                 const _NoRunningPlan(),
               if (past.isNotEmpty) ...[
                 const Gap.xxl(),
@@ -76,7 +82,7 @@ class PlanScreen extends ConsumerWidget {
                 const Gap.sm(),
                 for (final s in past) _HistoryRow(subscription: s),
               ],
-            ],
+            ]),
           ),
         );
       },
@@ -110,7 +116,7 @@ class _CurrentPlanCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                StatusBadge.forStatus(s.state),
+                StatusBadge.forStatus(s.displayState),
               ],
             ),
             const Gap.xs(),
@@ -215,26 +221,84 @@ class _NoRunningPlan extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      color: theme.colorScheme.surfaceContainerHighest,
-      child: Padding(
-        padding: const EdgeInsets.all(Space.lg),
-        child: Row(
-          children: [
-            Icon(
-              Icons.info_outline_rounded,
-              color: theme.colorScheme.onSurfaceVariant,
+    final statuses = context.statuses;
+
+    // Deliberately loud. Without a running plan a student cannot eat, so this is
+    // the screen's headline rather than a footnote — a grey strip reads as
+    // background detail, which is exactly the wrong impression.
+    return MessCard(
+      color: statuses.statusDanger,
+      padding: const EdgeInsets.all(Space.xl),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.no_meals_rounded,
+                color: statuses.statusDangerFg,
+                size: 22,
+              ),
+              const Gap.sm(),
+              Text(
+                'No plan running',
+                style: context.texts.titleMedium?.copyWith(
+                  color: statuses.statusDangerFg,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const Gap.sm(),
+          Text(
+            'You cannot be served at the counter until your plan is renewed. '
+            'Speak to the mess office — they can start a new one today.',
+            style: context.texts.bodyMedium?.copyWith(
+              color: statuses.statusDangerFg,
             ),
-            const Gap.md(),
-            Expanded(
-              child: Text(
-                'No plan is running right now. The mess office can renew it for you.',
-                style: theme.textTheme.bodyMedium,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The week before a plan lapses.
+///
+/// Surfaced so a student renews before the day they are turned away at the
+/// counter, rather than discovering it in a queue.
+class _EndingSoon extends StatelessWidget {
+  const _EndingSoon({required this.subscription});
+
+  final StudentSubscription subscription;
+
+  @override
+  Widget build(BuildContext context) {
+    final statuses = context.statuses;
+    final left = subscription.daysRemaining ?? 0;
+
+    return MessCard(
+      color: statuses.statusWarning,
+      child: Row(
+        children: [
+          Icon(
+            Icons.schedule_rounded,
+            color: statuses.statusWarningFg,
+            size: 20,
+          ),
+          const Gap.md(),
+          Expanded(
+            child: Text(
+              left <= 0
+                  ? 'Your plan ends today. Renew it to keep eating tomorrow.'
+                  : 'Your plan ends in $left ${left == 1 ? 'day' : 'days'}. '
+                        'Renew it at the mess office before then.',
+              style: context.texts.bodyMedium?.copyWith(
+                color: statuses.statusWarningFg,
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -285,7 +349,7 @@ class _HistoryRow extends StatelessWidget {
                   ),
                 ),
                 const Gap.xs(),
-                StatusBadge.forStatus(s.state),
+                StatusBadge.forStatus(s.displayState),
               ],
             ),
           ],

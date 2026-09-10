@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/student_models.dart';
 import '../../design/async_view.dart';
+import '../../design/motion.dart';
 import '../../state/student_providers.dart';
 import 'date_label.dart';
 import '../../design/components.dart';
@@ -47,7 +48,12 @@ class MenuScreen extends ConsumerWidget {
           child: ListView.builder(
             padding: Insets.list,
             itemCount: days.length,
-            itemBuilder: (_, i) => _DayCard(day: days[i]),
+            // Delay by position rather than by build order: a rebuilt row must
+            // not re-animate, and `itemBuilder` is called again on scroll.
+            itemBuilder: (_, i) => FadeInUp(
+              delay: Duration(milliseconds: 40 * (i < 4 ? i : 4)),
+              child: _DayCard(day: days[i]),
+            ),
           ),
         );
       },
