@@ -10,6 +10,8 @@
 /// actually revokes the refresh token server-side — see `/api/auth/logout`.
 library;
 
+import 'dart:convert';
+
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'session.dart';
@@ -42,6 +44,7 @@ class TokenStore {
 
   static const _accessKey = 'messos.accessToken';
   static const _refreshKey = 'messos.refreshToken';
+  static const _sessionKey = 'messos.session';
 
   Future<AuthTokens?> read() async {
     try {
@@ -58,6 +61,34 @@ class TokenStore {
     }
   }
 
+  /// The last session this device saw, for drawing the right shell on launch
+  /// without waiting for the network.
+  ///
+  /// **Not a credential and never treated as one.** It decides which shell to
+  /// paint while `/api/me` confirms in the background; every actual request is
+  /// authorised independently by the token, so a stale copy here can show a
+  /// shell for a moment but can never grant access to anything.
+  Future<Session?> readCachedSession() async {
+    try {
+      final raw = await _storage.read(key: _sessionKey);
+      if (raw == null) return null;
+      return Session.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> cacheSession(Session session) async {
+    try {
+      await _storage.write(
+        key: _sessionKey,
+        value: jsonEncode(session.toJson()),
+      );
+    } catch (_) {
+      // A cache that cannot be written costs a splash, not a session.
+    }
+  }
+
   Future<void> write(AuthTokens tokens) async {
     await _storage.write(key: _accessKey, value: tokens.accessToken);
     await _storage.write(key: _refreshKey, value: tokens.refreshToken);
@@ -69,6 +100,7 @@ class TokenStore {
     // outcome sign-out must never produce.
     try {
       await _storage.delete(key: _accessKey);
+      await _storage.delete(key: _sessionKey);
     } finally {
       await _storage.delete(key: _refreshKey);
     }

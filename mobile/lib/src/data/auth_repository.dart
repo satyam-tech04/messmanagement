@@ -34,10 +34,25 @@ class AuthRepository {
     await _tokens.write(tokens);
     _api.adopt(tokens);
 
-    return Session.fromJson((json['user'] as Map).cast<String, dynamic>());
+    final session = Session.fromJson(
+      (json['user'] as Map).cast<String, dynamic>(),
+    );
+    await _tokens.cacheSession(session);
+    return session;
   }
 
-  /// The session held on this device, or null.
+  /// The last known session, without waiting for the network.
+  ///
+  /// Used to paint the right shell on launch. Never used to decide what the
+  /// user may *do*: every request is authorised by the token independently, so
+  /// a stale copy can show a shell for a moment and grant nothing.
+  Future<Session?> cachedSession() async {
+    await _api.loadFromStore();
+    if (_api.currentTokens == null) return null;
+    return _tokens.readCachedSession();
+  }
+
+  /// The session held on this device, confirmed with the server, or null.
   ///
   /// Calls `/api/me` rather than trusting the stored token: it may have been
   /// revoked, the tenant suspended or the account disabled since last launch,
@@ -48,7 +63,11 @@ class AuthRepository {
 
     try {
       final json = await _api.get('/api/me');
-      return Session.fromJson((json['user'] as Map).cast<String, dynamic>());
+      final session = Session.fromJson(
+        (json['user'] as Map).cast<String, dynamic>(),
+      );
+      await _tokens.cacheSession(session);
+      return session;
     } on ApiFailure catch (e) {
       // A user who still owes the password change is genuinely signed in —
       // /api/me refuses them by design. Sending them to login instead would
@@ -81,7 +100,11 @@ class AuthRepository {
       '/api/auth/change-password',
       body: {'password': password},
     );
-    return Session.fromJson((json['user'] as Map).cast<String, dynamic>());
+    final session = Session.fromJson(
+      (json['user'] as Map).cast<String, dynamic>(),
+    );
+    await _tokens.cacheSession(session);
+    return session;
   }
 
   /// Revokes the refresh token server-side, then clears the device.

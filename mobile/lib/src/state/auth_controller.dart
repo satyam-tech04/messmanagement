@@ -1,7 +1,11 @@
 /// Who is signed in, and the wiring that answers it.
 library;
 
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../core/api_failure.dart';
 
 import '../data/api_client.dart';
 import '../data/auth_repository.dart';
@@ -37,7 +41,39 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 /// that flash.
 class AuthController extends AsyncNotifier<Session?> {
   @override
-  Future<Session?> build() => ref.read(authRepositoryProvider).restore();
+  Future<Session?> build() async {
+    final repo = ref.read(authRepositoryProvider);
+
+    // Paint first, confirm second. A signed-in user used to watch the splash
+    // for as long as `/api/me` took — which on a cold serverless function is
+    // long enough to feel broken. The cached session decides only which shell
+    // to draw; the confirmation below is what decides whether they keep it.
+    final cached = await repo.cachedSession();
+    if (cached != null) {
+      unawaited(_confirm(repo));
+      return cached;
+    }
+
+    return repo.restore();
+  }
+
+  /// Re-check the session against the server behind an already-drawn shell.
+  ///
+  /// A revoked token, a suspended tenant or a disabled account all land the
+  /// user back on login — a moment later than before, but the screens they saw
+  /// in between could not have loaded any data, because every request behind
+  /// them is authorised on its own.
+  Future<void> _confirm(AuthRepository repo) async {
+    try {
+      final confirmed = await repo.restore();
+      state = AsyncData(confirmed);
+    } on ApiFailure {
+      // Unreachable server. Keep what is on screen rather than signing a
+      // counter tablet out over flaky Wi-Fi; the next request will say so.
+    } catch (_) {
+      /* see above */
+    }
+  }
 
   Future<void> logIn({
     required String identifier,

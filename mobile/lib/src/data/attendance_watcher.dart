@@ -38,6 +38,7 @@ class AttendanceWatcher {
     required String mealSlot,
     required void Function(DateTime? scannedAt) onServed,
   }) async {
+    await ensureRealtimeReady();
     await stop();
 
     final client = Supabase.instance.client;
@@ -80,6 +81,7 @@ class AttendanceWatcher {
     required String serviceDate,
     required void Function() onServed,
   }) async {
+    await ensureRealtimeReady();
     await stop();
 
     final client = Supabase.instance.client;
@@ -102,24 +104,37 @@ class AttendanceWatcher {
   Future<void> stop() async {
     final channel = _channel;
     _channel = null;
-    if (channel != null) {
+    // Guarded on `_initialising`: `stop` runs from `dispose`, which can fire on
+    // a screen the user left before any socket was ever opened.
+    if (channel != null && _initialising != null) {
       await Supabase.instance.client.removeChannel(channel);
     }
   }
 }
 
-/// Initialise the Supabase client once, at startup.
+/// Initialise the Supabase client, **lazily**.
+///
+/// This used to run in `main()` before `runApp`, which meant every cold start
+/// paid for it before a single pixel was drawn — on a screen that does not need
+/// it. Realtime matters in exactly two places, both of them several taps in: a
+/// student revealing their meal code, and staff opening live counts. Neither is
+/// the first thing anyone sees, so the cost belongs there rather than in front
+/// of the login form.
+///
+/// Idempotent, because both callers may reach it and either may be first.
 ///
 /// `authOptions` deliberately keeps no session: this client is a socket, not an
 /// identity. Sessions are ours, held in secure storage and refreshed through
 /// `/api/auth/refresh`, and letting a second library persist its own copy would
 /// mean two things believing they own the session.
-Future<void> initRealtime() async {
-  await Supabase.initialize(
+Future<void>? _initialising;
+
+Future<void> ensureRealtimeReady() {
+  return _initialising ??= Supabase.initialize(
     url: AppConfig.supabaseUrl,
     // `publishableKey`, not the deprecated `anonKey` — and the value genuinely
     // is an `sb_publishable_...` key, Supabase's current public-client format.
     publishableKey: AppConfig.supabaseAnonKey,
     authOptions: const FlutterAuthClientOptions(autoRefreshToken: false),
-  );
+  ).then((_) {});
 }

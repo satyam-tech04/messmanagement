@@ -80,6 +80,24 @@ class Session {
     isStudent: json['isStudent'] as bool? ?? false,
   );
 
+  /// Round-trips through the cache. Mirrors `fromJson`, so the server's shape
+  /// and the cached shape stay one shape.
+  Map<String, dynamic> toJson() => {
+    'role': switch (role) {
+      UserRole.student => 'STUDENT',
+      UserRole.staff => 'STAFF',
+      UserRole.admin => 'ADMIN',
+      UserRole.superAdmin => 'SUPER_ADMIN',
+    },
+    'fullName': fullName,
+    'mustChangePassword': mustChangePassword,
+    'tenantSlug': tenantSlug,
+    'tenantName': tenantName,
+    'tenantLogoUrl': tenantLogoUrl,
+    'timezone': timezone,
+    'isStudent': isStudent,
+  };
+
   Session copyWith({bool? mustChangePassword}) => Session(
     role: role,
     fullName: fullName,
