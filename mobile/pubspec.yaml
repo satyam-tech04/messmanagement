@@ -57,6 +57,7 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.4
+  flutter_native_splash: ^2.4.8
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -136,3 +137,28 @@ flutter_launcher_icons:
   # foreground is inset and white supplies the ground behind it.
   adaptive_icon_background: "#FFFFFF"
   adaptive_icon_foreground: "assets/brand/icon_foreground.png"
+
+# Generated with `dart run flutter_native_splash:create`. The native launch
+# screen is what shows *before* Flutter starts — without it the app opens on a
+# blank white rectangle and then jumps to a branded screen, which is most of why
+# a cold start feels cheap.
+#
+# Colours match the app's own surfaces so there is no visible seam between the
+# native screen and the first Flutter frame.
+flutter_native_splash:
+  color: "#FAFAFD"
+  color_dark: "#121317"
+  image: assets/brand/splash.png
+  image_dark: assets/brand/splash.png
+
+  android_12:
+    # Android 12+ draws the icon inside a circle and crops anything outside it,
+    # so this variant is inset further than the one older versions use.
+    image: assets/brand/splash_android12.png
+    image_dark: assets/brand/splash_android12.png
+    color: "#FAFAFD"
+    color_dark: "#121317"
+
+  android: true
+  ios: true
+  web: false
