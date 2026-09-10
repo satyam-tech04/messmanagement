@@ -1,4 +1,4 @@
-package com.messos.app
+package com.campusmeals.app
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -6,7 +6,7 @@ import { createClient } from "@/infra/supabase/server";
 import { serviceDateOf } from "@/core/time";
 import { SalesCounter } from "./sales-counter";
 
-export const metadata: Metadata = { title: "Counter sales · Mess OS" };
+export const metadata: Metadata = { title: "Counter sales · CampusMeals" };
 
 /**
  * The walk-in counter.

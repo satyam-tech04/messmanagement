@@ -60,8 +60,8 @@ one constant in `mobile/lib/src/core/config.dart`.
 
 ### 4. Store records
 
-- **App Store Connect** — a new app with bundle id `com.messos.app`.
-- **Play Console** — a new app, package `com.messos.app`.
+- **App Store Connect** — a new app with bundle id `com.campusmeals.app`.
+- **Play Console** — a new app, package `com.campusmeals.app`.
 - Privacy policy URL: `https://<domain>/privacy` (the page is public and needs
   no sign-in — `proxy.ts` allows it explicitly, which is what a reviewer needs).
 

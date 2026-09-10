@@ -33,7 +33,7 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Mess OS",
+    default: "CampusMeals",
     template: "%s",
   },
   description:

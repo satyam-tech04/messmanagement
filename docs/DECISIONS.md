@@ -136,7 +136,7 @@ either — they log in with a roll number.
 `scripts/verify-schema.mjs` asserts both that the underscore form is rejected and
 that the hyphen form is accepted, so this cannot silently drift.
 
-**Note:** the repo/product is named `mess-os`, deliberately not after this one
+**Note:** the repo/product is named `campusmeals`, deliberately not after this one
 tenant. It is a multi-tenant SaaS; naming the codebase after the first customer
 would contradict the whole design.
 

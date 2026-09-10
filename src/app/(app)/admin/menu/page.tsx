@@ -14,7 +14,7 @@ import { SupabaseTenantRepository } from "@/infra/supabase/repositories";
 import { formatServiceDate } from "@/lib/format";
 import { ClearMenuButton, EditMenuDialog, PublishedTick, type MenuCell } from "./menu-editor";
 
-export const metadata: Metadata = { title: "Menu · Mess OS" };
+export const metadata: Metadata = { title: "Menu · CampusMeals" };
 
 const DAYS_SHOWN = 7;
 

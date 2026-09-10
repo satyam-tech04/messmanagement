@@ -21,7 +21,7 @@ import { firstRelated } from "@/infra/supabase/mappers";
 import { formatServiceDate, todayIn } from "@/lib/format";
 import { DecisionButtons } from "./decision-buttons";
 
-export const metadata: Metadata = { title: "Absences · Mess OS" };
+export const metadata: Metadata = { title: "Absences · CampusMeals" };
 
 const COLUMNS = ["Student", "Days", "Meals", "Requested", "Status", ""];
 const FILTERS = ["PENDING", "APPROVED", "REJECTED", "CANCELLED", "ALL"] as const;

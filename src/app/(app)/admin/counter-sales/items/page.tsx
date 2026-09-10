@@ -18,7 +18,7 @@ import { formatPaise } from "@/core/money";
 import { toPaise } from "@/core/money";
 import { CreateItemDialog, EditItemDialog, ToggleItemButton } from "./item-form";
 
-export const metadata: Metadata = { title: "Counter items · Mess OS" };
+export const metadata: Metadata = { title: "Counter items · CampusMeals" };
 
 export default async function CounterItemsPage() {
   const user = await requireSessionUser();

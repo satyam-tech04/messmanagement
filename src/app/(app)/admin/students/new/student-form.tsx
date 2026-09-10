@@ -92,7 +92,7 @@ function CredentialsIssued({ created }: { created: NonNullable<CreateStudentStat
   // The mobile number is the username now, so that is what goes on the slip.
   // The roll number is shown below for the admin's own records — it is what
   // staff type into the manual fallback — but the student never types it.
-  const text = `Mess OS login\nMobile number: ${created.temporaryPassword}\nPassword: ${created.temporaryPassword}`;
+  const text = `CampusMeals login\nMobile number: ${created.temporaryPassword}\nPassword: ${created.temporaryPassword}`;
 
   return (
     <Card className="border-emerald-500/40">

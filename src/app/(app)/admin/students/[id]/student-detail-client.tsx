@@ -361,7 +361,7 @@ export function ResetPasswordCard({ student }: { student: StudentDetail }) {
               size="sm"
               onClick={() => {
                 void navigator.clipboard.writeText(
-                  `Mess OS login\nRoll number: ${student.rollNumber}\nPassword: ${state.temporaryPassword}`,
+                  `CampusMeals login\nRoll number: ${student.rollNumber}\nPassword: ${state.temporaryPassword}`,
                 );
                 setCopied(true);
                 setTimeout(() => setCopied(false), 2000);

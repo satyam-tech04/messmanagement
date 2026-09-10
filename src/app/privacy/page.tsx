@@ -17,8 +17,8 @@ import type { Metadata } from "next";
  * professional opinion, since some students are under 18.
  */
 export const metadata: Metadata = {
-  title: "Privacy · MessOS",
-  description: "What MessOS collects, why, and who can see it.",
+  title: "Privacy · CampusMeals",
+  description: "What CampusMeals collects, why, and who can see it.",
 };
 
 const UPDATED = "10 September 2026";
@@ -41,7 +41,7 @@ export default function PrivacyPage() {
       </header>
 
       <p className="text-muted-foreground text-sm leading-relaxed">
-        MessOS is used by hostel messes to run meal subscriptions and record attendance at the
+        CampusMeals is used by hostel messes to run meal subscriptions and record attendance at the
         counter. Your mess holds your records; we operate the software that stores them. This page
         describes what the app collects and who can see it.
       </p>
@@ -139,8 +139,8 @@ export default function PrivacyPage() {
         <p>
           Questions about your own records go to your mess office first — they hold them. For
           anything about the software itself, write to{" "}
-          <a className="text-foreground underline" href="mailto:support@messos.app">
-            support@messos.app
+          <a className="text-foreground underline" href="mailto:support@campusmeals.app">
+            support@campusmeals.app
           </a>
           .
         </p>

@@ -19,7 +19,7 @@ import { SupabaseTenantDirectory } from "@/infra/supabase/repositories";
 import { createClient } from "@/infra/supabase/server";
 import { SwitchMessButton } from "./switch-button";
 
-export const metadata: Metadata = { title: "Messes · Mess OS" };
+export const metadata: Metadata = { title: "Messes · CampusMeals" };
 
 // Never cached. The whole point of this screen is which mess you are in right
 // now, and a stale answer to that question is worse than no answer.

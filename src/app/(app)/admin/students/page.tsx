@@ -20,7 +20,7 @@ import { subscriptionStateOf } from "@/core/policies/subscription-state";
 import { serviceDateOf, toServiceDate } from "@/core/time";
 import { StudentsFilters } from "./students-filters";
 
-export const metadata: Metadata = { title: "Students · Mess OS" };
+export const metadata: Metadata = { title: "Students · CampusMeals" };
 
 const PAGE_SIZE = 25;
 // "Meal plan" and "Account", not "Plan" and "Status". Both used to read as

@@ -20,7 +20,7 @@ import { createRepositories } from "@/infra/supabase/repositories";
 import { formatServiceDate } from "@/lib/format";
 import { LiveCount, type SlotCount } from "./live-count";
 
-export const metadata: Metadata = { title: "Headcount · Mess OS" };
+export const metadata: Metadata = { title: "Headcount · CampusMeals" };
 
 export default async function HeadcountPage() {
   const user = await requireSessionUser();

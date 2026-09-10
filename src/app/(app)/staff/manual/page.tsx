@@ -10,7 +10,7 @@ import { createClient } from "@/infra/supabase/server";
 import { SupabaseTenantRepository } from "@/infra/supabase/repositories";
 import { ManualPageClient } from "./manual-page-client";
 
-export const metadata: Metadata = { title: "Manual entry · Mess OS" };
+export const metadata: Metadata = { title: "Manual entry · CampusMeals" };
 
 export default async function ManualEntryPage() {
   const user = await requireSessionUser();

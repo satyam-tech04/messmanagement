@@ -16,7 +16,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
           <div className="bg-primary text-primary-foreground flex size-9 items-center justify-center rounded-lg">
             <UtensilsCrossed className="size-5" aria-hidden="true" />
           </div>
-          <span className="text-lg font-semibold tracking-tight">Mess OS</span>
+          <span className="text-lg font-semibold tracking-tight">CampusMeals</span>
         </div>
 
         <div className="flex flex-1 items-center justify-center">
@@ -24,7 +24,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
         </div>
 
         <p className="text-muted-foreground text-center text-xs lg:text-left">
-          © {new Date().getFullYear()} Mess OS
+          © {new Date().getFullYear()} CampusMeals
         </p>
       </div>
 

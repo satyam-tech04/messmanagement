@@ -21,7 +21,7 @@ import { formatDateTime, formatServiceDate } from "@/lib/format";
 import { ReverseAttendanceButton } from "./reverse-button";
 import { firstRelated } from "@/infra/supabase/mappers";
 
-export const metadata: Metadata = { title: "Attendance · Mess OS" };
+export const metadata: Metadata = { title: "Attendance · CampusMeals" };
 
 const COLUMNS = ["Roll number", "Name", "Meal", "Method", "Scanned at", "Reason", ""];
 const VALID_SLOTS = ["BREAKFAST", "LUNCH", "SNACKS", "DINNER"] as const;

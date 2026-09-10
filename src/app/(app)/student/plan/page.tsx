@@ -20,7 +20,7 @@ import { requireSessionUser } from "@/infra/auth/session";
 import { createClient } from "@/infra/supabase/server";
 import { formatRelativeDay, formatServiceDate, todayIn } from "@/lib/format";
 
-export const metadata: Metadata = { title: "My plan · Mess OS" };
+export const metadata: Metadata = { title: "My plan · CampusMeals" };
 
 export default async function StudentPlanPage() {
   const user = await requireSessionUser();

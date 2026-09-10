@@ -11,7 +11,7 @@ import { createClient } from "@/infra/supabase/server";
 import { SupabaseTenantRepository } from "@/infra/supabase/repositories";
 import { formatServiceDate } from "@/lib/format";
 
-export const metadata: Metadata = { title: "Menu · Mess OS" };
+export const metadata: Metadata = { title: "Menu · CampusMeals" };
 
 const DAYS_AHEAD = 3;
 

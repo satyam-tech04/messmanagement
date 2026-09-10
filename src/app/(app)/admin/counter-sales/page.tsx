@@ -21,7 +21,7 @@ import { formatServiceDate } from "@/lib/format";
 import { DatePicker } from "./date-picker";
 import { PaymentToggle } from "./payment-toggle";
 
-export const metadata: Metadata = { title: "Counter sales · Mess OS" };
+export const metadata: Metadata = { title: "Counter sales · CampusMeals" };
 
 /**
  * The day's takings from the counter.

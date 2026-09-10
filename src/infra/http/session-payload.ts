@@ -27,7 +27,7 @@ export interface SessionPayload {
   /**
    * The mess's own name, shown to its members in place of ours.
    *
-   * Once someone has signed in they are inside *their hostel's* app. The MessOS
+   * Once someone has signed in they are inside *their hostel's* app. The CampusMeals
    * mark stays on the store listing and the login screen — the two places a
    * person has not yet identified which mess they belong to.
    */

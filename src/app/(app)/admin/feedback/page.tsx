@@ -15,7 +15,7 @@ import { formatServiceDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { RangePicker } from "./range-picker";
 
-export const metadata: Metadata = { title: "Feedback · Mess OS" };
+export const metadata: Metadata = { title: "Feedback · CampusMeals" };
 
 const DAYS = 14;
 

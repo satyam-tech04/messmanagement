@@ -24,7 +24,7 @@ import { formatServiceDate, todayIn } from "@/lib/format";
 import { AbsenceForm } from "./absence-form";
 import { CancelButton } from "./cancel-button";
 
-export const metadata: Metadata = { title: "Absences · Mess OS" };
+export const metadata: Metadata = { title: "Absences · CampusMeals" };
 
 export default async function StudentAbsencesPage() {
   const user = await requireSessionUser();

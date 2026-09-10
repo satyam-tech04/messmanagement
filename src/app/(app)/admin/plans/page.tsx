@@ -22,7 +22,7 @@ import { createClient } from "@/infra/supabase/server";
 import { MealPricesCard } from "./meal-prices-card";
 import { CreatePlanDialog, EditPlanDialog, TogglePlanButton, type PlanRow } from "./plan-form";
 
-export const metadata: Metadata = { title: "Plans · Mess OS" };
+export const metadata: Metadata = { title: "Plans · CampusMeals" };
 
 const COLUMNS = ["Plan", "Meals", "Duration", "Price", "Per meal", "Students", "Status", ""];
 

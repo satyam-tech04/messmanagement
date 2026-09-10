@@ -9,7 +9,7 @@ import { readStaffCounts } from "@/infra/queries/staff-counts";
 import { formatServiceDate } from "@/lib/format";
 import { LiveCount, type SlotCount } from "../../admin/headcount/live-count";
 
-export const metadata: Metadata = { title: "Live count · Mess OS" };
+export const metadata: Metadata = { title: "Live count · CampusMeals" };
 
 /**
  * The counter's view of the same figures the admin sees.

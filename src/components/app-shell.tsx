@@ -141,7 +141,7 @@ export function AppShell({
       />
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold tracking-tight">{user.tenantName}</p>
-        <p className="text-muted-foreground truncate text-xs">Mess OS</p>
+        <p className="text-muted-foreground truncate text-xs">CampusMeals</p>
       </div>
     </div>
   );

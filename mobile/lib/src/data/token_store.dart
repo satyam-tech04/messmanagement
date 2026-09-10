@@ -42,9 +42,9 @@ class TokenStore {
 
   final FlutterSecureStorage _storage;
 
-  static const _accessKey = 'messos.accessToken';
-  static const _refreshKey = 'messos.refreshToken';
-  static const _sessionKey = 'messos.session';
+  static const _accessKey = 'campusmeals.accessToken';
+  static const _refreshKey = 'campusmeals.refreshToken';
+  static const _sessionKey = 'campusmeals.session';
 
   Future<AuthTokens?> read() async {
     try {

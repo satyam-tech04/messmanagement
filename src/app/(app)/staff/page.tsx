@@ -6,7 +6,7 @@ import { createClient } from "@/infra/supabase/server";
 import { readStaffHome } from "@/infra/queries/staff-home";
 import { Scanner } from "./scanner";
 
-export const metadata: Metadata = { title: "Scan · Mess OS" };
+export const metadata: Metadata = { title: "Scan · CampusMeals" };
 
 /**
  * Counter home.

@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:messos/src/design/status_badge.dart';
-import 'package:messos/src/features/staff/scan_gate.dart';
-import 'package:messos/src/features/staff/scan_outcome.dart';
-import 'package:messos/src/features/staff/scan_queue.dart';
+import 'package:campusmeals/src/design/status_badge.dart';
+import 'package:campusmeals/src/features/staff/scan_gate.dart';
+import 'package:campusmeals/src/features/staff/scan_outcome.dart';
+import 'package:campusmeals/src/features/staff/scan_queue.dart';
 
 /// The counter's rules, tested apart from the camera and the network.
 ///

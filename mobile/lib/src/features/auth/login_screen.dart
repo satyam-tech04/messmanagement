@@ -92,7 +92,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     const BrandMark(size: 96),
                     const Gap.xl(),
                     Text(
-                      'MessOS',
+                      'CampusMeals',
                       style: theme.textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),

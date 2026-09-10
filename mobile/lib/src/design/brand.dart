@@ -1,4 +1,4 @@
-/// The MessOS mark.
+/// The CampusMeals mark.
 ///
 /// One widget so every place the logo appears — login, splash, an empty state —
 /// scales the same asset the launcher icon is built from, rather than each
@@ -19,7 +19,7 @@ class BrandMark extends StatelessWidget {
     // The mark is wider than it is tall, so height follows from the asset
     // rather than being forced square and squashing the cloud.
     fit: BoxFit.contain,
-    semanticLabel: 'MessOS',
+    semanticLabel: 'CampusMeals',
     // A missing asset must not take down the login screen — it is decoration,
     // and the words beneath it already say what this is.
     errorBuilder: (context, _, _) => Icon(

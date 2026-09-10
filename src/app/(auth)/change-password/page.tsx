@@ -7,7 +7,7 @@ import { getSessionUser, homeRouteFor } from "@/infra/auth/session";
 import { ChangePasswordForm } from "./change-password-form";
 
 export const metadata: Metadata = {
-  title: "Choose a password · Mess OS",
+  title: "Choose a password · CampusMeals",
 };
 
 export default async function ChangePasswordPage() {

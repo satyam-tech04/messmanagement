@@ -9,7 +9,7 @@ import { summariseRevenue } from "@/core/policies/revenue.policy";
 import { requireSessionUser } from "@/infra/auth/session";
 import { createClient } from "@/infra/supabase/server";
 
-export const metadata: Metadata = { title: "Reports · Mess OS" };
+export const metadata: Metadata = { title: "Reports · CampusMeals" };
 
 /**
  * Where data leaves the system.

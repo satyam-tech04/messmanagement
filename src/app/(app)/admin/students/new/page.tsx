@@ -11,7 +11,7 @@ import { StudentForm, type PlanOption } from "./student-form";
 import { BulkStudentForm, type BulkPlanOption } from "./bulk-form";
 import { AddStudentTabs } from "./add-student-tabs";
 
-export const metadata: Metadata = { title: "Add student · Mess OS" };
+export const metadata: Metadata = { title: "Add student · CampusMeals" };
 
 export default async function NewStudentPage() {
   const user = await requireSessionUser();

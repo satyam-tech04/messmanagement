@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = {
-  title: "Sign in · Mess OS",
+  title: "Sign in · CampusMeals",
   description: "Sign in to your mess account.",
 };
 

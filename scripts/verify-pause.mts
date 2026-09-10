@@ -257,7 +257,7 @@ try {
   const staffClient = createClient<Database>(url, anon);
   const { error: signInError } = await staffClient.auth.signInWithPassword({
     email: "staff@unversity-mess.test",
-    password: "MessOS@2026",
+    password: "CampusMeals@2026",
   });
   if (signInError) {
     fail(`could not sign in as staff — ${signInError.message}`);

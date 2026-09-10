@@ -6,7 +6,7 @@ import { requireSessionUser } from "@/infra/auth/session";
 import { endOfMonth, serviceDateOf, toServiceDate } from "@/core/time";
 import { MenuImportClient } from "./import-client";
 
-export const metadata: Metadata = { title: "Import menu · Mess OS" };
+export const metadata: Metadata = { title: "Import menu · CampusMeals" };
 
 export default async function MenuImportPage() {
   const user = await requireSessionUser();

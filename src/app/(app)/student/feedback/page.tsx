@@ -10,7 +10,7 @@ import { addDays, serviceDateOf, toServiceDate } from "@/core/time";
 import { formatServiceDate } from "@/lib/format";
 import { FeedbackForm, type FeedbackTarget } from "./feedback-form";
 
-export const metadata: Metadata = { title: "Feedback · Mess OS" };
+export const metadata: Metadata = { title: "Feedback · CampusMeals" };
 
 /**
  * Which meals a student may comment on.

@@ -32,6 +32,11 @@
 const ROLL_NUMBER_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,62}$/;
 
 /** Reserved TLD (RFC 2606). These addresses must never be deliverable. */
+// ⚠️ NOT renamed with the rest of the product, and must never be.
+//
+// 82 students' Supabase Auth addresses are derived from this suffix. Changing it
+// does not migrate them — it simply stops resolving to the accounts they
+// already have, and every one of them is locked out of their meals.
 const SYNTHETIC_EMAIL_DOMAIN_SUFFIX = "mess.invalid";
 
 export function isValidRollNumber(rollNumber: string): boolean {
@@ -103,6 +108,11 @@ export function isSyntheticEmail(email: string): boolean {
  * never by mail.
  */
 export const SUPER_USER_IDENTIFIER = "superuser";
+// ⚠️ NOT renamed with the rest of the product, and must never be.
+//
+// This is the platform operator's actual Auth address, already created. It is
+// the one login with no recovery path, so a rename here locks the platform out
+// of every tenant with nothing to fall back on.
 export const SUPER_USER_EMAIL = "superuser@messos.internal";
 
 /**

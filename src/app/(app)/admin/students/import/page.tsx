@@ -7,7 +7,7 @@ import { requireSessionUser } from "@/infra/auth/session";
 import { createClient } from "@/infra/supabase/server";
 import { ImportClient } from "./import-client";
 
-export const metadata: Metadata = { title: "Import students · Mess OS" };
+export const metadata: Metadata = { title: "Import students · CampusMeals" };
 
 export default async function ImportStudentsPage() {
   const user = await requireSessionUser();

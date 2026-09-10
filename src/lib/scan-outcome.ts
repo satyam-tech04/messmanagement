@@ -125,7 +125,7 @@ export const ALL_SCAN_OUTCOMES: Readonly<Record<string, ScanOutcome>> = {
   INVALID_TOKEN: {
     tone: "danger",
     title: "Invalid code",
-    action: "This is not a valid Mess OS code. Rescan, or use manual entry.",
+    action: "This is not a valid CampusMeals code. Rescan, or use manual entry.",
     retryable: true,
     allowsManualOverride: true,
   },

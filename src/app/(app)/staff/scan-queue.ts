@@ -16,7 +16,7 @@
  * is closed mid-transaction.
  */
 
-const STORAGE_KEY = "messos.scanQueue.v1";
+const STORAGE_KEY = "campusmeals.scanQueue.v1";
 
 /**
  * Beyond this the meal is over and replaying would write the wrong service

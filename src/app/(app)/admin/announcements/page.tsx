@@ -25,7 +25,7 @@ import {
   type AnnouncementRow,
 } from "./announcement-form";
 
-export const metadata: Metadata = { title: "Announcements · Mess OS" };
+export const metadata: Metadata = { title: "Announcements · CampusMeals" };
 
 export default async function AnnouncementsPage() {
   const user = await requireSessionUser();

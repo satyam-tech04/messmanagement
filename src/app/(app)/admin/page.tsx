@@ -9,7 +9,7 @@ import { requireSessionUser } from "@/infra/auth/session";
 import { createClient } from "@/infra/supabase/server";
 import { serviceDateOf } from "@/core/time";
 
-export const metadata: Metadata = { title: "Dashboard · Mess OS" };
+export const metadata: Metadata = { title: "Dashboard · CampusMeals" };
 
 export default async function AdminDashboardPage() {
   const user = await requireSessionUser();

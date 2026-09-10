@@ -130,7 +130,7 @@ const Map<String, ScanOutcome> kScanOutcomes = {
   'INVALID_TOKEN': ScanOutcome(
     tone: StatusTone.danger,
     title: 'Invalid code',
-    action: 'This is not a valid MessOS code. Rescan, or use manual entry.',
+    action: 'This is not a valid CampusMeals code. Rescan, or use manual entry.',
     retryable: true,
     allowsManualOverride: true,
   ),

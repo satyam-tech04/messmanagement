@@ -38,7 +38,7 @@ class MessOsApp extends ConsumerWidget {
     final auth = ref.watch(authControllerProvider);
 
     return MaterialApp(
-      title: 'MessOS',
+      title: 'CampusMeals',
       debugShowCheckedModeBanner: false,
       theme: messLightTheme(),
       darkTheme: messDarkTheme(),

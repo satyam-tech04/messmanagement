@@ -29,7 +29,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 const Duration kMaxQueueAge = Duration(hours: 6);
 
 const int _maxEntries = 500;
-const String _storageKey = 'messos.scanQueue.v1';
+const String _storageKey = 'campusmeals.scanQueue.v1';
 
 class QueuedScan {
   const QueuedScan({

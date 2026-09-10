@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:messos/src/core/api_failure.dart';
+import 'package:campusmeals/src/core/api_failure.dart';
 
 /// How a failure is classified, because the classification decides behaviour.
 ///

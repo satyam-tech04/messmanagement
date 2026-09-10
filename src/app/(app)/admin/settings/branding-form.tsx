@@ -4,7 +4,7 @@
  * How this mess appears to its own members.
  *
  * Once a student or staff member signs in they are inside *their hostel's* app —
- * the MessOS mark stays on the store listing and the login screen, the two
+ * the CampusMeals mark stays on the store listing and the login screen, the two
  * places somebody has not yet identified which mess they belong to. What they
  * see everywhere after that is set here.
  *

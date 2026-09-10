@@ -15,7 +15,7 @@ import { formatServiceDate } from "@/lib/format";
 import { QrDisplay } from "./qr-display";
 import { AnnouncementsCard, type LiveAnnouncement } from "./announcements-card";
 
-export const metadata: Metadata = { title: "My QR · Mess OS" };
+export const metadata: Metadata = { title: "My QR · CampusMeals" };
 
 export default async function StudentPage() {
   const user = await requireSessionUser();
