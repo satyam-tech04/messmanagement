@@ -39,7 +39,8 @@
     "verify:menu-import": "tsx scripts/verify-menu-import.mts",
     "verify:bearer": "tsx scripts/verify-bearer-api.mts",
     "verify:mobile-auth": "tsx scripts/verify-mobile-auth.mts",
-    "app:name": "node scripts/apply-app-identity.mjs"
+    "app:name": "node scripts/apply-app-identity.mjs",
+    "app:bundle-id": "node scripts/apply-app-identity.mjs --bundle-id"
   },
   "lint-staged": {
     "*.{ts,tsx}": [

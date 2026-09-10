@@ -16,11 +16,13 @@
  * Generated files are marked as such and must not be hand-edited — the next run
  * overwrites them.
  *
- * Deliberately does NOT touch the bundle id. That is permanent once published,
- * so changing it is a separate, deliberate operation rather than something that
- * happens because somebody tried a new display name.
+ * The bundle id is behind an explicit `--bundle-id` flag rather than running
+ * with every rename. It is permanent once published — both stores identify an
+ * app by it forever, and Apple requires the new one to be registered in the
+ * developer portal before a build using it will upload — so changing it has to
+ * be a decision, not a side effect of trying a different display name.
  */
-import { readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, rmdirSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -42,6 +44,7 @@ if (/["'<>&]/.test(name)) {
   process.exit(1);
 }
 
+const applyBundleId = process.argv.includes("--bundle-id");
 const written = [];
 
 function write(path, contents) {
@@ -103,6 +106,72 @@ write(
 const plist = join(root, "mobile/ios/Runner/Info.plist");
 execFileSync("/usr/libexec/PlistBuddy", ["-c", `Set :CFBundleDisplayName ${name}`, plist]);
 written.push("mobile/ios/Runner/Info.plist (CFBundleDisplayName)");
+
+// --- Bundle id, on request only ---------------------------------------------
+if (applyBundleId) {
+  const bundleId = config.bundleId;
+  if (!/^[a-z0-9]+(\.[a-z0-9]+)+$/.test(bundleId ?? "")) {
+    console.error(`\`bundleId\` must be reverse-DNS and lowercase: ${bundleId}`);
+    process.exit(1);
+  }
+
+  const gradle = join(root, "mobile/android/app/build.gradle.kts");
+  let g = readFileSync(gradle, "utf8");
+  g = g.replace(/namespace = "[^"]+"/, `namespace = "${bundleId}"`);
+  g = g.replace(/applicationId = "[^"]+"/, `applicationId = "${bundleId}"`);
+  writeFileSync(gradle, g);
+  written.push("mobile/android/app/build.gradle.kts");
+
+  // Kotlin's package must match the directory it lives in, so the file moves.
+  const kotlinRoot = join(root, "mobile/android/app/src/main/kotlin");
+  const dest = join(kotlinRoot, ...bundleId.split("."));
+  const found = execFileSync("find", [kotlinRoot, "-name", "MainActivity.kt"], {
+    encoding: "utf8",
+  })
+    .trim()
+    .split("\n")
+    .filter(Boolean);
+
+  for (const from of found) {
+    mkdirSync(dest, { recursive: true });
+    const body = readFileSync(from, "utf8").replace(/^package .+$/m, `package ${bundleId}`);
+    writeFileSync(join(dest, "MainActivity.kt"), body);
+    if (from !== join(dest, "MainActivity.kt")) {
+      rmSync(from);
+      // Prune the directories the old package left behind. Kotlin infers
+      // nothing from an empty folder, but a tree littered with dead package
+      // paths is how the next person guesses the wrong one.
+      let dir = dirname(from);
+      while (dir.startsWith(kotlinRoot) && dir !== kotlinRoot) {
+        try {
+          rmdirSync(dir);
+        } catch {
+          break; // not empty — something else lives here
+        }
+        dir = dirname(dir);
+      }
+    }
+  }
+  written.push("mobile/android/.../MainActivity.kt");
+
+  const pbx = join(root, "mobile/ios/Runner.xcodeproj/project.pbxproj");
+  // The test target's id is conventionally the app's plus a suffix, so it has
+  // to follow rather than be left on the old prefix.
+  const p = readFileSync(pbx, "utf8").replace(
+    /PRODUCT_BUNDLE_IDENTIFIER = ([^;]+);/g,
+    (_, current) =>
+      `PRODUCT_BUNDLE_IDENTIFIER = ${
+        current.trim().endsWith(".RunnerTests") ? `${bundleId}.RunnerTests` : bundleId
+      };`,
+  );
+  writeFileSync(pbx, p);
+  written.push("mobile/ios/Runner.xcodeproj (PRODUCT_BUNDLE_IDENTIFIER)");
+
+  console.log(
+    `\n⚠️  Bundle id set to ${bundleId}. Register it at`,
+    "\n    developer.apple.com → Identifiers → App IDs, or the next upload is refused.\n",
+  );
+}
 
 console.log(`App name set to "${name}" in:`);
 for (const path of written) console.log(`  ${path}`);

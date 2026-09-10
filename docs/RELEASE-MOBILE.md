@@ -19,11 +19,23 @@ That rewrites the Dart constant, the TypeScript constant, the Android string
 resource and the iOS `CFBundleDisplayName`. Nothing else in the repo contains
 the product name as a literal, so no other file needs touching.
 
-Two things it deliberately leaves alone:
+Changing the **bundle id** is a separate command, because it is permanent once
+published and Apple refuses an upload whose id is not registered in the
+developer portal:
 
-- **The bundle id.** Permanent once published — both stores identify an app by
-  it forever — so changing it is a deliberate operation, not a side effect of
-  trying a different display name.
+```bash
+# edit `bundleId` in app.config.json, then
+npm run app:bundle-id
+```
+
+That rewrites the Android namespace and applicationId, moves the Kotlin package
+directory (its path must match the package), and sets both iOS bundle
+identifiers — the app's and the test target's. It then reminds you to register
+the new id at developer.apple.com → Identifiers, without which the next upload
+is refused.
+
+The one thing neither command touches:
+
 - **The store listing titles.** Those live in each console, must be unique
   across the whole store, and are usually longer than the name under the icon.
   The listing may read "MealAdda — Hostel Mess" while the icon says
