@@ -168,7 +168,7 @@ export async function updateSettings(
 // Branding
 //
 // A mess's own name and logo are what its members see once they sign in — the
-// MessMate mark stays on the store listing and the login screen, the two places a
+// MealAdda mark stays on the store listing and the login screen, the two places a
 // person has not yet identified which hostel they belong to.
 //
 // Deliberately no per-tenant colour. Colours would mean re-verifying every

@@ -23,7 +23,7 @@
  * them — the string is an implementation detail, but a duplicated one is a
  * detail that goes out of step.
  */
-export const STORAGE_KEY = "messmate.scanQueue.v1";
+export const STORAGE_KEY = "mealadda.scanQueue.v1";
 
 /**
  * Beyond this the meal is over and replaying would write the wrong service

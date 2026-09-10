@@ -14,7 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-const _key = 'messmate.themeMode';
+const _key = 'mealadda.themeMode';
 
 class ThemeController extends Notifier<ThemeMode> {
   @override

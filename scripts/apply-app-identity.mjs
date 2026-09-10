@@ -154,6 +154,53 @@ if (applyBundleId) {
   }
   written.push("mobile/android/.../MainActivity.kt");
 
+  // The Dart and npm package names follow the bundle id's middle segment —
+  // `com.mealadda.app` gives `mealadda`. They are internal, but leaving them on
+  // a dead brand means every import in the repo names a product that no longer
+  // exists, and doing it by hand each rename is how that drift happens.
+  const pkg = bundleId.split(".").at(-2);
+  if (pkg) {
+    const dartFiles = execFileSync(
+      "find",
+      [join(root, "mobile/lib"), join(root, "mobile/test"), "-name", "*.dart"],
+      { encoding: "utf8" },
+    )
+      .trim()
+      .split("\n")
+      .filter(Boolean);
+
+    // Only OUR package. A blanket `package:*/` rewrite also hits every
+    // dependency — `package:intl/` and `package:flutter_riverpod/` become the
+    // app's own name and nothing compiles. The current name comes from
+    // pubspec, which is the only place that knows it.
+    const pubspecPath = join(root, "mobile/pubspec.yaml");
+    const pubspec = readFileSync(pubspecPath, "utf8");
+    const currentPkg = /^name:\s*([a-z0-9_]+)$/m.exec(pubspec)?.[1];
+
+    if (currentPkg && currentPkg !== pkg) {
+      const from = new RegExp(`package:${currentPkg}/`, "g");
+      for (const f of dartFiles) {
+        const before = readFileSync(f, "utf8");
+        const after = before.replace(from, `package:${pkg}/`);
+        if (after !== before) writeFileSync(f, after);
+      }
+      writeFileSync(pubspecPath, pubspec.replace(/^name:\s*[a-z0-9_]+$/m, `name: ${pkg}`));
+
+      const pkgJson = join(root, "package.json");
+      writeFileSync(
+        pkgJson,
+        readFileSync(pkgJson, "utf8").replace(/"name": "[^"]+"/, `"name": "${pkg}"`),
+      );
+    }
+
+    const pkgJson = join(root, "package.json");
+    writeFileSync(
+      pkgJson,
+      readFileSync(pkgJson, "utf8").replace(/"name": "[^"]+"/, `"name": "${pkg}"`),
+    );
+    written.push(`Dart + npm package name (${pkg})`);
+  }
+
   const pbx = join(root, "mobile/ios/Runner.xcodeproj/project.pbxproj");
   // The test target's id is conventionally the app's plus a suffix, so it has
   // to follow rather than be left on the old prefix.

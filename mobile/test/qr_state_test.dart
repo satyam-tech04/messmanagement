@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:messmate/src/data/qr_token.dart';
-import 'package:messmate/src/features/student/qr_state.dart';
+import 'package:mealadda/src/data/qr_token.dart';
+import 'package:mealadda/src/features/student/qr_state.dart';
 
 /// How often the meal code screen goes back to the server.
 ///

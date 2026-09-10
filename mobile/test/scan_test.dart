@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:messmate/src/design/status_badge.dart';
-import 'package:messmate/src/features/staff/scan_gate.dart';
-import 'package:messmate/src/features/staff/scan_outcome.dart';
-import 'package:messmate/src/features/staff/scan_queue.dart';
+import 'package:mealadda/src/design/status_badge.dart';
+import 'package:mealadda/src/features/staff/scan_gate.dart';
+import 'package:mealadda/src/features/staff/scan_outcome.dart';
+import 'package:mealadda/src/features/staff/scan_queue.dart';
 
 /// The counter's rules, tested apart from the camera and the network.
 ///

@@ -1,6 +1,6 @@
 @AGENTS.md
 
-# CLAUDE.md — MessMate
+# CLAUDE.md — MealAdda
 
 Multi-tenant SaaS for hostel mess operations. Students hold a fixed-price subscription
 covering lunch and dinner; attendance is verified at the counter with a rotating,

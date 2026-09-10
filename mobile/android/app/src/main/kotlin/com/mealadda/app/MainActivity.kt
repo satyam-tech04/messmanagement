@@ -1,4 +1,4 @@
-package com.messmate.app
+package com.mealadda.app
 
 import io.flutter.embedding.android.FlutterActivity
 

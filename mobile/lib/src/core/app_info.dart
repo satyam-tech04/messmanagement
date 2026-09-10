@@ -8,6 +8,6 @@
 class AppInfo {
   const AppInfo._();
 
-  static const String name = "MessMate";
-  static const String supportEmail = "support@messmate.app";
+  static const String name = "MealAdda";
+  static const String supportEmail = "support@mealadda.app";
 }
