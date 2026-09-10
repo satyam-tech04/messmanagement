@@ -27,7 +27,10 @@ void main() {
       expect(
         shouldSubmitToken(
           token: 'a',
-          last: LastScan(token: 'a', at: now.subtract(const Duration(seconds: 1))),
+          last: LastScan(
+            token: 'a',
+            at: now.subtract(const Duration(seconds: 1)),
+          ),
           now: now,
           busy: false,
         ),
@@ -39,7 +42,10 @@ void main() {
       expect(
         shouldSubmitToken(
           token: 'a',
-          last: LastScan(token: 'a', at: now.subtract(const Duration(seconds: 4))),
+          last: LastScan(
+            token: 'a',
+            at: now.subtract(const Duration(seconds: 4)),
+          ),
           now: now,
           busy: false,
         ),
@@ -47,17 +53,20 @@ void main() {
       );
     });
 
-    test('sends a different token immediately — the next student is waiting', () {
-      expect(
-        shouldSubmitToken(
-          token: 'b',
-          last: LastScan(token: 'a', at: now),
-          now: now,
-          busy: false,
-        ),
-        isTrue,
-      );
-    });
+    test(
+      'sends a different token immediately — the next student is waiting',
+      () {
+        expect(
+          shouldSubmitToken(
+            token: 'b',
+            last: LastScan(token: 'a', at: now),
+            now: now,
+            busy: false,
+          ),
+          isTrue,
+        );
+      },
+    );
 
     test('drops any read while a request is in flight', () {
       expect(
@@ -135,9 +144,12 @@ void main() {
       expect(outcomeFor('ALREADY_SERVED').tone, StatusTone.warning);
     });
 
-    test('a paused plan is a warning, so staff do not treat it as a dispute', () {
-      expect(outcomeFor('SUBSCRIPTION_PAUSED').tone, StatusTone.warning);
-    });
+    test(
+      'a paused plan is a warning, so staff do not treat it as a dispute',
+      () {
+        expect(outcomeFor('SUBSCRIPTION_PAUSED').tone, StatusTone.warning);
+      },
+    );
 
     test('an unknown code still lets the counter keep serving', () {
       // A server that adds a code an older build has never seen must not

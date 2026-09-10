@@ -2,9 +2,9 @@
 // Change the name in app.config.json and run `npm run app:name`.
 
 /** The product's name, as shown in the web console and page titles. */
-export const APP_NAME = "CampusMeals";
+export const APP_NAME = "MealAdda";
 
-export const SUPPORT_EMAIL = "support@campusmeals.app";
+export const SUPPORT_EMAIL = "support@mealadda.app";
 
-/** `Students · CampusMeals` — the shape every page title takes. */
+/** `Students · MealAdda` — the shape every page title takes. */
 export const pageTitle = (section: string) => `${section} · ${APP_NAME}`;

@@ -1,4 +1,4 @@
-/// The CampusMeals theme, in both schemes, built entirely from `tokens.dart`.
+/// The MealAdda theme, in both schemes, built entirely from `tokens.dart`.
 ///
 /// **Changing the look happens here and nowhere else.** A screen never names a
 /// colour, a radius or a duration directly — it asks the theme. That is what

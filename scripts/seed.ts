@@ -41,7 +41,7 @@ const db = createClient<Database>(url, serviceKey, {
  * A fixed demo password. Acceptable ONLY because every account below is
  * disposable demo data — never reuse this pattern for a real student.
  */
-const DEMO_PASSWORD = "CampusMeals@2026";
+const DEMO_PASSWORD = "MealAdda@2026";
 
 const TENANTS = [
   {

@@ -30,7 +30,10 @@ void main() {
   group('backoffSecondsFor', () {
     test('follows the server when a code is live, not a local constant', () {
       expect(
-        backoffSecondsFor(QrReady(token(refreshSeconds: 20)), refreshSeconds: 20),
+        backoffSecondsFor(
+          QrReady(token(refreshSeconds: 20)),
+          refreshSeconds: 20,
+        ),
         20,
       );
       expect(
@@ -49,9 +52,7 @@ void main() {
       // Slow enough not to hammer, frequent enough that a student who pays at
       // the office sees their code return on its own.
       expect(
-        backoffSecondsFor(
-          const QrDenied(code: 'BLOCKED_UNPAID', message: 'x'),
-        ),
+        backoffSecondsFor(const QrDenied(code: 'BLOCKED_UNPAID', message: 'x')),
         30,
       );
     });
@@ -110,10 +111,7 @@ void main() {
     test('keeps the service date as the server sent it', () {
       // The meal's date, derived in the mess's timezone — never re-derived from
       // the phone's clock. A dinner past midnight belongs to the day it started.
-      final t = QrToken.fromJson({
-        'token': 'a.b',
-        'serviceDate': '2026-09-09',
-      });
+      final t = QrToken.fromJson({'token': 'a.b', 'serviceDate': '2026-09-09'});
       expect(t.serviceDate, '2026-09-09');
     });
   });

@@ -26,8 +26,8 @@ Two things it deliberately leaves alone:
   trying a different display name.
 - **The store listing titles.** Those live in each console, must be unique
   across the whole store, and are usually longer than the name under the icon.
-  The listing may read "CampusMeals — Hostel Mess" while the icon says
-  "CampusMeals"; they are separate fields and only the listing has to be unique.
+  The listing may read "MealAdda — Hostel Mess" while the icon says
+  "MealAdda"; they are separate fields and only the listing has to be unique.
 
 ---
 

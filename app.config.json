@@ -20,8 +20,8 @@
     "It is set in each console by hand and lives here only as a record."
   ],
 
-  "name": "CampusMeals",
-  "storeName": "CampusMeals",
+  "name": "MealAdda",
+  "storeName": "MealAdda",
   "bundleId": "com.campusmeals.app",
-  "supportEmail": "support@campusmeals.app"
+  "supportEmail": "support@mealadda.app"
 }

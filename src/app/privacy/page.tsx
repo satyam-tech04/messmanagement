@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { pageTitle } from "@/lib/app-info";
+import { APP_NAME, SUPPORT_EMAIL, pageTitle } from "@/lib/app-info";
 
 /**
  * The privacy policy.
@@ -19,7 +19,7 @@ import { pageTitle } from "@/lib/app-info";
  */
 export const metadata: Metadata = {
   title: pageTitle("Privacy"),
-  description: "What CampusMeals collects, why, and who can see it.",
+  description: "What MealAdda collects, why, and who can see it.",
 };
 
 const UPDATED = "10 September 2026";
@@ -42,7 +42,7 @@ export default function PrivacyPage() {
       </header>
 
       <p className="text-muted-foreground text-sm leading-relaxed">
-        CampusMeals is used by hostel messes to run meal subscriptions and record attendance at the
+        {APP_NAME} is used by hostel messes to run meal subscriptions and record attendance at the
         counter. Your mess holds your records; we operate the software that stores them. This page
         describes what the app collects and who can see it.
       </p>
@@ -140,8 +140,8 @@ export default function PrivacyPage() {
         <p>
           Questions about your own records go to your mess office first — they hold them. For
           anything about the software itself, write to{" "}
-          <a className="text-foreground underline" href="mailto:support@campusmeals.app">
-            support@campusmeals.app
+          <a className="text-foreground underline" href={`mailto:${SUPPORT_EMAIL}`}>
+            {SUPPORT_EMAIL}
           </a>
           .
         </p>

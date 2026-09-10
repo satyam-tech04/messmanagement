@@ -16,7 +16,14 @@
  * is closed mid-transaction.
  */
 
-const STORAGE_KEY = "campusmeals.scanQueue.v1";
+/**
+ * Exported so tests reference the key rather than repeating it.
+ *
+ * They used to hardcode a copy, and renaming the product silently broke six of
+ * them — the string is an implementation detail, but a duplicated one is a
+ * detail that goes out of step.
+ */
+export const STORAGE_KEY = "mealadda.scanQueue.v1";
 
 /**
  * Beyond this the meal is over and replaying would write the wrong service

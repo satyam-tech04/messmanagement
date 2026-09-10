@@ -9,12 +9,13 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  enqueueScan,
-  queuedScans,
-  expiredScans,
-  dequeueScan,
-  clearExpiredScans,
   MAX_QUEUE_AGE_MS,
+  STORAGE_KEY,
+  clearExpiredScans,
+  dequeueScan,
+  enqueueScan,
+  expiredScans,
+  queuedScans,
 } from "@/app/(app)/staff/scan-queue";
 
 /** Minimal localStorage, since these run outside a browser. */
@@ -61,9 +62,9 @@ describe("the queue keeps what it is given", () => {
 describe("stale scans are surfaced, never silently dropped", () => {
   function buffer(ageMs: number) {
     const entry = enqueueScan({ mode: "QR", token: "old" });
-    const raw = JSON.parse(window.localStorage.getItem("campusmeals.scanQueue.v1")!);
+    const raw = JSON.parse(window.localStorage.getItem(STORAGE_KEY)!);
     raw[raw.length - 1].queuedAt = Date.now() - ageMs;
-    window.localStorage.setItem("campusmeals.scanQueue.v1", JSON.stringify(raw));
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(raw));
     return entry;
   }
 
@@ -108,13 +109,13 @@ describe("stale scans are surfaced, never silently dropped", () => {
 
 describe("corrupt storage cannot break the counter mid-service", () => {
   it("treats unreadable storage as an empty queue", () => {
-    window.localStorage.setItem("campusmeals.scanQueue.v1", "{not json");
+    window.localStorage.setItem(STORAGE_KEY, "{not json");
     expect(queuedScans()).toEqual([]);
     expect(expiredScans()).toEqual([]);
   });
 
   it("still accepts new scans afterwards", () => {
-    window.localStorage.setItem("campusmeals.scanQueue.v1", "{not json");
+    window.localStorage.setItem(STORAGE_KEY, "{not json");
     enqueueScan({ mode: "QR", token: "t1" });
     expect(queuedScans()).toHaveLength(1);
   });

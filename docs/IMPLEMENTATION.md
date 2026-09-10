@@ -164,11 +164,11 @@ proving the concurrency property. Gaps are harmless.)
 
 ### Demo logins (after `npm run db:seed`)
 
-| Role    | Identifier                                 | Password           |
-| ------- | ------------------------------------------ | ------------------ |
-| Admin   | `admin@unversity-mess.test`                | `CampusMeals@2026` |
-| Staff   | `staff@unversity-mess.test`                | `CampusMeals@2026` |
-| Student | `9000000003` (mobile number — Rohan Gupta) | `CampusMeals@2026` |
+| Role    | Identifier                                 | Password        |
+| ------- | ------------------------------------------ | --------------- |
+| Admin   | `admin@unversity-mess.test`                | `MealAdda@2026` |
+| Staff   | `staff@unversity-mess.test`                | `MealAdda@2026` |
+| Student | `9000000003` (mobile number — Rohan Gupta) | `MealAdda@2026` |
 
 ⚠️ **Do not use `CS21B001` or `CS21B002` to test student login.** Both exist in _both_
 seeded tenants, and roll numbers are unique per tenant, not globally — so the login action
@@ -455,7 +455,7 @@ real student's token reaches the handler and gets `NO_ACTIVE_PLAN`; a garbage to
 ### ✅ Slice 1a — mobile auth endpoints (2026-09-09)
 
 `POST /api/auth/login` · `POST /api/auth/change-password` · `POST /api/auth/logout` ·
-`GET /api/me`. **Bundle id decided: `com.campusmeals.app`, display name CampusMeals.**
+`GET /api/me`. **Bundle id decided: `com.campusmeals.app`, display name MealAdda.**
 
 Identifier → Auth address is extracted to `src/infra/auth/resolve-login-email.ts` and the web
 Server Action now calls it too — two copies would eventually disagree about which student a
