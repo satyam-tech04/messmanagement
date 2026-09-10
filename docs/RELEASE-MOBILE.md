@@ -186,6 +186,32 @@ account has no plan will see the "no plan running" screen and may read it as the
 app being broken — so give them an account with a running plan and a published
 menu.
 
+`npm run create:test-accounts` provisions one ADMIN, one STAFF and one STUDENT
+per tenant on a shared known password, and **refuses to touch Campus Crave** —
+the refusal is in the script, not in whoever is running it. Current accounts:
+
+| Tenant         | Role    | Login                          | Password        |
+| -------------- | ------- | ------------------------------ | --------------- |
+| demo-hostel    | ADMIN   | `qa.admin@demo-hostel.test`    | `MealAdda@2026` |
+| demo-hostel    | STAFF   | `qa.staff@demo-hostel.test`    | `MealAdda@2026` |
+| demo-hostel    | STUDENT | `9100000101` (roll QA001)      | `MealAdda@2026` |
+| unversity-mess | ADMIN   | `qa.admin@unversity-mess.test` | `MealAdda@2026` |
+| unversity-mess | STAFF   | `qa.staff@unversity-mess.test` | `MealAdda@2026` |
+| unversity-mess | STUDENT | `9100000201` (roll QA001)      | `MealAdda@2026` |
+
+Students sign in with the **mobile number**, not the roll number.
+
+⚠️ **These students have no subscription**, so a QR scan returns
+`NO_ACTIVE_PLAN` — exactly the "app looks broken" outcome described above. Give
+the reviewer's student a running plan and a published menu before submitting.
+
+The older seeded accounts (`admin@demo-hostel.test`, `staff@demo-hostel.test`
+and the same pair on `unversity-mess`) are on **`MessOS@2026`**, not what
+`scripts/seed.ts` says. The constant in that file was swept along by four
+product renames while the database kept the hash from whenever the seed last
+ran. Re-running `npm run db:seed` would reset them to the current constant and
+invalidate anything already given to Apple.
+
 ---
 
 ## Known gaps at the time of writing
