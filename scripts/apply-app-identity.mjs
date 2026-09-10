@@ -82,7 +82,7 @@ export const APP_NAME = ${JSON.stringify(name)};
 
 export const SUPPORT_EMAIL = ${JSON.stringify(supportEmail ?? "")};
 
-/** \`Students · MealAdda\` — the shape every page title takes. */
+/** \`Students · <app name>\` — the shape every page title takes. */
 export const pageTitle = (section: string) => \`\${section} · \${APP_NAME}\`;
 `,
 );

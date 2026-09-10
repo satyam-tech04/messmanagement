@@ -1,4 +1,4 @@
-/// The MealAdda mark.
+/// The MessMate mark.
 ///
 /// One widget so every place the logo appears — login, splash, an empty state —
 /// scales the same asset the launcher icon is built from, rather than each

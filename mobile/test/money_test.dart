@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:campusmeals/src/core/money.dart';
+import 'package:messmate/src/core/money.dart';
 
 /// Money is integer paise everywhere, and rupees only at the render boundary.
 ///

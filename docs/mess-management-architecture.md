@@ -141,7 +141,7 @@ Every API route input, every Edge Function payload, every webhook body, every en
 ### 3.2 Repository Structure
 
 ```
-campusmeals/
+messmate/
 ├── src/
 │   ├── app/
 │   │   ├── (student)/            # role-gated route group

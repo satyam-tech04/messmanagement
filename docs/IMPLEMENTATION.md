@@ -166,9 +166,9 @@ proving the concurrency property. Gaps are harmless.)
 
 | Role    | Identifier                                 | Password        |
 | ------- | ------------------------------------------ | --------------- |
-| Admin   | `admin@unversity-mess.test`                | `MealAdda@2026` |
-| Staff   | `staff@unversity-mess.test`                | `MealAdda@2026` |
-| Student | `9000000003` (mobile number — Rohan Gupta) | `MealAdda@2026` |
+| Admin   | `admin@unversity-mess.test`                | `MessMate@2026` |
+| Staff   | `staff@unversity-mess.test`                | `MessMate@2026` |
+| Student | `9000000003` (mobile number — Rohan Gupta) | `MessMate@2026` |
 
 ⚠️ **Do not use `CS21B001` or `CS21B002` to test student login.** Both exist in _both_
 seeded tenants, and roll numbers are unique per tenant, not globally — so the login action
@@ -455,7 +455,7 @@ real student's token reaches the handler and gets `NO_ACTIVE_PLAN`; a garbage to
 ### ✅ Slice 1a — mobile auth endpoints (2026-09-09)
 
 `POST /api/auth/login` · `POST /api/auth/change-password` · `POST /api/auth/logout` ·
-`GET /api/me`. **Bundle id decided: `com.campusmeals.app`, display name MealAdda.**
+`GET /api/me`. **Bundle id decided: `com.messmate.app`, display name MessMate.**
 
 Identifier → Auth address is extracted to `src/infra/auth/resolve-login-email.ts` and the web
 Server Action now calls it too — two copies would eventually disagree about which student a
@@ -481,7 +481,7 @@ Two traps found by running it, not by reading it:
 
 ### 🚧 Slice 1b — Flutter foundation (2026-09-09)
 
-The app lives in **`mobile/`**, in this repo. Bundle id `com.campusmeals.app` on both platforms.
+The app lives in **`mobile/`**, in this repo. Bundle id `com.messmate.app` on both platforms.
 Excluded from the Next pipeline (`.prettierignore`, `eslint.config.mjs`, `tsconfig.json`) —
 Dart has its own analyzer and formatter, and the Gradle/Xcode files are tool-owned.
 

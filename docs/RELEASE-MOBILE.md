@@ -38,8 +38,8 @@ The one thing neither command touches:
 
 - **The store listing titles.** Those live in each console, must be unique
   across the whole store, and are usually longer than the name under the icon.
-  The listing may read "MealAdda — Hostel Mess" while the icon says
-  "MealAdda"; they are separate fields and only the listing has to be unique.
+  The listing may read "MessMate — Hostel Mess" while the icon says
+  "MessMate"; they are separate fields and only the listing has to be unique.
 
 ---
 
@@ -98,8 +98,8 @@ one constant in `mobile/lib/src/core/config.dart`.
 
 ### 4. Store records
 
-- **App Store Connect** — a new app with bundle id `com.campusmeals.app`.
-- **Play Console** — a new app, package `com.campusmeals.app`.
+- **App Store Connect** — a new app with bundle id `com.messmate.app`.
+- **Play Console** — a new app, package `com.messmate.app`.
 - Privacy policy URL: `https://<domain>/privacy` (the page is public and needs
   no sign-in — `proxy.ts` allows it explicitly, which is what a reviewer needs).
 

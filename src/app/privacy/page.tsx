@@ -19,7 +19,7 @@ import { APP_NAME, SUPPORT_EMAIL, pageTitle } from "@/lib/app-info";
  */
 export const metadata: Metadata = {
   title: pageTitle("Privacy"),
-  description: "What MealAdda collects, why, and who can see it.",
+  description: "What MessMate collects, why, and who can see it.",
 };
 
 const UPDATED = "10 September 2026";

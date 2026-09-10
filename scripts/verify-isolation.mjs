@@ -20,7 +20,7 @@ loadEnv();
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const service = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const PW = "MealAdda@2026";
+const PW = "MessMate@2026";
 
 let failures = 0;
 const pass = (m) => console.log(`  \x1b[32m✔\x1b[0m ${m}`);

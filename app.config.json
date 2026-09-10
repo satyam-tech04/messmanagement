@@ -20,8 +20,8 @@
     "It is set in each console by hand and lives here only as a record."
   ],
 
-  "name": "MealAdda",
-  "storeName": "MealAdda",
-  "bundleId": "com.mealadda.app",
-  "supportEmail": "support@mealadda.app"
+  "name": "MessMate",
+  "storeName": "MessMate",
+  "bundleId": "com.messmate.app",
+  "supportEmail": "support@messmate.app"
 }
