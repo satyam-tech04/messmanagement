@@ -18,6 +18,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api_failure.dart';
 import '../../design/brand.dart';
 import '../../state/auth_controller.dart';
+import '../../design/components.dart';
+import '../../design/tokens.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -76,7 +78,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+            padding: const EdgeInsets.symmetric(
+              horizontal: Space.xxl,
+              vertical: Space.xxxl,
+            ),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 420),
               child: Form(
@@ -85,7 +90,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const BrandMark(size: 96),
-                    const SizedBox(height: 20),
+                    const Gap.xl(),
                     Text(
                       'MessOS',
                       style: theme.textTheme.headlineSmall?.copyWith(
@@ -93,7 +98,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 6),
+                    const Gap.sm(),
                     Text(
                       'Sign in to show your meal code',
                       style: theme.textTheme.bodyMedium?.copyWith(
@@ -101,7 +106,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 32),
+                    const Gap.xxxl(),
 
                     TextFormField(
                       controller: _identifier,
@@ -123,7 +128,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ? 'Enter your mobile number or email'
                           : null,
                     ),
-                    const SizedBox(height: 16),
+                    const Gap.lg(),
 
                     TextFormField(
                       controller: _password,
@@ -142,7 +147,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 ? Icons.visibility_outlined
                                 : Icons.visibility_off_outlined,
                           ),
-                          tooltip: _obscured ? 'Show password' : 'Hide password',
+                          tooltip: _obscured
+                              ? 'Show password'
+                              : 'Hide password',
                         ),
                       ),
                       validator: (v) => (v == null || v.isEmpty)
@@ -151,16 +158,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
 
                     if (_error != null) ...[
-                      const SizedBox(height: 16),
+                      const Gap.lg(),
                       // Announced, not merely coloured — a failure nobody is
                       // told about is a form that appears to do nothing.
                       Semantics(
                         liveRegion: true,
                         child: Container(
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.all(Space.md),
                           decoration: BoxDecoration(
                             color: theme.colorScheme.errorContainer,
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(Radii.md),
                           ),
                           child: Row(
                             children: [
@@ -169,7 +176,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 size: 20,
                                 color: theme.colorScheme.onErrorContainer,
                               ),
-                              const SizedBox(width: 10),
+                              const Gap.sm(),
                               Expanded(
                                 child: Text(
                                   _error!,
@@ -184,7 +191,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                     ],
 
-                    const SizedBox(height: 24),
+                    const Gap.xxl(),
                     FilledButton(
                       // Disabled while in flight, so a double-tap cannot burn
                       // two of the ten attempts the rate limit allows.
@@ -193,11 +200,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ? const SizedBox(
                               height: 22,
                               width: 22,
-                              child: CircularProgressIndicator(strokeWidth: 2.5),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                              ),
                             )
                           : const Text('Sign in'),
                     ),
-                    const SizedBox(height: 16),
+                    const Gap.lg(),
                     Text(
                       'First time? Your password is your mobile number.',
                       style: theme.textTheme.bodySmall?.copyWith(

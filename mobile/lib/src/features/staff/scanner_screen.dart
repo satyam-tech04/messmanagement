@@ -33,6 +33,8 @@ import 'scan_beeper.dart';
 import 'scan_gate.dart';
 import 'scan_queue.dart';
 import 'verify_repository.dart';
+import '../../design/components.dart';
+import '../../design/tokens.dart';
 
 /// How long a result stays up before the camera takes over again.
 ///
@@ -218,10 +220,8 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
     final result = await showModalBottomSheet<VerifyResult>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => ManualEntrySheet(
-        deviceId: _deviceId,
-        prefillRoll: prefillRoll,
-      ),
+      builder: (_) =>
+          ManualEntrySheet(deviceId: _deviceId, prefillRoll: prefillRoll),
     );
 
     if (result != null && mounted) _show(result);
@@ -237,7 +237,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
         children: [
           Center(
             child: Padding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(Space.xxl),
               child: FilledButton.icon(
                 onPressed: () => _openManual(),
                 icon: const Icon(Icons.edit_note_rounded),
@@ -248,9 +248,9 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
           if (result != null)
             _ResultOverlay(result: result, onManual: _openManual),
           Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
+            left: Space.xs,
+            right: Space.xs,
+            bottom: Space.xs,
             child: _CounterBar(
               servedCount: _servedCount,
               todayServed: _todayServed,
@@ -279,18 +279,19 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
               height: 240,
               decoration: BoxDecoration(
                 border: Border.all(color: Colors.white70, width: 3),
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(Radii.xl),
               ),
             ),
           ),
         ),
 
-        if (result != null) _ResultOverlay(result: result, onManual: _openManual),
+        if (result != null)
+          _ResultOverlay(result: result, onManual: _openManual),
 
         Positioned(
-          left: 0,
-          right: 0,
-          bottom: 0,
+          left: Space.xs,
+          right: Space.xs,
+          bottom: Space.xs,
           child: _CounterBar(
             servedCount: _servedCount,
             todayServed: _todayServed,
@@ -327,7 +328,7 @@ class _ResultOverlay extends StatelessWidget {
 
     return Container(
       color: background,
-      padding: const EdgeInsets.all(28),
+      padding: const EdgeInsets.all(Space.xxl),
       child: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -347,23 +348,23 @@ class _ResultOverlay extends StatelessWidget {
                 else if (outcome.tone == StatusTone.active)
                   _NoPhoto(colour: foreground),
 
-                const SizedBox(height: 20),
+                const Gap.xl(),
                 Text(
                   outcome.title,
                   style: TextStyle(
                     color: foreground,
-                    fontSize: 34,
+                    fontSize: CounterText.verdict,
                     fontWeight: FontWeight.w800,
                   ),
                   textAlign: TextAlign.center,
                 ),
                 if (result.fullName != null) ...[
-                  const SizedBox(height: 8),
+                  const Gap.sm(),
                   Text(
                     result.fullName!,
                     style: TextStyle(
                       color: foreground,
-                      fontSize: 22,
+                      fontSize: CounterText.name,
                       fontWeight: FontWeight.w600,
                     ),
                     textAlign: TextAlign.center,
@@ -372,16 +373,22 @@ class _ResultOverlay extends StatelessWidget {
                 if (result.rollNumber != null)
                   Text(
                     result.rollNumber!,
-                    style: TextStyle(color: foreground, fontSize: 16),
+                    style: TextStyle(
+                      color: foreground,
+                      fontSize: CounterText.supporting,
+                    ),
                   ),
-                const SizedBox(height: 14),
+                const Gap.md(),
                 Text(
                   outcome.action,
-                  style: TextStyle(color: foreground, fontSize: 17),
+                  style: TextStyle(
+                    color: foreground,
+                    fontSize: CounterText.action,
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 if (outcome.allowsManualOverride) ...[
-                  const SizedBox(height: 20),
+                  const Gap.xl(),
                   FilledButton.icon(
                     onPressed: () => onManual(prefillRoll: result.rollNumber),
                     icon: const Icon(Icons.edit_note_rounded),
@@ -406,12 +413,12 @@ class _NoPhoto extends StatelessWidget {
     mainAxisSize: MainAxisSize.min,
     children: [
       Icon(Icons.person_outline_rounded, size: 72, color: colour),
-      const SizedBox(height: 4),
+      const Gap.xs(),
       // Said explicitly rather than left blank: a missing photo means staff must
       // check ID themselves, and silence would read as "verified".
       Text(
         'No photo on file — check their ID',
-        style: TextStyle(color: colour, fontSize: 13),
+        style: TextStyle(color: colour, fontSize: CounterText.caution),
       ),
     ],
   );
@@ -438,7 +445,7 @@ class _CounterBar extends StatelessWidget {
 
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(Space.lg),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -448,17 +455,17 @@ class _CounterBar extends StatelessWidget {
             // whole service with nobody ever knowing.
             if (expiredCount > 0)
               Padding(
-                padding: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.only(bottom: Space.md),
                 child: Material(
                   color: theme.colorScheme.errorContainer,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(Radii.md),
                   child: InkWell(
                     onTap: onDismissExpired,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(Radii.md),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 10,
+                        horizontal: Space.md,
+                        vertical: Space.sm,
                       ),
                       child: Text(
                         '$expiredCount scan${expiredCount == 1 ? '' : 's'} not '
@@ -476,12 +483,12 @@ class _CounterBar extends StatelessWidget {
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
+                    horizontal: Space.lg,
+                    vertical: Space.md,
                   ),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.surface.withValues(alpha: 0.92),
-                    borderRadius: BorderRadius.circular(999),
+                    borderRadius: BorderRadius.circular(Radii.pill),
                   ),
                   child: Text(
                     todayServed == null

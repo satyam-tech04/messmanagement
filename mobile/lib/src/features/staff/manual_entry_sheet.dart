@@ -14,15 +14,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'scanner_screen.dart';
+import '../../design/components.dart';
+import '../../design/tokens.dart';
 
 const _slots = ['BREAKFAST', 'LUNCH', 'SNACKS', 'DINNER'];
 
 class ManualEntrySheet extends ConsumerStatefulWidget {
-  const ManualEntrySheet({
-    super.key,
-    required this.deviceId,
-    this.prefillRoll,
-  });
+  const ManualEntrySheet({super.key, required this.deviceId, this.prefillRoll});
 
   final String deviceId;
 
@@ -72,9 +70,9 @@ class _ManualEntrySheetState extends ConsumerState<ManualEntrySheet> {
 
     return Padding(
       padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 20,
+        left: Space.xl,
+        right: Space.xl,
+        top: Space.xl,
         bottom: MediaQuery.of(context).viewInsets.bottom + 20,
       ),
       child: Column(
@@ -87,14 +85,14 @@ class _ManualEntrySheetState extends ConsumerState<ManualEntrySheet> {
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 6),
+          const Gap.sm(),
           Text(
             'This is recorded against your account, with your reason.',
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 20),
+          const Gap.xl(),
 
           TextField(
             controller: _roll,
@@ -107,7 +105,7 @@ class _ManualEntrySheetState extends ConsumerState<ManualEntrySheet> {
               prefixIcon: Icon(Icons.badge_outlined),
             ),
           ),
-          const SizedBox(height: 14),
+          const Gap.md(),
 
           // Fixed list rather than the tenant's configured slots: this sheet
           // must work when the settings call is the thing that failed.
@@ -118,14 +116,14 @@ class _ManualEntrySheetState extends ConsumerState<ManualEntrySheet> {
                   value: slot,
                   label: Text(
                     '${slot[0]}${slot.substring(1).toLowerCase()}',
-                    style: const TextStyle(fontSize: 12),
+                    style: Theme.of(context).textTheme.labelMedium,
                   ),
                 ),
             ],
             selected: {_slot},
             onSelectionChanged: (s) => setState(() => _slot = s.first),
           ),
-          const SizedBox(height: 14),
+          const Gap.md(),
 
           TextField(
             controller: _reason,

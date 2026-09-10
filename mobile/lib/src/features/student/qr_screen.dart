@@ -23,6 +23,8 @@ import '../../data/session.dart';
 import '../../design/async_view.dart';
 import 'qr_controller.dart';
 import 'qr_state.dart';
+import '../../design/components.dart';
+import '../../design/tokens.dart';
 
 /// The rendered size of the symbol.
 ///
@@ -105,7 +107,10 @@ class _QrScreenState extends ConsumerState<QrScreen>
 
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        padding: const EdgeInsets.symmetric(
+          horizontal: Space.xxl,
+          vertical: Space.lg,
+        ),
         child: Center(
           child: SingleChildScrollView(child: _body(context, state)),
         ),
@@ -164,7 +169,7 @@ class _Reveal extends StatelessWidget {
           size: 72,
           color: theme.colorScheme.primary,
         ),
-        const SizedBox(height: 20),
+        const Gap.xl(),
         Text(
           expired ? 'Code put away' : 'Show this at the counter',
           style: theme.textTheme.titleLarge?.copyWith(
@@ -172,7 +177,7 @@ class _Reveal extends StatelessWidget {
           ),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 8),
+        const Gap.sm(),
         Text(
           expired
               ? 'Tap again when you reach the counter — you will get a fresh code.'
@@ -182,7 +187,7 @@ class _Reveal extends StatelessWidget {
           ),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 28),
+        const Gap.xxl(),
         SizedBox(
           width: double.infinity,
           child: FilledButton.icon(
@@ -205,10 +210,10 @@ class _LoadingCode extends StatelessWidget {
     children: [
       // Sized exactly like the real symbol, so revealing a code does not shift
       // the layout under a thumb already moving toward it.
-      Skeleton(height: _qrSize, width: _qrSize, radius: 20),
-      SizedBox(height: 24),
+      Skeleton(height: _qrSize, width: _qrSize, radius: Radii.xl),
+      Gap.xxl(),
       Skeleton(height: 18, width: 160),
-      SizedBox(height: 10),
+      Gap.sm(),
       Skeleton(height: 14, width: 200),
     ],
   );
@@ -229,10 +234,10 @@ class _LiveCode extends StatelessWidget {
       children: [
         // Always white, in both themes. A themed QR is an unreadable QR.
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(Space.lg),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(Radii.xl),
             boxShadow: const [
               BoxShadow(color: Color(0x14000000), blurRadius: 24),
             ],
@@ -253,10 +258,10 @@ class _LiveCode extends StatelessWidget {
             // rely on it to find the symbol's edges. A scanner that cannot
             // locate the finder pattern does not decode slowly — it does not
             // decode at all.
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(Space.md),
           ),
         ),
-        const SizedBox(height: 24),
+        const Gap.xxl(),
         Text(
           session.fullName,
           style: theme.textTheme.titleMedium?.copyWith(
@@ -269,12 +274,15 @@ class _LiveCode extends StatelessWidget {
             color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
-        const SizedBox(height: 16),
+        const Gap.lg(),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          padding: const EdgeInsets.symmetric(
+            horizontal: Space.md,
+            vertical: Space.sm,
+          ),
           decoration: BoxDecoration(
             color: theme.colorScheme.secondaryContainer,
-            borderRadius: BorderRadius.circular(999),
+            borderRadius: BorderRadius.circular(Radii.pill),
           ),
           child: Text(
             _slotLabel(token.mealSlot),
@@ -284,7 +292,7 @@ class _LiveCode extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 20),
+        const Gap.xl(),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -293,7 +301,7 @@ class _LiveCode extends StatelessWidget {
               size: 16,
               color: theme.colorScheme.onSurfaceVariant,
             ),
-            const SizedBox(width: 6),
+            const Gap.sm(),
             Text(
               'Changes every ${token.refreshSeconds} seconds',
               style: theme.textTheme.bodySmall?.copyWith(
@@ -331,7 +339,7 @@ class _Served extends StatelessWidget {
           size: 88,
           color: theme.colorScheme.primary,
         ),
-        const SizedBox(height: 20),
+        const Gap.xl(),
         Text(
           '${_slotLabel(mealSlot)} served',
           style: theme.textTheme.headlineSmall?.copyWith(
@@ -339,7 +347,7 @@ class _Served extends StatelessWidget {
           ),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 8),
+        const Gap.sm(),
         Text(
           'You are all set. Enjoy your meal.',
           style: theme.textTheme.bodyMedium?.copyWith(
@@ -411,7 +419,7 @@ class _Denied extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, size: 72, color: theme.colorScheme.error),
-        const SizedBox(height: 20),
+        const Gap.xl(),
         Text(
           title,
           style: theme.textTheme.titleLarge?.copyWith(
@@ -419,7 +427,7 @@ class _Denied extends StatelessWidget {
           ),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 10),
+        const Gap.sm(),
         Text(
           // The server writes for the person reading it; prefer its words and
           // fall back to ours only when there is nothing better to add.
@@ -429,7 +437,7 @@ class _Denied extends StatelessWidget {
           ),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 24),
+        const Gap.xxl(),
         FilledButton.tonalIcon(
           onPressed: onRetry,
           icon: const Icon(Icons.refresh_rounded),

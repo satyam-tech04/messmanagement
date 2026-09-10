@@ -15,6 +15,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_failure.dart';
 import '../../state/auth_controller.dart';
+import '../../design/components.dart';
+import '../../design/tokens.dart';
 
 class ChangePasswordScreen extends ConsumerStatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -84,7 +86,10 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+            padding: const EdgeInsets.symmetric(
+              horizontal: Space.xxl,
+              vertical: Space.xxxl,
+            ),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 420),
               child: Form(
@@ -98,7 +103,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const Gap.sm(),
                     Text(
                       'Your current password was issued by the mess office, so '
                       'someone else knows it. Choose one only you know.',
@@ -106,7 +111,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
-                    const SizedBox(height: 28),
+                    const Gap.xxl(),
 
                     TextFormField(
                       controller: _password,
@@ -121,7 +126,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                           ? 'Use at least 8 characters'
                           : null,
                     ),
-                    const SizedBox(height: 16),
+                    const Gap.lg(),
 
                     TextFormField(
                       controller: _confirm,
@@ -139,14 +144,14 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                     ),
 
                     if (_error != null) ...[
-                      const SizedBox(height: 16),
+                      const Gap.lg(),
                       Semantics(
                         liveRegion: true,
                         child: Container(
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.all(Space.md),
                           decoration: BoxDecoration(
                             color: theme.colorScheme.errorContainer,
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(Radii.md),
                           ),
                           child: Text(
                             _error!,
@@ -158,14 +163,16 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                       ),
                     ],
 
-                    const SizedBox(height: 24),
+                    const Gap.xxl(),
                     FilledButton(
                       onPressed: _busy ? null : _submit,
                       child: _busy
                           ? const SizedBox(
                               height: 22,
                               width: 22,
-                              child: CircularProgressIndicator(strokeWidth: 2.5),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                              ),
                             )
                           : const Text('Save password'),
                     ),

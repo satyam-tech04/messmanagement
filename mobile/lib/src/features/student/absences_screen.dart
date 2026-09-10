@@ -16,6 +16,8 @@ import '../../design/async_view.dart';
 import '../../design/status_badge.dart';
 import '../../state/student_providers.dart';
 import 'date_label.dart';
+import '../../design/components.dart';
+import '../../design/tokens.dart';
 
 class AbsencesScreen extends ConsumerWidget {
   const AbsencesScreen({super.key});
@@ -26,13 +28,13 @@ class AbsencesScreen extends ConsumerWidget {
 
     return absences.when(
       loading: () => ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(Space.lg),
         children: const [
-          Skeleton(height: 120, radius: 16),
-          SizedBox(height: 20),
-          Skeleton(height: 64, radius: 12),
-          SizedBox(height: 8),
-          Skeleton(height: 64, radius: 12),
+          Skeleton(height: 120, radius: Radii.lg),
+          Gap.xl(),
+          Skeleton(height: 64, radius: Radii.md),
+          Gap.sm(),
+          Skeleton(height: 64, radius: Radii.md),
         ],
       ),
       error: (e, _) => ErrorState(
@@ -66,26 +68,26 @@ class AbsencesScreen extends ConsumerWidget {
         return RefreshIndicator(
           onRefresh: () async => ref.invalidate(studentAbsencesProvider),
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            padding: Insets.list,
             children: [
               _AllowanceCard(data: data),
-              const SizedBox(height: 16),
+              const Gap.lg(),
               FilledButton.icon(
                 onPressed: () => _openForm(context, ref, data),
                 icon: const Icon(Icons.add_rounded),
                 label: const Text('Mark myself out'),
               ),
-              const SizedBox(height: 24),
+              const Gap.xxl(),
               Text(
                 'Your requests',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
               ),
-              const SizedBox(height: 10),
+              const Gap.sm(),
               if (data.history.isEmpty)
                 const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24),
+                  padding: EdgeInsets.symmetric(vertical: Space.xxl),
                   child: EmptyState(
                     icon: Icons.event_available_rounded,
                     title: 'Nothing yet',
@@ -95,7 +97,10 @@ class AbsencesScreen extends ConsumerWidget {
                 )
               else
                 for (final row in data.history)
-                  _AbsenceTile(row: row, onCancel: () => _cancel(context, ref, row)),
+                  _AbsenceTile(
+                    row: row,
+                    onCancel: () => _cancel(context, ref, row),
+                  ),
             ],
           ),
         );
@@ -103,11 +108,17 @@ class AbsencesScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _cancel(BuildContext context, WidgetRef ref, AbsenceRow row) async {
+  Future<void> _cancel(
+    BuildContext context,
+    WidgetRef ref,
+    AbsenceRow row,
+  ) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
       await cancelAbsence(ref, row.id);
-      messenger.showSnackBar(const SnackBar(content: Text('Request withdrawn.')));
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Request withdrawn.')),
+      );
     } on ApiFailure catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(e.message)));
     }
@@ -148,7 +159,7 @@ class _AllowanceCard extends StatelessWidget {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(Space.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -158,7 +169,7 @@ class _AllowanceCard extends StatelessWidget {
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
-            const SizedBox(height: 6),
+            const Gap.sm(),
             Text(
               data.allowMealSkipping
                   ? '${data.skipDaysLeft} of ${data.cutMaxDaysPerMonth} skip days left'
@@ -169,7 +180,7 @@ class _AllowanceCard extends StatelessWidget {
               ),
             ),
             if (data.earliestSkipDate != null) ...[
-              const SizedBox(height: 8),
+              const Gap.sm(),
               Text(
                 // The notice window, said as a date rather than as hours:
                 // "choose 12 September" is actionable, "wait 20 more hours"
@@ -198,9 +209,9 @@ class _AbsenceTile extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: Space.sm),
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(Space.md),
         child: Row(
           children: [
             Expanded(
@@ -211,7 +222,7 @@ class _AbsenceTile extends StatelessWidget {
                     formatServiceDateRange(row.dateFrom, row.dateTo),
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
-                  const SizedBox(height: 2),
+                  const Gap.xs(),
                   Text(
                     row.mealSlots
                         .map((s) => '${s[0]}${s.substring(1).toLowerCase()}')
@@ -221,7 +232,7 @@ class _AbsenceTile extends StatelessWidget {
                     ),
                   ),
                   if (row.rejectionReason != null) ...[
-                    const SizedBox(height: 4),
+                    const Gap.xs(),
                     Text(
                       row.rejectionReason!,
                       style: theme.textTheme.bodySmall?.copyWith(
@@ -338,9 +349,9 @@ class _AbsenceFormState extends ConsumerState<_AbsenceForm> {
 
     return Padding(
       padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 20,
+        left: Space.xl,
+        right: Space.xl,
+        top: Space.xl,
         bottom: MediaQuery.of(context).viewInsets.bottom + 20,
       ),
       child: SingleChildScrollView(
@@ -354,7 +365,7 @@ class _AbsenceFormState extends ConsumerState<_AbsenceForm> {
                 fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(height: 16),
+            const Gap.lg(),
 
             if (canSkip && canAway)
               SegmentedButton<String>(
@@ -370,7 +381,7 @@ class _AbsenceFormState extends ConsumerState<_AbsenceForm> {
                   _error = null;
                 }),
               ),
-            const SizedBox(height: 16),
+            const Gap.lg(),
 
             OutlinedButton.icon(
               onPressed: _pickRange,
@@ -383,18 +394,17 @@ class _AbsenceFormState extends ConsumerState<_AbsenceForm> {
             ),
 
             if (_kind == 'SKIP') ...[
-              const SizedBox(height: 16),
-              Text(
-                'Which meals',
-                style: theme.textTheme.labelLarge,
-              ),
-              const SizedBox(height: 6),
+              const Gap.lg(),
+              Text('Which meals', style: theme.textTheme.labelLarge),
+              const Gap.sm(),
               Wrap(
                 spacing: 8,
                 children: [
                   for (final slot in _d.plannedSlots)
                     FilterChip(
-                      label: Text('${slot[0]}${slot.substring(1).toLowerCase()}'),
+                      label: Text(
+                        '${slot[0]}${slot.substring(1).toLowerCase()}',
+                      ),
                       selected: _slots.contains(slot),
                       // A mess that does not allow partial days needs every
                       // served slot, so the chips stop being a choice.
@@ -408,7 +418,7 @@ class _AbsenceFormState extends ConsumerState<_AbsenceForm> {
               ),
               if (!_d.allowPartialDaySkip)
                 Padding(
-                  padding: const EdgeInsets.only(top: 6),
+                  padding: const EdgeInsets.only(top: Space.sm),
                   child: Text(
                     'Your mess only allows skipping a whole day.',
                     style: theme.textTheme.bodySmall?.copyWith(
@@ -419,14 +429,14 @@ class _AbsenceFormState extends ConsumerState<_AbsenceForm> {
             ],
 
             if (_error != null) ...[
-              const SizedBox(height: 16),
+              const Gap.lg(),
               Semantics(
                 liveRegion: true,
                 child: Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(Space.md),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.errorContainer,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(Radii.md),
                   ),
                   child: Text(
                     _error!,
@@ -436,7 +446,7 @@ class _AbsenceFormState extends ConsumerState<_AbsenceForm> {
               ),
             ],
 
-            const SizedBox(height: 20),
+            const Gap.xl(),
             FilledButton(
               onPressed: _from == null || _busy ? null : _submit,
               child: _busy

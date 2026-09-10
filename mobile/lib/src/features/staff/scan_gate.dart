@@ -30,6 +30,7 @@ bool shouldSubmitToken({
   required String token,
   required LastScan? last,
   required DateTime now,
+
   /// True while a verify request is in flight.
   required bool busy,
 }) {

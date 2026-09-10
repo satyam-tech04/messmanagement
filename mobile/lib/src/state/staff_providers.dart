@@ -6,7 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/staff_models.dart';
 import 'auth_controller.dart';
 
-final staffCountsProvider = FutureProvider.autoDispose<StaffCounts>((ref) async {
+final staffCountsProvider = FutureProvider.autoDispose<StaffCounts>((
+  ref,
+) async {
   return StaffCounts.fromJson(
     await ref.watch(apiClientProvider).get('/api/staff/counts'),
   );
@@ -28,14 +30,12 @@ Future<String?> tillAction(
   String? billId,
   Map<String, Object> fields = const {},
 }) async {
-  final json = await ref.read(apiClientProvider).post(
-    '/api/staff/sales',
-    body: {
-      'action': action,
-      'billId': ?billId,
-      'fields': fields,
-    },
-  );
+  final json = await ref
+      .read(apiClientProvider)
+      .post(
+        '/api/staff/sales',
+        body: {'action': action, 'billId': ?billId, 'fields': fields},
+      );
   ref.invalidate(staffSalesProvider);
   return json['billId'] as String?;
 }

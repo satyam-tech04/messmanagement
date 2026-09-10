@@ -38,9 +38,7 @@ class MessCard extends StatelessWidget {
     return Card(
       color: color,
       clipBehavior: Clip.antiAlias,
-      child: onTap == null
-          ? content
-          : InkWell(onTap: onTap, child: content),
+      child: onTap == null ? content : InkWell(onTap: onTap, child: content),
     );
   }
 }
@@ -281,6 +279,7 @@ class Gap extends StatelessWidget {
   const Gap.lg({super.key}) : _size = Space.lg;
   const Gap.xl({super.key}) : _size = Space.xl;
   const Gap.xxl({super.key}) : _size = Space.xxl;
+  const Gap.xxxl({super.key}) : _size = Space.xxxl;
 
   final double _size;
 

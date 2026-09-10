@@ -19,6 +19,8 @@ import '../../data/staff_models.dart';
 import '../../design/async_view.dart';
 import '../../state/auth_controller.dart';
 import '../../state/staff_providers.dart';
+import '../../design/components.dart';
+import '../../design/tokens.dart';
 
 class CountsScreen extends ConsumerStatefulWidget {
   const CountsScreen({super.key, required this.session});
@@ -78,13 +80,13 @@ class _CountsScreenState extends ConsumerState<CountsScreen> {
 
     return counts.when(
       loading: () => ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(Space.lg),
         children: const [
-          Skeleton(height: 110, radius: 16),
-          SizedBox(height: 10),
-          Skeleton(height: 110, radius: 16),
-          SizedBox(height: 10),
-          Skeleton(height: 110, radius: 16),
+          Skeleton(height: 110, radius: Radii.lg),
+          Gap.sm(),
+          Skeleton(height: 110, radius: Radii.lg),
+          Gap.sm(),
+          Skeleton(height: 110, radius: Radii.lg),
         ],
       ),
       error: (e, _) => ErrorState(
@@ -104,10 +106,10 @@ class _CountsScreenState extends ConsumerState<CountsScreen> {
         return RefreshIndicator(
           onRefresh: () async => ref.invalidate(staffCountsProvider),
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            padding: Insets.list,
             children: [
               _LiveIndicator(live: _live),
-              const SizedBox(height: 12),
+              const Gap.md(),
               for (final slot in slots) _SlotCard(slot: slot),
             ],
           ),
@@ -132,7 +134,7 @@ class _LiveIndicator extends StatelessWidget {
           size: 16,
           color: theme.colorScheme.onSurfaceVariant,
         ),
-        const SizedBox(width: 6),
+        const Gap.sm(),
         // Said in words, not only by a coloured dot: staff need to know whether
         // what they are looking at updates itself.
         Text(
@@ -159,9 +161,9 @@ class _SlotCard extends StatelessWidget {
         : (slot.served / slot.projected).clamp(0.0, 1.0);
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: const EdgeInsets.only(bottom: Space.sm),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(Space.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -186,7 +188,7 @@ class _SlotCard extends StatelessWidget {
                           size: 14,
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
-                        const SizedBox(width: 4),
+                        const Gap.xs(),
                         Text(
                           'Locked',
                           style: theme.textTheme.bodySmall?.copyWith(
@@ -198,7 +200,7 @@ class _SlotCard extends StatelessWidget {
                   ),
               ],
             ),
-            const SizedBox(height: 12),
+            const Gap.md(),
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -210,7 +212,10 @@ class _SlotCard extends StatelessWidget {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 6, left: 4),
+                  padding: const EdgeInsets.only(
+                    bottom: Space.sm,
+                    left: Space.xs,
+                  ),
                   child: Text(
                     'of ${slot.projected}',
                     style: theme.textTheme.titleMedium?.copyWith(
@@ -229,9 +234,9 @@ class _SlotCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 10),
+            const Gap.sm(),
             ClipRRect(
-              borderRadius: BorderRadius.circular(999),
+              borderRadius: BorderRadius.circular(Radii.pill),
               child: LinearProgressIndicator(
                 value: progress,
                 minHeight: 10,

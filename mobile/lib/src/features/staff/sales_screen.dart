@@ -16,7 +16,10 @@ import '../../core/api_failure.dart';
 import '../../core/money.dart';
 import '../../data/staff_models.dart';
 import '../../design/async_view.dart';
+import '../../design/theme.dart';
 import '../../state/staff_providers.dart';
+import '../../design/components.dart';
+import '../../design/tokens.dart';
 
 class SalesScreen extends ConsumerWidget {
   const SalesScreen({super.key});
@@ -27,13 +30,13 @@ class SalesScreen extends ConsumerWidget {
 
     return sales.when(
       loading: () => ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(Space.lg),
         children: const [
-          Skeleton(height: 72, radius: 12),
-          SizedBox(height: 16),
-          Skeleton(height: 120, radius: 12),
-          SizedBox(height: 10),
-          Skeleton(height: 120, radius: 12),
+          Skeleton(height: 72, radius: Radii.md),
+          Gap.lg(),
+          Skeleton(height: 120, radius: Radii.md),
+          Gap.sm(),
+          Skeleton(height: 120, radius: Radii.md),
         ],
       ),
       error: (e, _) => ErrorState(
@@ -44,13 +47,13 @@ class SalesScreen extends ConsumerWidget {
         body: RefreshIndicator(
           onRefresh: () async => ref.invalidate(staffSalesProvider),
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+            padding: Insets.listWithFab,
             children: [
               _TakingsCard(data: data),
-              const SizedBox(height: 16),
+              const Gap.lg(),
               if (data.openBills.isEmpty)
                 const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 40),
+                  padding: EdgeInsets.symmetric(vertical: Space.xxxl),
                   child: EmptyState(
                     icon: Icons.receipt_long_rounded,
                     title: 'No open bills',
@@ -99,7 +102,7 @@ class _TakingsCard extends StatelessWidget {
     final theme = Theme.of(context);
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(Space.lg),
         child: Row(
           children: [
             Column(
@@ -172,9 +175,9 @@ class _BillCard extends ConsumerWidget {
     final theme = Theme.of(context);
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: const EdgeInsets.only(bottom: Space.sm),
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(Space.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -186,9 +189,8 @@ class _BillCard extends ConsumerWidget {
                     children: [
                       Text(
                         bill.personName,
-                        style: const TextStyle(
+                        style: context.texts.titleMedium?.copyWith(
                           fontWeight: FontWeight.w700,
-                          fontSize: 16,
                         ),
                       ),
                       Text(
@@ -213,7 +215,7 @@ class _BillCard extends ConsumerWidget {
 
             if (bill.lines.isEmpty)
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
+                padding: const EdgeInsets.symmetric(vertical: Space.sm),
                 child: Text(
                   'Nothing on this bill yet.',
                   style: theme.textTheme.bodySmall?.copyWith(
@@ -226,13 +228,21 @@ class _BillCard extends ConsumerWidget {
                 _LineRow(
                   line: line,
                   onQuantity: (q) => q <= 0
-                      ? _run(context, ref, 'removeBillLine',
-                          fields: {'lineId': line.id})
-                      : _run(context, ref, 'setLineQuantity',
-                          fields: {'lineId': line.id, 'quantity': q}),
+                      ? _run(
+                          context,
+                          ref,
+                          'removeBillLine',
+                          fields: {'lineId': line.id},
+                        )
+                      : _run(
+                          context,
+                          ref,
+                          'setLineQuantity',
+                          fields: {'lineId': line.id, 'quantity': q},
+                        ),
                 ),
 
-            const SizedBox(height: 8),
+            const Gap.sm(),
             Wrap(
               spacing: 8,
               runSpacing: 4,
@@ -318,7 +328,7 @@ class _LineRow extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
+      padding: const EdgeInsets.symmetric(vertical: Space.xs),
       child: Row(
         children: [
           Expanded(

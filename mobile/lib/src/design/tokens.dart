@@ -97,6 +97,32 @@ abstract final class Sizes {
   static const double brandLarge = 96;
 }
 
+/// Type sizes for the counter's result overlay.
+///
+/// These sit outside the normal text theme on purpose. DESIGN.md requires staff
+/// feedback to be **readable from a metre** — a tablet propped by a serving
+/// counter, glanced at by someone whose attention is on the student and the
+/// queue. That is a stated requirement, not a stylistic choice, and snapping it
+/// onto the ordinary scale would quietly delete it.
+///
+/// Named here rather than typed into the overlay so the requirement has one
+/// home and a reviewer can see it is deliberate.
+abstract final class CounterText {
+  /// The verdict — "Served", "Blocked — unpaid dues".
+  static const double verdict = 34;
+
+  /// The student's name, read while checking their face against the photo.
+  static const double name = 22;
+
+  /// What to do next. Deliberately close to [name]: it is the line that stops
+  /// staff debugging at the counter with a queue behind them.
+  static const double action = 17;
+
+  /// The roll number, and the "no photo on file" caution.
+  static const double supporting = 16;
+  static const double caution = 13;
+}
+
 /// Common paddings, so the shape of a screen is declared rather than assembled.
 abstract final class Insets {
   static const EdgeInsets screen = EdgeInsets.symmetric(

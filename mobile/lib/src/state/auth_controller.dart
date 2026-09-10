@@ -16,7 +16,8 @@ final apiClientProvider = Provider<ApiClient>((ref) {
     // A refresh token that no longer works means the session is over. Clearing
     // the controller here is what drops the router to the login screen, from
     // wherever in the app the failing request happened to be made.
-    onSessionLost: () => ref.read(authControllerProvider.notifier).forgetSession(),
+    onSessionLost: () =>
+        ref.read(authControllerProvider.notifier).forgetSession(),
   );
 });
 
@@ -49,7 +50,9 @@ class AuthController extends AsyncNotifier<Session?> {
   }
 
   Future<void> changePassword(String password) async {
-    final session = await ref.read(authRepositoryProvider).changePassword(password);
+    final session = await ref
+        .read(authRepositoryProvider)
+        .changePassword(password);
     state = AsyncData(session);
   }
 
@@ -74,5 +77,6 @@ class AuthController extends AsyncNotifier<Session?> {
   }
 }
 
-final authControllerProvider =
-    AsyncNotifierProvider<AuthController, Session?>(AuthController.new);
+final authControllerProvider = AsyncNotifierProvider<AuthController, Session?>(
+  AuthController.new,
+);

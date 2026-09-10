@@ -13,6 +13,8 @@ import '../../design/async_view.dart';
 import '../../state/student_providers.dart';
 import 'absences_screen.dart';
 import 'feedback_screen.dart';
+import '../../design/components.dart';
+import '../../design/tokens.dart';
 
 class MoreScreen extends ConsumerWidget {
   const MoreScreen({super.key});
@@ -31,12 +33,12 @@ class MoreScreen extends ConsumerWidget {
     // to change shape under the reader's thumb.
     if (absences.isLoading || feedback.isLoading) {
       return const Padding(
-        padding: EdgeInsets.all(16),
+        padding: EdgeInsets.all(Space.lg),
         child: Column(
           children: [
-            Skeleton(height: 48, radius: 12),
-            SizedBox(height: 16),
-            Skeleton(height: 96, radius: 12),
+            Skeleton(height: 48, radius: Radii.md),
+            Gap.lg(),
+            Skeleton(height: 96, radius: Radii.md),
           ],
         ),
       );
@@ -66,9 +68,7 @@ class MoreScreen extends ConsumerWidget {
             ],
           ),
           const Expanded(
-            child: TabBarView(
-              children: [AbsencesScreen(), FeedbackScreen()],
-            ),
+            child: TabBarView(children: [AbsencesScreen(), FeedbackScreen()]),
           ),
         ],
       ),

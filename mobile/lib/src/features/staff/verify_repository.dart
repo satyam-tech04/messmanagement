@@ -76,7 +76,9 @@ class VerifyRepository {
     try {
       final json = await _api.post('/api/qr/verify', body: body);
       return VerifyResult(
-        code: json['code'] as String? ?? (json['ok'] == true ? 'SERVED' : 'UNKNOWN'),
+        code:
+            json['code'] as String? ??
+            (json['ok'] == true ? 'SERVED' : 'UNKNOWN'),
         rollNumber: json['rollNumber'] as String?,
         fullName: json['fullName'] as String?,
         photoUrl: json['photoUrl'] as String?,

@@ -12,6 +12,8 @@ import '../../data/student_models.dart';
 import '../../design/async_view.dart';
 import '../../state/student_providers.dart';
 import 'date_label.dart';
+import '../../design/components.dart';
+import '../../design/tokens.dart';
 
 class MenuScreen extends ConsumerWidget {
   const MenuScreen({super.key});
@@ -43,7 +45,7 @@ class MenuScreen extends ConsumerWidget {
         return RefreshIndicator(
           onRefresh: () async => ref.invalidate(studentMenuProvider),
           child: ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            padding: Insets.list,
             itemCount: days.length,
             itemBuilder: (_, i) => _DayCard(day: days[i]),
           ),
@@ -63,7 +65,7 @@ class _DayCard extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.only(bottom: Space.xl),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -76,7 +78,7 @@ class _DayCard extends StatelessWidget {
                 ),
               ),
               if (day.isToday) ...[
-                const SizedBox(width: 8),
+                const Gap.sm(),
                 Text(
                   formatServiceDate(day.serviceDate),
                   style: theme.textTheme.bodySmall?.copyWith(
@@ -86,7 +88,7 @@ class _DayCard extends StatelessWidget {
               ],
             ],
           ),
-          const SizedBox(height: 10),
+          const Gap.sm(),
           for (final slot in day.slots) _SlotRow(slot: slot),
         ],
       ),
@@ -104,10 +106,10 @@ class _SlotRow extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: Space.sm),
       color: slot.servingNow ? theme.colorScheme.secondaryContainer : null,
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(Space.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -120,7 +122,7 @@ class _SlotRow extends StatelessWidget {
                   ),
                 ),
                 if (slot.window != null) ...[
-                  const SizedBox(width: 8),
+                  const Gap.sm(),
                   Text(
                     slot.window!,
                     style: theme.textTheme.bodySmall?.copyWith(
@@ -134,25 +136,24 @@ class _SlotRow extends StatelessWidget {
                 if (slot.servingNow)
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
+                      horizontal: Space.sm,
+                      vertical: Space.xs,
                     ),
                     decoration: BoxDecoration(
                       color: theme.colorScheme.primary,
-                      borderRadius: BorderRadius.circular(999),
+                      borderRadius: BorderRadius.circular(Radii.pill),
                     ),
                     child: Text(
                       'Serving now',
-                      style: TextStyle(
+                      style: theme.textTheme.labelSmall?.copyWith(
                         color: theme.colorScheme.onPrimary,
-                        fontSize: 11,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
               ],
             ),
-            const SizedBox(height: 6),
+            const Gap.sm(),
             Text(
               slot.items.isEmpty ? 'Not published yet' : slot.items.join(' · '),
               style: theme.textTheme.bodyMedium?.copyWith(
@@ -163,7 +164,7 @@ class _SlotRow extends StatelessWidget {
               ),
             ),
             if (slot.notes != null && slot.notes!.isNotEmpty) ...[
-              const SizedBox(height: 6),
+              const Gap.sm(),
               Text(
                 slot.notes!,
                 style: theme.textTheme.bodySmall?.copyWith(
@@ -183,17 +184,17 @@ class _MenuSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListView(
-    padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+    padding: Insets.list,
     children: [
       for (var day = 0; day < 3; day++) ...[
         const Skeleton(height: 18, width: 120),
-        const SizedBox(height: 10),
+        const Gap.sm(),
         // Sized like the real rows, so nothing jumps when the data lands.
         for (var slot = 0; slot < 2; slot++) ...[
-          const Skeleton(height: 84, radius: 12),
-          const SizedBox(height: 8),
+          const Skeleton(height: 84, radius: Radii.md),
+          const Gap.sm(),
         ],
-        const SizedBox(height: 12),
+        const Gap.md(),
       ],
     ],
   );

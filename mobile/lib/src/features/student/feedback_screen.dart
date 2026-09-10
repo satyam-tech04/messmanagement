@@ -13,6 +13,8 @@ import '../../data/student_models.dart';
 import '../../design/async_view.dart';
 import '../../state/student_providers.dart';
 import 'date_label.dart';
+import '../../design/components.dart';
+import '../../design/tokens.dart';
 
 class FeedbackScreen extends ConsumerWidget {
   const FeedbackScreen({super.key});
@@ -23,13 +25,13 @@ class FeedbackScreen extends ConsumerWidget {
 
     return feedback.when(
       loading: () => ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(Space.lg),
         children: const [
-          Skeleton(height: 96, radius: 12),
-          SizedBox(height: 8),
-          Skeleton(height: 96, radius: 12),
-          SizedBox(height: 8),
-          Skeleton(height: 96, radius: 12),
+          Skeleton(height: 96, radius: Radii.md),
+          Gap.sm(),
+          Skeleton(height: 96, radius: Radii.md),
+          Gap.sm(),
+          Skeleton(height: 96, radius: Radii.md),
         ],
       ),
       error: (e, _) => ErrorState(
@@ -60,7 +62,7 @@ class FeedbackScreen extends ConsumerWidget {
         return RefreshIndicator(
           onRefresh: () async => ref.invalidate(studentFeedbackProvider),
           child: ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            padding: Insets.list,
             itemCount: data.targets.length,
             itemBuilder: (_, i) => _MealCard(target: data.targets[i]),
           ),
@@ -117,9 +119,9 @@ class _MealCardState extends ConsumerState<_MealCard> {
     final t = widget.target;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: Space.sm),
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(Space.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -129,7 +131,7 @@ class _MealCardState extends ConsumerState<_MealCard> {
                   t.label,
                   style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
-                const SizedBox(width: 8),
+                const Gap.sm(),
                 Text(
                   formatServiceDate(t.serviceDate),
                   style: theme.textTheme.bodySmall?.copyWith(
@@ -146,7 +148,7 @@ class _MealCardState extends ConsumerState<_MealCard> {
                   ),
               ],
             ),
-            const SizedBox(height: 8),
+            const Gap.sm(),
             Row(
               children: [
                 for (var star = 1; star <= 5; star++)
@@ -173,7 +175,7 @@ class _MealCardState extends ConsumerState<_MealCard> {
             ),
             if (t.existingComment != null && t.existingComment!.isNotEmpty)
               Padding(
-                padding: const EdgeInsets.only(top: 4),
+                padding: const EdgeInsets.only(top: Space.xs),
                 child: Text(
                   t.existingComment!,
                   style: theme.textTheme.bodySmall?.copyWith(

@@ -10,14 +10,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/student_models.dart';
 import 'auth_controller.dart';
 
-final studentMenuProvider = FutureProvider.autoDispose<List<MenuDay>>((ref) async {
+final studentMenuProvider = FutureProvider.autoDispose<List<MenuDay>>((
+  ref,
+) async {
   final json = await ref.watch(apiClientProvider).get('/api/student/menu');
   return ((json['days'] as List?) ?? const [])
       .map((e) => MenuDay.fromJson((e as Map).cast<String, dynamic>()))
       .toList();
 });
 
-final studentPlanProvider = FutureProvider.autoDispose<StudentPlan>((ref) async {
+final studentPlanProvider = FutureProvider.autoDispose<StudentPlan>((
+  ref,
+) async {
   return StudentPlan.fromJson(
     await ref.watch(apiClientProvider).get('/api/student/plan'),
   );
@@ -52,15 +56,17 @@ Future<void> requestAbsence(
   required String dateTo,
   required List<String> mealSlots,
 }) async {
-  await ref.read(apiClientProvider).post(
-    '/api/student/absences',
-    body: {
-      'kind': kind,
-      'dateFrom': dateFrom,
-      'dateTo': dateTo,
-      'mealSlots': mealSlots,
-    },
-  );
+  await ref
+      .read(apiClientProvider)
+      .post(
+        '/api/student/absences',
+        body: {
+          'kind': kind,
+          'dateFrom': dateFrom,
+          'dateTo': dateTo,
+          'mealSlots': mealSlots,
+        },
+      );
   ref.invalidate(studentAbsencesProvider);
 }
 
@@ -76,14 +82,17 @@ Future<void> submitFeedback(
   required int rating,
   String? comment,
 }) async {
-  await ref.read(apiClientProvider).post(
-    '/api/student/feedback',
-    body: {
-      'serviceDate': serviceDate,
-      'mealSlot': mealSlot,
-      'rating': rating,
-      if (comment != null && comment.trim().isNotEmpty) 'comment': comment.trim(),
-    },
-  );
+  await ref
+      .read(apiClientProvider)
+      .post(
+        '/api/student/feedback',
+        body: {
+          'serviceDate': serviceDate,
+          'mealSlot': mealSlot,
+          'rating': rating,
+          if (comment != null && comment.trim().isNotEmpty)
+            'comment': comment.trim(),
+        },
+      );
   ref.invalidate(studentFeedbackProvider);
 }

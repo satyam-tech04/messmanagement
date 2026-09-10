@@ -111,7 +111,10 @@ class StudentPlan {
             (j['current'] as Map).cast<String, dynamic>(),
           ),
     history: ((j['history'] as List?) ?? const [])
-        .map((e) => StudentSubscription.fromJson((e as Map).cast<String, dynamic>()))
+        .map(
+          (e) =>
+              StudentSubscription.fromJson((e as Map).cast<String, dynamic>()),
+        )
         .toList(),
   );
 }
@@ -139,7 +142,9 @@ class AbsenceRow {
     id: j['id'] as String? ?? '',
     dateFrom: j['dateFrom'] as String? ?? '',
     dateTo: j['dateTo'] as String? ?? '',
-    mealSlots: ((j['mealSlots'] as List?) ?? const []).map((e) => '$e').toList(),
+    mealSlots: ((j['mealSlots'] as List?) ?? const [])
+        .map((e) => '$e')
+        .toList(),
     status: j['status'] as String? ?? '',
     canCancel: j['canCancel'] as bool? ?? false,
     rejectionReason: j['rejectionReason'] as String?,

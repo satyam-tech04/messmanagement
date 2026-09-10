@@ -35,7 +35,10 @@ Uint8List _wav(List<({double hz, int ms})> notes) {
     for (var i = 0; i < count; i++) {
       // Taper both ends. A square-edged buffer clicks audibly, and at a counter
       // a click is indistinguishable from the beep it precedes.
-      final fade = math.min(1.0, math.min(i, count - i) / (_sampleRate * 0.005));
+      final fade = math.min(
+        1.0,
+        math.min(i, count - i) / (_sampleRate * 0.005),
+      );
       final value =
           math.sin(2 * math.pi * note.hz * i / _sampleRate) * 0.35 * fade;
       samples.add((value * 32767).round().clamp(-32768, 32767));

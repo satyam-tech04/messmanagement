@@ -18,7 +18,11 @@ enum StatusTone { active, warning, danger, neutral }
 /// Unknown values fall to [StatusTone.neutral] rather than throwing — a server
 /// that adds a status must not blank a screen on an older build.
 StatusTone toneForStatus(String status) => switch (status.toUpperCase()) {
-  'ACTIVE' || 'PAID' || 'APPROVED' || 'SERVED' || 'RUNNING' => StatusTone.active,
+  'ACTIVE' ||
+  'PAID' ||
+  'APPROVED' ||
+  'SERVED' ||
+  'RUNNING' => StatusTone.active,
   'GRACE' || 'PENDING' || 'PAUSED' => StatusTone.warning,
   'BLOCKED' || 'OVERDUE' || 'REJECTED' || 'DENIED' => StatusTone.danger,
   _ => StatusTone.neutral,
@@ -60,7 +64,10 @@ class StatusBadge extends StatelessWidget {
           horizontal: Space.sm + 2,
           vertical: Space.xs,
         ),
-        decoration: BoxDecoration(color: background, borderRadius: Radii.pillAll),
+        decoration: BoxDecoration(
+          color: background,
+          borderRadius: Radii.pillAll,
+        ),
         child: Text(
           label,
           style: TextStyle(

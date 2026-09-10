@@ -14,6 +14,8 @@ import '../../design/async_view.dart';
 import '../../design/status_badge.dart';
 import '../../state/student_providers.dart';
 import 'date_label.dart';
+import '../../design/components.dart';
+import '../../design/tokens.dart';
 
 class PlanScreen extends ConsumerWidget {
   const PlanScreen({super.key});
@@ -24,15 +26,15 @@ class PlanScreen extends ConsumerWidget {
 
     return plan.when(
       loading: () => ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(Space.lg),
         children: const [
-          Skeleton(height: 150, radius: 16),
-          SizedBox(height: 20),
+          Skeleton(height: 150, radius: Radii.lg),
+          Gap.xl(),
           Skeleton(height: 18, width: 140),
-          SizedBox(height: 12),
-          Skeleton(height: 72, radius: 12),
-          SizedBox(height: 8),
-          Skeleton(height: 72, radius: 12),
+          Gap.md(),
+          Skeleton(height: 72, radius: Radii.md),
+          Gap.sm(),
+          Skeleton(height: 72, radius: Radii.md),
         ],
       ),
       error: (e, _) => ErrorState(
@@ -50,26 +52,28 @@ class PlanScreen extends ConsumerWidget {
           );
         }
 
-        final past = data.history.where((s) => s.id != data.current?.id).toList();
+        final past = data.history
+            .where((s) => s.id != data.current?.id)
+            .toList();
 
         return RefreshIndicator(
           onRefresh: () async => ref.invalidate(studentPlanProvider),
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            padding: Insets.list,
             children: [
               if (data.current != null)
                 _CurrentPlanCard(subscription: data.current!)
               else
                 const _NoRunningPlan(),
               if (past.isNotEmpty) ...[
-                const SizedBox(height: 24),
+                const Gap.xxl(),
                 Text(
                   'Earlier plans',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                 ),
-                const SizedBox(height: 10),
+                const Gap.sm(),
                 for (final s in past) _HistoryRow(subscription: s),
               ],
             ],
@@ -92,7 +96,7 @@ class _CurrentPlanCard extends StatelessWidget {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(Space.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -109,7 +113,7 @@ class _CurrentPlanCard extends StatelessWidget {
                 StatusBadge.forStatus(s.state),
               ],
             ),
-            const SizedBox(height: 4),
+            const Gap.xs(),
             Text(
               '${formatServiceDate(s.startDate)} — ${formatServiceDate(s.endDate)}',
               style: theme.textTheme.bodyMedium?.copyWith(
@@ -137,14 +141,14 @@ class _CurrentPlanCard extends StatelessWidget {
                   ),
               ],
             ),
-            const SizedBox(height: 16),
+            const Gap.lg(),
             Text(
               'Covers',
               style: theme.textTheme.labelMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
-            const SizedBox(height: 6),
+            const Gap.sm(),
             Wrap(
               spacing: 6,
               runSpacing: 6,
@@ -153,7 +157,7 @@ class _CurrentPlanCard extends StatelessWidget {
                   Chip(
                     label: Text(
                       '${slot[0]}${slot.substring(1).toLowerCase()}',
-                      style: const TextStyle(fontSize: 12),
+                      style: Theme.of(context).textTheme.labelMedium,
                     ),
                     visualDensity: VisualDensity.compact,
                   ),
@@ -185,7 +189,7 @@ class _Figure extends StatelessWidget {
             color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
-        const SizedBox(height: 2),
+        const Gap.xs(),
         Text(
           value,
           style: theme.textTheme.headlineSmall?.copyWith(
@@ -215,14 +219,14 @@ class _NoRunningPlan extends StatelessWidget {
     return Card(
       color: theme.colorScheme.surfaceContainerHighest,
       child: Padding(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(Space.lg),
         child: Row(
           children: [
             Icon(
               Icons.info_outline_rounded,
               color: theme.colorScheme.onSurfaceVariant,
             ),
-            const SizedBox(width: 12),
+            const Gap.md(),
             Expanded(
               child: Text(
                 'No plan is running right now. The mess office can renew it for you.',
@@ -247,9 +251,9 @@ class _HistoryRow extends StatelessWidget {
     final s = subscription;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: Space.sm),
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(Space.md),
         child: Row(
           children: [
             Expanded(
@@ -260,7 +264,7 @@ class _HistoryRow extends StatelessWidget {
                     s.planName ?? 'Meal plan',
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
-                  const SizedBox(height: 2),
+                  const Gap.xs(),
                   Text(
                     formatServiceDateRange(s.startDate, s.endDate),
                     style: theme.textTheme.bodySmall?.copyWith(
@@ -280,7 +284,7 @@ class _HistoryRow extends StatelessWidget {
                     fontFeatures: [FontFeature.tabularFigures()],
                   ),
                 ),
-                const SizedBox(height: 4),
+                const Gap.xs(),
                 StatusBadge.forStatus(s.state),
               ],
             ),
