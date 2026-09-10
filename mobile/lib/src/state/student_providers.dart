@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/student_models.dart';
 import 'auth_controller.dart';
+import 'connectivity.dart';
 
 final studentMenuProvider = FutureProvider.autoDispose<List<MenuDay>>((
   ref,
@@ -30,6 +31,7 @@ final studentPlanProvider = FutureProvider.autoDispose<StudentPlan>((
 final studentAbsencesProvider = FutureProvider.autoDispose<StudentAbsences>((
   ref,
 ) async {
+  ref.watch(reconnectTickProvider);
   return StudentAbsences.fromJson(
     await ref.watch(apiClientProvider).get('/api/student/absences'),
   );
@@ -38,6 +40,7 @@ final studentAbsencesProvider = FutureProvider.autoDispose<StudentAbsences>((
 final studentFeedbackProvider = FutureProvider.autoDispose<StudentFeedback>((
   ref,
 ) async {
+  ref.watch(reconnectTickProvider);
   return StudentFeedback.fromJson(
     await ref.watch(apiClientProvider).get('/api/student/feedback'),
   );

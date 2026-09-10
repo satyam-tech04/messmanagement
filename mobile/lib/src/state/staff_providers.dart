@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/staff_models.dart';
 import 'auth_controller.dart';
+import 'connectivity.dart';
 
 final staffCountsProvider = FutureProvider.autoDispose<StaffCounts>((
   ref,
@@ -15,6 +16,7 @@ final staffCountsProvider = FutureProvider.autoDispose<StaffCounts>((
 });
 
 final staffSalesProvider = FutureProvider.autoDispose<StaffSales>((ref) async {
+  ref.watch(reconnectTickProvider);
   return StaffSales.fromJson(
     await ref.watch(apiClientProvider).get('/api/staff/sales'),
   );

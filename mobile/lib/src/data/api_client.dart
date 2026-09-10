@@ -65,6 +65,7 @@ class ApiClient {
 
   Future<void> loadFromStore() async => _current = await _tokens.read();
 
+  /// A read. Safe to retry, because asking twice changes nothing.
   Future<Map<String, dynamic>> get(String path) => _send('GET', path);
 
   Future<Map<String, dynamic>> post(String path, {Object? body}) =>
@@ -152,6 +153,7 @@ class ApiClient {
     String path, {
     Object? body,
     String? token,
+    int attempt = 0,
   }) async {
     try {
       return await _dio.request<dynamic>(
@@ -163,18 +165,42 @@ class ApiClient {
         ),
       );
     } on DioException catch (e) {
+      // **Only reads are retried.** A POST that timed out may well have been
+      // applied before the connection dropped, and repeating it would create a
+      // second absence, a second bill, a second charge. The one write that must
+      // survive a dropped connection is a scan, and that has its own queue with
+      // server-side idempotency behind it.
+      //
+      // One retry, after a short pause: hostel Wi-Fi drops for a second or two
+      // far more often than it drops for a minute, and a single quiet retry
+      // turns most of those into nothing the user ever notices.
+      final worthRetrying =
+          method == 'GET' &&
+          attempt == 0 &&
+          e.type != DioExceptionType.cancel &&
+          e.type != DioExceptionType.badResponse;
+
+      if (worthRetrying) {
+        await Future<void>.delayed(const Duration(milliseconds: 600));
+        return _raw(method, path, body: body, token: token, attempt: 1);
+      }
+
       // A transport failure is not a refusal. The counter's scan queue depends
       // on telling them apart: a denial must never be queued for replay, and a
       // dropped connection must never be shown as a denial.
-      final plain = switch (e.type) {
-        DioExceptionType.connectionTimeout ||
-        DioExceptionType.sendTimeout ||
-        DioExceptionType.receiveTimeout =>
-          'The mess server is slow to answer. Try again.',
-        _ => 'No connection to the mess server.',
-      };
+      // Timed out and could-not-connect are different problems with different
+      // advice, so they are different codes rather than one blurred together.
+      final timedOut =
+          e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.sendTimeout ||
+          e.type == DioExceptionType.receiveTimeout;
+
+      final plain = timedOut
+          ? 'The mess server took too long to answer.'
+          : 'Could not reach the mess server. Check your connection.';
+
       throw ApiFailure(
-        code: 'NETWORK_ERROR',
+        code: timedOut ? 'TIMEOUT' : 'NETWORK_ERROR',
         // Same reasoning as the non-JSON branch: in development, "no
         // connection" is nearly always the wrong address rather than a real
         // outage, and the address is the one fact that settles it.

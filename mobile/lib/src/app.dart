@@ -22,6 +22,7 @@ import 'features/auth/change_password_screen.dart';
 import 'features/auth/login_screen.dart';
 import 'features/shell.dart';
 import 'state/auth_controller.dart';
+import 'state/connectivity.dart';
 import 'state/theme_controller.dart';
 
 class MessOsApp extends ConsumerWidget {
@@ -29,6 +30,11 @@ class MessOsApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Keeps the reconnect bridge alive for the app's lifetime: without a
+    // listener the provider is never created and nothing would ever be told
+    // that the connection came back.
+    ref.watch(cameOnlineProvider);
+
     final auth = ref.watch(authControllerProvider);
 
     return MaterialApp(

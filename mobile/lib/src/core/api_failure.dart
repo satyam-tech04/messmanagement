@@ -39,7 +39,18 @@ class ApiFailure implements Exception {
 
   /// The request never reached the server. Distinct from a refusal: worth
   /// retrying, and at the counter it is what the offline queue exists for.
-  bool get isOffline => code == 'NETWORK_ERROR';
+  bool get isOffline => code == 'NETWORK_ERROR' || code == 'TIMEOUT';
+
+  /// The server answered, but with a fault of its own rather than a decision.
+  ///
+  /// Separated from [isOffline] because the advice differs: waiting helps here,
+  /// and moving somewhere with signal does not.
+  bool get isServerFault =>
+      code == 'INFRASTRUCTURE_ERROR' || (status != null && status! >= 500);
+
+  /// Worth trying again unprompted. A refusal never is — the server has decided,
+  /// and repeating the question does not change the answer.
+  bool get isTransient => isOffline || isServerFault || code == 'RATE_LIMITED';
 
   @override
   String toString() => 'ApiFailure($code): $message';

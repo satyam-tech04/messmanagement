@@ -133,13 +133,42 @@ class ErrorState extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // Prefer the server's own words. It writes messages for the person reading
-    // them — "Choose your own password before continuing" beats any generic
-    // string this widget could invent.
-    final message = failure is ApiFailure
-        ? (failure as ApiFailure).message
-        : 'Could not load this. Check your connection and try again.';
-    final offline = failure is ApiFailure && (failure as ApiFailure).isOffline;
+    final api = failure is ApiFailure ? failure as ApiFailure : null;
+
+    // Three failures that look alike and need different advice. Telling someone
+    // to check their connection when the server is down sends them to restart a
+    // router that was never the problem.
+    final (icon, title, advice) = switch (api) {
+      final f? when f.isOffline && f.code == 'TIMEOUT' => (
+        Icons.hourglass_empty_rounded,
+        'That took too long',
+        'The connection here may be weak. Try again, or move somewhere with '
+            'better signal.',
+      ),
+      final f? when f.isOffline => (
+        Icons.wifi_off_rounded,
+        'No connection',
+        'Check your Wi-Fi or mobile data and try again.',
+      ),
+      final f? when f.isServerFault => (
+        Icons.cloud_off_rounded,
+        'The mess server is having trouble',
+        'This is not your connection. Try again in a moment.',
+      ),
+      // Anything else is a decision the server made, and it wrote the message
+      // for the person reading it — "Choose your own password before
+      // continuing" beats any generic string this widget could invent.
+      final f? => (
+        Icons.error_outline_rounded,
+        'Something needs attention',
+        f.message,
+      ),
+      null => (
+        Icons.error_outline_rounded,
+        'Something needs attention',
+        'Could not load this. Try again.',
+      ),
+    };
 
     return Center(
       child: Padding(
@@ -147,20 +176,16 @@ class ErrorState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              offline ? Icons.wifi_off_rounded : Icons.error_outline_rounded,
-              size: Sizes.stateIcon,
-              color: theme.colorScheme.error,
-            ),
+            Icon(icon, size: Sizes.stateIcon, color: theme.colorScheme.error),
             const Gap.lg(),
             Text(
-              offline ? 'No connection' : 'Something needs attention',
+              title,
               style: theme.textTheme.titleMedium,
               textAlign: TextAlign.center,
             ),
             const Gap.sm(),
             Text(
-              message,
+              advice,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
