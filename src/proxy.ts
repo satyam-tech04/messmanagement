@@ -25,7 +25,14 @@ import { persistentCookieOptions } from "./infra/auth/session-lifetime";
 import { NextResponse, type NextRequest } from "next/server";
 
 /** Reachable without a session. Everything else requires one. */
-const PUBLIC_PATHS = ["/login", "/auth/callback"];
+const PUBLIC_PATHS = [
+  "/login",
+  "/auth/callback",
+  // Both app stores require a privacy policy reachable **without signing in** —
+  // a reviewer opens it before they open the app, and gating it behind login is
+  // a rejection.
+  "/privacy",
+];
 
 /** Route prefix → roles allowed to enter it. */
 const ROLE_GATES: ReadonlyArray<{ prefix: string; allow: readonly string[] }> = [

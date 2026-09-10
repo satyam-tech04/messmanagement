@@ -1,0 +1,159 @@
+# Shipping the app
+
+TestFlight and Play internal testing. Written to be followed rather than
+remembered — the parts that bite are marked.
+
+---
+
+## Before the first build, once
+
+### 1. Switch Flutter to the stable channel ⚠️
+
+The toolchain is on **`main`**, Flutter's bleeding edge. That is fine for
+building locally and wrong for producing a store artifact: breaking changes land
+weekly and package compatibility churns underneath you.
+
+```bash
+flutter channel stable
+flutter upgrade
+cd mobile && flutter clean && flutter pub get
+flutter build ios --simulator      # confirm nothing broke
+flutter build apk --debug
+```
+
+Do this **before** cutting a build, not after a rejection.
+
+### 2. Create the Android upload keystore ⚠️
+
+```bash
+keytool -genkey -v -keystore ~/messos-upload.jks \
+  -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+```
+
+Then `mobile/android/key.properties` (gitignored, never committed):
+
+```properties
+storeFile=/Users/<you>/messos-upload.jks
+storePassword=<the store password>
+keyAlias=upload
+keyPassword=<the key password>
+```
+
+**Back the `.jks` up somewhere that is not this machine.** Play identifies an app
+by its signing key. Lose it and you can never publish an update to this app
+again — there is no recovery, only a new listing and every user reinstalling.
+
+Without `key.properties` the release build falls back to debug signing so
+`flutter run --release` still works. Play Console refuses a debug-signed bundle,
+so that fallback cannot reach a store by accident.
+
+### 3. Decide the production domain ⚠️
+
+`AppConfig` compiles the API base URL **into the binary**. It currently points at
+`https://messmanagement-lime.vercel.app`, a Vercel-generated name derived from
+the project name.
+
+Fine for TestFlight. **Not fine for a public release**: once students install,
+changing that string needs a store update every one of them has to receive
+before their app works again. Buy a domain, point production at it, change the
+one constant in `mobile/lib/src/core/config.dart`.
+
+### 4. Store records
+
+- **App Store Connect** — a new app with bundle id `com.messos.app`.
+- **Play Console** — a new app, package `com.messos.app`.
+- Privacy policy URL: `https://<domain>/privacy` (the page is public and needs
+  no sign-in — `proxy.ts` allows it explicitly, which is what a reviewer needs).
+
+---
+
+## Every build
+
+### Bump the version
+
+`mobile/pubspec.yaml`:
+
+```yaml
+version: 1.0.0+1
+#       ^^^^^ ^
+#       shown  build number — MUST increase on every upload to either store
+```
+
+Both stores reject a build number they have already seen, and it is the single
+most common reason an upload fails after a long wait.
+
+### iOS → TestFlight
+
+```bash
+cd mobile
+flutter build ipa --release
+```
+
+Then open `build/ios/archive/Runner.xcarchive` in Xcode → Distribute App → App
+Store Connect, or upload the `.ipa` from `build/ios/ipa/` with Transporter.
+
+Signing is Xcode's: open `ios/Runner.xcworkspace` (**never** `.xcodeproj` — with
+CocoaPods the project alone cannot see the plugin modules), select the Runner
+target, Signing & Capabilities, choose your team.
+
+`ITSAppUsesNonExemptEncryption` is already declared `false` in `Info.plist`. The
+app uses only standard HTTPS, which is exempt, and declaring it stops TestFlight
+asking the export-compliance question on every single upload.
+
+### Android → internal testing
+
+```bash
+cd mobile
+flutter build appbundle --release
+```
+
+Upload `build/app/outputs/bundle/release/app-release.aab`.
+
+The `.aab` is around 50 MB because it contains every ABI and density; Play splits
+it and a user downloads roughly **15–18 MB**. That is the number to quote, not
+the bundle size.
+
+---
+
+## The forms both stores ask about
+
+Answer these consistently with `/privacy`, because a policy that claims less than
+the app collects is the fastest way to fail review.
+
+**Collected, and linked to the user:** name, phone number, email address where
+present, photographs, and app activity (meals served, absences, ratings).
+
+**Not collected:** location, contacts, browsing history, anything outside the app.
+
+**Children.** Some messes serve students under 18. Advertising, when it ships, is
+requested **child-directed and non-personalised for every user without
+exception** — the app cannot know an individual student's age, so the strictest
+setting applies to all of them. Declare this on both stores.
+
+**Account deletion.** Play requires a route to it. Mess administrators can delete
+a student from the admin console; the privacy page says so and gives a contact
+address for anyone whose mess will not act.
+
+---
+
+## Apple review needs to get in
+
+The app is entirely behind a login, so **a reviewer sees nothing without
+credentials**. Supply a demo account in App Store Connect → App Review
+Information.
+
+Use a **seeded student in a throwaway tenant**, never Campus Crave. A reviewer
+poking at a live hostel's data is not a risk worth taking, and a reviewer whose
+account has no plan will see the "no plan running" screen and may read it as the
+app being broken — so give them an account with a running plan and a published
+menu.
+
+---
+
+## Known gaps at the time of writing
+
+- **The staff screens have not been exercised on a physical device.** Scanner,
+  live counts and the till compile and their rules are unit-tested, but camera →
+  verify → attendance row has not been run end to end.
+- **Push notifications are not built.** Slice 6, blocked on a Firebase project.
+- **Advertising is not built.** Slice 7, blocked on AdMob app ids.
