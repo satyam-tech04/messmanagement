@@ -7,6 +7,7 @@ import { requireSessionUser } from "@/infra/auth/session";
 import { createAdminClient } from "@/infra/supabase/admin";
 import { createClient } from "@/infra/supabase/server";
 import { SupabaseTenantRepository } from "@/infra/supabase/repositories";
+import { BrandingForm } from "./branding-form";
 import { SettingsForm, type SlotSetting } from "./settings-form";
 
 export const metadata: Metadata = { title: "Settings · Mess OS" };
@@ -28,7 +29,7 @@ export default async function SettingsPage() {
 
   const { data: tenant } = await supabase
     .from("tenants")
-    .select("name, slug, timezone")
+    .select("name, slug, timezone, logo_path")
     .eq("id", user.tenantId)
     .maybeSingle();
 
@@ -64,10 +65,12 @@ export default async function SettingsPage() {
         description="Meal times and QR behaviour. Changes take effect on the next scan."
       />
 
+      <BrandingForm tenantName={tenant?.name ?? ""} hasLogo={Boolean(tenant?.logo_path)} />
+
       <Card>
         <CardHeader>
-          <CardTitle>{tenant?.name ?? "This mess"}</CardTitle>
-          <CardDescription>Identity and timezone, set when the mess was created.</CardDescription>
+          <CardTitle>Identifier and timezone</CardTitle>
+          <CardDescription>Set when the mess was created, and fixed afterwards.</CardDescription>
         </CardHeader>
         <CardContent>
           <dl className="divide-border divide-y text-sm">
