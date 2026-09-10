@@ -22,6 +22,7 @@
 
   "name": "MealAdda",
   "storeName": "MealAdda",
+  "tagline": "hostel mess subscriptions, QR meal attendance and counter operations.",
   "bundleId": "com.mealadda.app",
   "supportEmail": "support@mealadda.app"
 }

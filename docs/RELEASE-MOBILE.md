@@ -64,14 +64,14 @@ Do this **before** cutting a build, not after a rejection.
 ### 2. Create the Android upload keystore ⚠️
 
 ```bash
-keytool -genkey -v -keystore ~/messos-upload.jks \
+keytool -genkey -v -keystore ~/mealadda-upload.jks \
   -keyalg RSA -keysize 2048 -validity 10000 -alias upload
 ```
 
 Then `mobile/android/key.properties` (gitignored, never committed):
 
 ```properties
-storeFile=/Users/<you>/messos-upload.jks
+storeFile=/Users/<you>/mealadda-upload.jks
 storePassword=<the store password>
 keyAlias=upload
 keyPassword=<the key password>

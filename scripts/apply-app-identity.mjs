@@ -3,15 +3,25 @@
  * Propagates `app.config.json` to every place the product name has to be a
  * literal.
  *
- * Four of them cannot read a shared constant, which is the whole reason this
+ * Several of them cannot read a shared constant, which is the whole reason this
  * script exists:
  *
  *   - **Android's manifest** is XML read by the OS before any Dart runs, so the
  *     label goes through a string resource.
- *   - **iOS's Info.plist** is likewise read by the OS; `CFBundleDisplayName` is
- *     what appears under the icon.
+ *   - **iOS's Info.plist** is likewise read by the OS. Three keys carry the name:
+ *     `CFBundleDisplayName` (under the icon), `CFBundleName` (the short name iOS
+ *     falls back to, and what Xcode shows in an archive), and
+ *     `NSCameraUsageDescription` — the permission sheet, which names the app to
+ *     the student out loud and is reviewed by Apple.
+ *   - **`pubspec.yaml`'s description** is package metadata, not code.
  *   - **Dart** and **TypeScript** could share a constant within themselves but
  *     not with each other, so each gets a generated file.
+ *
+ * Adding a place here is cheap; forgetting one is not. `CFBundleName` and the
+ * camera string were both missed on the first two renames and kept a dead brand
+ * alive in the archive Xcode showed and in the permission prompt a student
+ * would have read. `tests/unit/app-identity.test.ts` now fails when any of
+ * these drifts from `app.config.json`.
  *
  * Generated files are marked as such and must not be hand-edited — the next run
  * overwrites them.
@@ -30,9 +40,16 @@ import { dirname, join } from "node:path";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const config = JSON.parse(readFileSync(join(root, "app.config.json"), "utf8"));
 
-const { name, supportEmail } = config;
+const { name, supportEmail, tagline } = config;
 if (!name || typeof name !== "string") {
   console.error("app.config.json needs a non-empty `name`.");
+  process.exit(1);
+}
+
+// `CFBundleName` is documented as no more than 15 characters; iOS truncates
+// past that rather than erroring, so a long name would silently ship clipped.
+if (name.length > 15) {
+  console.error(`\`name\` must be 15 characters or fewer for CFBundleName: ${name}`);
   process.exit(1);
 }
 
@@ -104,8 +121,33 @@ write(
 // PlistBuddy rather than a text replace: Info.plist is XML that Xcode rewrites,
 // and editing it as text is how it eventually stops parsing.
 const plist = join(root, "mobile/ios/Runner/Info.plist");
-execFileSync("/usr/libexec/PlistBuddy", ["-c", `Set :CFBundleDisplayName ${name}`, plist]);
-written.push("mobile/ios/Runner/Info.plist (CFBundleDisplayName)");
+const plistEntries = {
+  CFBundleDisplayName: name,
+  CFBundleName: name,
+  // Apple rejects a vague purpose string, and the student reads it verbatim on
+  // the permission sheet — so it names the app and says what it scans.
+  NSCameraUsageDescription: `${name} uses the camera to scan students' meal codes at the counter.`,
+};
+// `plutil`, not PlistBuddy. PlistBuddy re-parses everything after `Set :key `
+// as its own little command line, and there is no escaping that survives it —
+// the apostrophe in "students' meal codes" is an unclosed quote however it is
+// quoted, and the run dies part-applied, leaving two keys renamed and one on
+// the old brand. `plutil -replace` takes the value as a real argument.
+for (const [key, value] of Object.entries(plistEntries)) {
+  execFileSync("plutil", ["-replace", key, "-string", value, plist]);
+}
+written.push(`mobile/ios/Runner/Info.plist (${Object.keys(plistEntries).join(", ")})`);
+
+// --- Flutter package metadata ----------------------------------------------
+const pubspecFile = join(root, "mobile/pubspec.yaml");
+writeFileSync(
+  pubspecFile,
+  readFileSync(pubspecFile, "utf8").replace(
+    /^description: .*$/m,
+    `description: ${JSON.stringify(`${name} — ${tagline ?? ""}`.trim())}`,
+  ),
+);
+written.push("mobile/pubspec.yaml (description)");
 
 // --- Bundle id, on request only ---------------------------------------------
 if (applyBundleId) {
@@ -185,12 +227,6 @@ if (applyBundleId) {
         if (after !== before) writeFileSync(f, after);
       }
       writeFileSync(pubspecPath, pubspec.replace(/^name:\s*[a-z0-9_]+$/m, `name: ${pkg}`));
-
-      const pkgJson = join(root, "package.json");
-      writeFileSync(
-        pkgJson,
-        readFileSync(pkgJson, "utf8").replace(/"name": "[^"]+"/, `"name": "${pkg}"`),
-      );
     }
 
     const pkgJson = join(root, "package.json");
