@@ -62,15 +62,29 @@ export function checkMealEligibility(
   // GRACE deliberately passes: the grace period exists so a student with unpaid
   // dues keeps eating for a few days rather than being cut off overnight.
 
-  const subscription = student.subscription;
-  if (!subscription || subscription.status !== "ACTIVE") {
+  // Support both multi-subscription (migration 017 renewals) and legacy single-subscription mocks
+  const allSubs =
+    student.subscriptions && student.subscriptions.length > 0
+      ? student.subscriptions
+      : student.subscription
+        ? [student.subscription]
+        : [];
+
+  const activeSubs = allSubs.filter((s) => s.status === "ACTIVE");
+  if (activeSubs.length === 0) {
     return err(
       domainError("NO_ACTIVE_PLAN", `${student.fullName} has no active meal plan.`, {
         rollNumber: student.rollNumber,
       }),
     );
   }
-  if (!isWithinDateRange(serviceDate, subscription.startDate, subscription.endDate)) {
+
+  // Pick the active subscription covering this specific service date. When a student
+  // renews early they hold consecutive active terms; this picks the one for this meal.
+  const subscription = activeSubs.find((s) =>
+    isWithinDateRange(serviceDate, s.startDate, s.endDate),
+  );
+  if (!subscription) {
     return err(
       domainError("NO_ACTIVE_PLAN", `${student.fullName}'s plan does not cover today.`, {
         rollNumber: student.rollNumber,

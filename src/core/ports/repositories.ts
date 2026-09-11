@@ -17,6 +17,24 @@ import type { ServiceDate } from "../time";
 import type { MessCutSnapshot, SubscriberSnapshot } from "../policies/headcount.policy";
 import type { SwitchableTenant } from "../policies/tenant-switch.policy";
 
+export interface SubscriptionForVerification {
+  readonly id: string;
+  readonly status: string;
+  readonly startDate: ServiceDate;
+  readonly endDate: ServiceDate;
+  readonly includedMealSlots: readonly MealSlot[];
+  /**
+   * Non-cancelled pauses on this subscription.
+   *
+   * Required, not optional, and fetched in the same round trip as the
+   * subscription itself. Optional would mean a repository that forgot to
+   * select them silently feeds a paused student — a fail-open on the one
+   * path where rule 7 says fail closed. As a required field, forgetting it
+   * is a compile error instead.
+   */
+  readonly pauses: readonly PauseRecord[];
+}
+
 /** The facts the counter needs about a student, in one round trip. */
 export interface StudentForVerification {
   readonly studentId: string;
@@ -26,23 +44,16 @@ export interface StudentForVerification {
   /** Staff must see this to close the "QR proves a phone, not a person" gap (§6.3). */
   readonly photoUrl: string | null;
   readonly status: StudentStatus;
-  readonly subscription: {
-    readonly id: string;
-    readonly status: string;
-    readonly startDate: ServiceDate;
-    readonly endDate: ServiceDate;
-    readonly includedMealSlots: readonly MealSlot[];
-    /**
-     * Non-cancelled pauses on this subscription.
-     *
-     * Required, not optional, and fetched in the same round trip as the
-     * subscription itself. Optional would mean a repository that forgot to
-     * select them silently feeds a paused student — a fail-open on the one
-     * path where rule 7 says fail closed. As a required field, forgetting it
-     * is a compile error instead.
-     */
-    readonly pauses: readonly PauseRecord[];
-  } | null;
+  /**
+   * All active/held subscriptions for this student. Migration 017 allows
+   * consecutive terms (renewals) to coexist at status = 'ACTIVE'.
+   */
+  readonly subscriptions?: readonly SubscriptionForVerification[];
+  /**
+   * Primary or single active subscription.
+   * Retained for backward compatibility with existing callers and test fixtures.
+   */
+  readonly subscription?: SubscriptionForVerification | null;
 }
 
 export interface AttendanceRecord {

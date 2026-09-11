@@ -31,7 +31,13 @@ import type {
   TenantRepository,
 } from "../ports/repositories";
 import { err, isErr, ok, type Result } from "../result";
-import { compareServiceDates, eachDateInclusive, mealWindowOn, type ServiceDate } from "../time";
+import {
+  compareServiceDates,
+  eachDateInclusive,
+  isWithinDateRange,
+  mealWindowOn,
+  type ServiceDate,
+} from "../time";
 
 export interface RequestAbsenceInput {
   readonly kind: AbsenceKind;
@@ -70,8 +76,16 @@ export async function requestAbsenceForStudent(
   const student = await deps.students.findForVerification(ctx.tenantId, studentId);
   if (!student) return err(domainError("NOT_FOUND", "Student record not found."));
 
-  const plan = student.subscription;
-  if (!plan) {
+  // Support both multi-subscription (migration 017 renewals) and legacy single-subscription mocks
+  const allPlans =
+    student.subscriptions && student.subscriptions.length > 0
+      ? student.subscriptions
+      : student.subscription
+        ? [student.subscription]
+        : [];
+
+  const activePlans = allPlans.filter((p) => p.status === "ACTIVE");
+  if (activePlans.length === 0) {
     return err(
       domainError(
         "VALIDATION_FAILED",
@@ -83,15 +97,31 @@ export async function requestAbsenceForStudent(
   // The plan must cover EVERY day of the range. A partially-covered request is
   // the dangerous case: half of it is legitimate, and quietly accepting the
   // whole thing would credit days nobody paid for.
-  if (
-    compareServiceDates(input.dateFrom, plan.startDate) < 0 ||
-    compareServiceDates(input.dateTo, plan.endDate) > 0
-  ) {
+  const plan = activePlans.find(
+    (p) =>
+      compareServiceDates(input.dateFrom, p.startDate) >= 0 &&
+      compareServiceDates(input.dateTo, p.endDate) <= 0,
+  );
+
+  if (!plan) {
+    const coveringStart = activePlans.find((p) =>
+      isWithinDateRange(input.dateFrom, p.startDate, p.endDate),
+    );
+    if (coveringStart) {
+      return err(
+        domainError(
+          "VALIDATION_FAILED",
+          `Your plan runs ${coveringStart.startDate} to ${coveringStart.endDate}. You can only mark yourself out on days it covers.`,
+          { planStart: coveringStart.startDate, planEnd: coveringStart.endDate },
+        ),
+      );
+    }
+    const nearest = activePlans[0];
     return err(
       domainError(
         "VALIDATION_FAILED",
-        `Your plan runs ${plan.startDate} to ${plan.endDate}. You can only mark yourself out on days it covers.`,
-        { planStart: plan.startDate, planEnd: plan.endDate },
+        `Your plan runs ${nearest.startDate} to ${nearest.endDate}. You can only mark yourself out on days it covers.`,
+        { planStart: nearest.startDate, planEnd: nearest.endDate },
       ),
     );
   }

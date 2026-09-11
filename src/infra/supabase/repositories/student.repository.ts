@@ -14,9 +14,9 @@ import { toServiceDate } from "@/core/time";
 import type { Database } from "../database.types";
 
 /**
- * One active subscription per student is guaranteed by a partial unique index
- * (`subscriptions_one_active_per_student`), so taking the first row is safe
- * rather than arbitrary.
+ * A student may hold consecutive active subscriptions (e.g. current term and
+ * renewed term) governed by the `subscriptions_no_overlap` constraint from
+ * migration 017. All subscriptions are loaded in this single round trip.
  */
 const SELECT = `
   id, tenant_id, roll_number, status,
@@ -53,7 +53,24 @@ type Row = {
 };
 
 function toStudent(row: Row): StudentForVerification {
-  const active = row.subscriptions?.find((s) => s.status === "ACTIVE") ?? null;
+  const activeSubs = (row.subscriptions ?? [])
+    .filter((s) => s.status === "ACTIVE")
+    .map((s) => ({
+      id: s.id,
+      status: s.status,
+      startDate: toServiceDate(s.start_date),
+      endDate: toServiceDate(s.end_date),
+      includedMealSlots: s.included_meal_slots_snapshot,
+      // Nested one level deeper rather than fetched separately: this runs
+      // on the scan path, where a second round trip is the difference
+      // between a moving queue and a stalled one.
+      pauses: (s.subscription_pauses ?? []).map((p) => ({
+        status: p.status,
+        startDate: toServiceDate(p.start_date),
+        resumeDate: toServiceDate(p.resume_date),
+      })),
+    }))
+    .sort((a, b) => a.startDate.localeCompare(b.startDate));
 
   return {
     studentId: row.id,
@@ -62,23 +79,8 @@ function toStudent(row: Row): StudentForVerification {
     fullName: row.profiles?.full_name ?? "(unknown)",
     photoUrl: row.profiles?.photo_url ?? null,
     status: row.status,
-    subscription: active
-      ? {
-          id: active.id,
-          status: active.status,
-          startDate: toServiceDate(active.start_date),
-          endDate: toServiceDate(active.end_date),
-          includedMealSlots: active.included_meal_slots_snapshot,
-          // Nested one level deeper rather than fetched separately: this runs
-          // on the scan path, where a second round trip is the difference
-          // between a moving queue and a stalled one.
-          pauses: (active.subscription_pauses ?? []).map((p) => ({
-            status: p.status,
-            startDate: toServiceDate(p.start_date),
-            resumeDate: toServiceDate(p.resume_date),
-          })),
-        }
-      : null,
+    subscriptions: activeSubs,
+    subscription: activeSubs[0] ?? null,
   };
 }
 
