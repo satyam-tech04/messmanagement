@@ -1,6 +1,5 @@
-# Backstop. pre-commit already runs this, but a commit made with --no-verify
-# would otherwise reach the remote unchecked. Also checks formatting across the
-# whole repo, which lint-staged only guarantees for files that were staged.
+# Backstop. pre-commit already runs all of this, but a commit made with
+# --no-verify would otherwise reach the remote — and Vercel — unchecked.
 npm run verify
 npm run format:check
-
+npm run build

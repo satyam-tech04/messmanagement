@@ -8,10 +8,23 @@ npx lint-staged
 node scripts/check-migrations.mjs
 git add supabase/migration-checksums.json 2>/dev/null || true
 
-# 4. Full typecheck + lint + tests across the whole repo.
+# 4. Full typecheck + lint + tests + domain coverage across the whole repo.
 #
 # lint-staged only sees STAGED files, which misses the failure that matters
 # most: a change in one file breaking another. A type error, or an
 # import-boundary violation in an untouched file, sails straight past it.
-# This costs ~3s and means a commit is never broken at rest.
+# This costs ~7s and means a commit is never broken at rest.
 npm run verify
+
+# 5. Formatting across the whole repo, not just the files that were staged.
+npm run format:check
+
+# 6. The exact command Vercel runs. tsc is not `next build`: only the real
+# build collects the routes and compiles every page, so this is the check
+# that decides whether the deploy goes green. ~11s warm.
+#
+# It fetches the Google fonts declared in layout.tsx, so a commit made with
+# no network can fail here on `next/font` rather than on anything you wrote.
+# That is the one case where `git commit --no-verify` is the right answer;
+# CI re-runs all of this on every push and cannot be skipped.
+npm run build
