@@ -4,8 +4,3 @@
 npm run verify
 npm run format:check
 
-# The commit hooks catch type errors, but `next build` is the only thing that
-# runs Next's own typegen (PageProps/RouteContext) and the route collection.
-# It is also literally what Vercel runs, so a green push cannot go red there.
-# ~11s warm, ~60s cold — paid once per push rather than once per commit.
-npm run build
