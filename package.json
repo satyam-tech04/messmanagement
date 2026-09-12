@@ -23,7 +23,7 @@
     "db:diff": "supabase db diff --db-url \"$(node scripts/db-url.mjs)\"",
     "db:types": "node scripts/gen-types.mjs",
     "db:seed": "tsx scripts/seed.ts",
-    "verify": "npm run typecheck && npm run lint && npm run test",
+    "verify": "npm run typecheck && npm run lint && npm run test:coverage",
     "prepare": "husky",
     "db:seal": "node scripts/seal-migrations.mjs",
     "db:dry": "supabase db push --dry-run --db-url \"$(node scripts/db-url.mjs)\"",

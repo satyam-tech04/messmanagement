@@ -144,7 +144,7 @@ types (`npm run db:types`) in the same commit as the migration.
 | Command                 | Purpose                                                      |
 | ----------------------- | ------------------------------------------------------------ |
 | `npm run dev`           | Dev server                                                   |
-| `npm run verify`        | typecheck + lint + test — run before every commit            |
+| `npm run verify`        | typecheck + lint + tests w/ coverage — runs on every commit  |
 | `npm run test:coverage` | Unit tests with the 95% domain threshold                     |
 | `npm run db:dry`        | Connect and list pending migrations without applying         |
 | `npm run db:push`       | Apply migrations to the Supabase project                     |

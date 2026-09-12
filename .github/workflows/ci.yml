@@ -3,10 +3,11 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main]
 
 concurrency:
-  group: ci-${{ github.ref }}
+  # A branch with a PR open fires both `push` and `pull_request`; grouping on
+  # the head ref collapses those into one run instead of paying for both.
+  group: ci-${{ github.event.pull_request.head.ref || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -36,7 +37,7 @@ jobs:
         run: npm run test:coverage
 
       - name: Migration immutability
-        run: node scripts/check-migrations.mjs && git diff --exit-code supabase/migrations/checksums.json
+        run: node scripts/check-migrations.mjs && git diff --exit-code supabase/migration-checksums.json
 
       - name: Build
         run: npm run build
