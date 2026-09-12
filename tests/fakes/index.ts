@@ -173,6 +173,12 @@ export class FakeMessCutRepository implements MessCutRepository {
   /** Rows written through `create`, in insertion order. */
   readonly rows: AbsenceRow[] = [];
 
+  /**
+   * The inputs those rows were written from, so a test can assert which
+   * subscription a cut was charged against — `AbsenceRow` does not carry it.
+   */
+  readonly creates: CreateAbsenceInput[] = [];
+
   /** Set to simulate the unique index rejecting a duplicate submit. */
   failNextCreateAsDuplicate = false;
 
@@ -206,6 +212,7 @@ export class FakeMessCutRepository implements MessCutRepository {
     );
     if (existing) return existing;
 
+    this.creates.push(input);
     const row: AbsenceRow = {
       id: `cut-${this.rows.length + 1}`,
       studentId: input.studentId,

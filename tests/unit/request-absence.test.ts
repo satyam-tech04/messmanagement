@@ -15,6 +15,7 @@
 import { describe, expect, it } from "vitest";
 import { MealSlot, UserRole } from "@/core/domain/enums";
 import type { TenantContext } from "@/core/domain/tenant-context";
+import type { StudentForVerification } from "@/core/ports/repositories";
 import { requestAbsenceForStudent } from "@/core/services/request-absence";
 import { isErr, isOk, unwrap } from "@/core/result";
 import { toServiceDate, toWallClockTime } from "@/core/time";
@@ -84,7 +85,7 @@ function studentWithPlan(
 function deps(
   overrides: {
     settings?: typeof SETTINGS | null;
-    student?: ReturnType<typeof studentWithPlan> | null;
+    student?: StudentForVerification | null;
     cuts?: FakeMessCutRepository;
   } = {},
 ) {
@@ -248,6 +249,74 @@ describe("requestAbsenceForStudent — the plan must cover what is being cut", (
     const d = deps({ student: studentWithPlan({ endDate: "2026-08-12" }) });
     const r = await ask({}, d);
     expect(isOk(r)).toBe(true);
+  });
+});
+
+describe("requestAbsenceForStudent — a student holding a renewal as well", () => {
+  // Migration 017 lets a current term and a renewal be ACTIVE at the same time,
+  // and the repository returns them oldest-first.
+  function studentWithRenewal() {
+    return {
+      ...studentWithPlan(),
+      subscriptions: [
+        {
+          id: "sub-current",
+          status: "ACTIVE",
+          startDate: toServiceDate("2026-08-01"),
+          endDate: toServiceDate("2026-08-31"),
+          includedMealSlots: [MealSlot.LUNCH, MealSlot.DINNER],
+          pauses: [],
+        },
+        {
+          id: "sub-renewal",
+          status: "ACTIVE",
+          startDate: toServiceDate("2026-09-05"),
+          endDate: toServiceDate("2026-09-30"),
+          includedMealSlots: [MealSlot.LUNCH, MealSlot.DINNER],
+          pauses: [],
+        },
+      ],
+      subscription: null,
+    };
+  }
+
+  it("accepts a day covered by the renewal, not just by the current term", async () => {
+    const d = deps({ student: studentWithRenewal() });
+    const r = await ask(
+      { dateFrom: toServiceDate("2026-09-10"), dateTo: toServiceDate("2026-09-10") },
+      d,
+    );
+    expect(isOk(r)).toBe(true);
+    expect(d.messCuts.creates[0]?.subscriptionId).toBe("sub-renewal");
+  });
+
+  it("names the renewal when the gap day sits closer to it than to the current term", async () => {
+    // 2026-09-04 is one day before the renewal and four days after the current
+    // term ends. Quoting the term that ended would send the student to the
+    // wrong dates entirely.
+    const d = deps({ student: studentWithRenewal() });
+    const r = await ask(
+      { dateFrom: toServiceDate("2026-09-04"), dateTo: toServiceDate("2026-09-04") },
+      d,
+    );
+    expect(isErr(r)).toBe(true);
+    if (isErr(r)) {
+      expect(r.error.details?.planStart).toBe("2026-09-05");
+      expect(r.error.details?.planEnd).toBe("2026-09-30");
+    }
+  });
+
+  it("names the current term when the range starts inside it and runs past its end", async () => {
+    const d = deps({ student: studentWithRenewal() });
+    const r = await ask(
+      { dateFrom: toServiceDate("2026-08-30"), dateTo: toServiceDate("2026-09-06") },
+      d,
+    );
+    expect(isErr(r)).toBe(true);
+    if (isErr(r)) {
+      expect(r.error.details?.planStart).toBe("2026-08-01");
+      expect(r.error.details?.planEnd).toBe("2026-08-31");
+    }
   });
 });
 

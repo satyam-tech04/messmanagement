@@ -33,8 +33,8 @@ import type {
 import { err, isErr, ok, type Result } from "../result";
 import {
   compareServiceDates,
+  differenceInDays,
   eachDateInclusive,
-  isWithinDateRange,
   mealWindowOn,
   type ServiceDate,
 } from "../time";
@@ -104,19 +104,21 @@ export async function requestAbsenceForStudent(
   );
 
   if (!plan) {
-    const coveringStart = activePlans.find((p) =>
-      isWithinDateRange(input.dateFrom, p.startDate, p.endDate),
-    );
-    if (coveringStart) {
-      return err(
-        domainError(
-          "VALIDATION_FAILED",
-          `Your plan runs ${coveringStart.startDate} to ${coveringStart.endDate}. You can only mark yourself out on days it covers.`,
-          { planStart: coveringStart.startDate, planEnd: coveringStart.endDate },
-        ),
-      );
-    }
-    const nearest = activePlans[0];
+    // A renewal bought in advance means several terms can be active at once, so
+    // the refusal has to name the term the student most likely meant: the one
+    // nearest the day they asked about. Naming whichever row came back first
+    // sends them to dates that may be months away. `reduce` with no seed also
+    // proves a plan exists — `activePlans` was checked non-empty above.
+    const daysAway = (p: (typeof activePlans)[number]): number => {
+      if (compareServiceDates(input.dateFrom, p.startDate) < 0) {
+        return differenceInDays(input.dateFrom, p.startDate);
+      }
+      if (compareServiceDates(input.dateFrom, p.endDate) > 0) {
+        return differenceInDays(p.endDate, input.dateFrom);
+      }
+      return 0; // The range starts inside this term and runs past its end.
+    };
+    const nearest = activePlans.reduce((best, p) => (daysAway(p) < daysAway(best) ? p : best));
     return err(
       domainError(
         "VALIDATION_FAILED",

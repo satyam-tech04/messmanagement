@@ -3,7 +3,10 @@ import { MealSlot, UserRole } from "@/core/domain/enums";
 import type { TenantContext } from "@/core/domain/tenant-context";
 import { checkMealEligibility } from "@/core/policies/eligibility.policy";
 import { requestAbsenceForStudent } from "@/core/services/request-absence";
-import type { StudentForVerification, SubscriptionForVerification } from "@/core/ports/repositories";
+import type {
+  StudentForVerification,
+  SubscriptionForVerification,
+} from "@/core/ports/repositories";
 import { toServiceDate, toWallClockTime } from "@/core/time";
 import { isErr, isOk, unwrap } from "@/core/result";
 import {
@@ -262,9 +265,8 @@ describe("Absence requests with renewed subscriptions", () => {
     );
 
     expect(isOk(result)).toBe(true);
-    if (isOk(result)) {
-      expect(result.value.subscriptionId).toBe("sub-sep");
-    }
+    // AbsenceRow does not carry the subscription, so read what was written.
+    expect(deps.messCuts.creates[0]?.subscriptionId).toBe("sub-sep");
   });
 
   it("allows student to request absence during the upcoming renewed term", async () => {
@@ -281,9 +283,7 @@ describe("Absence requests with renewed subscriptions", () => {
     );
 
     expect(isOk(result)).toBe(true);
-    if (isOk(result)) {
-      expect(result.value.subscriptionId).toBe("sub-oct");
-    }
+    expect(deps.messCuts.creates[0]?.subscriptionId).toBe("sub-oct");
   });
 
   it("refuses absence request that falls outside all subscription periods", async () => {
