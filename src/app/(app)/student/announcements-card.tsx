@@ -2,13 +2,7 @@ import { Megaphone } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatServiceDate } from "@/lib/format";
 
-export interface LiveAnnouncement {
-  readonly id: string;
-  readonly title: string;
-  readonly body: string | null;
-  readonly serviceDate: string | null;
-  readonly mealSlot: string | null;
-}
+import type { LiveAnnouncement } from "@/infra/queries/student-announcements";
 
 /**
  * Special-meal notices, on the one screen a student actually opens.

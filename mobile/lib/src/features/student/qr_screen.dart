@@ -24,6 +24,7 @@ import '../../design/async_view.dart';
 import '../../design/feedback.dart';
 import '../../design/motion.dart';
 import 'qr_controller.dart';
+import 'announcements_card.dart';
 import 'qr_state.dart';
 import '../../design/components.dart';
 import '../../design/tokens.dart';
@@ -114,7 +115,19 @@ class _QrScreenState extends ConsumerState<QrScreen>
           vertical: Space.lg,
         ),
         child: Center(
-          child: SingleChildScrollView(child: _body(context, state)),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Special meals, only while no code is on screen. Once the
+                // student reveals it, nothing may push the code down the page
+                // at the counter (spec §10).
+                if (state is QrHidden || state is QrExpired)
+                  const AnnouncementsCard(spacingBelow: Space.xxl),
+                _body(context, state),
+              ],
+            ),
+          ),
         ),
       ),
     );

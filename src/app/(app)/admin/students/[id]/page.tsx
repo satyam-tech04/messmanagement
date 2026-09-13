@@ -17,7 +17,11 @@ import { StatusBadge } from "@/components/status-badge";
 import { TableEmpty, TableShell } from "@/components/data-table";
 import { formatPaise, toPaise } from "@/core/money";
 import { toServiceDate } from "@/core/time";
-import { subscriptionStateLabel, subscriptionStateOf } from "@/core/policies/subscription-state";
+import {
+  pausableSubscription,
+  subscriptionStateLabel,
+  subscriptionStateOf,
+} from "@/core/policies/subscription-state";
 import { graceDays, pauseStateOf } from "@/core/policies/pause.policy";
 import { PauseSection, type CurrentPause } from "./pause-actions-ui";
 import { requireSessionUser } from "@/infra/auth/session";
@@ -32,6 +36,7 @@ import {
 } from "./student-detail-client";
 import {
   AssignPlanDialog,
+  DeletePlanButton,
   EndPlanButton,
   RenewPlanDialog,
   type AssignablePlan,
@@ -166,7 +171,17 @@ export default async function StudentDetailPage(props: PageProps<"/admin/student
   // Spec §3 and §9: a pause may be configured on an UPCOMING subscription too,
   // not only a running one. Keyed off this rather than `active`, which is
   // RUNNING-only and is what the "End plan" and "Assign" controls key off.
-  const pausable = active ?? subscriptions.find((s) => stateOf(s) === "SCHEDULED") ?? null;
+  // The same choice the pause actions make, so the form and the row it writes
+  // to are always the same term — the soonest upcoming one, not the latest.
+  const pausable =
+    pausableSubscription(
+      subscriptions.map((s) => ({
+        ...s,
+        startDate: toServiceDate(s.start_date),
+        endDate: toServiceDate(s.end_date),
+      })),
+      today,
+    ) ?? null;
 
   // Only the non-cancelled pause matters here: a cancelled one frees its dates
   // and must not be offered as the pause to modify (§23).
@@ -324,6 +339,14 @@ export default async function StudentDetailPage(props: PageProps<"/admin/student
                               currentPlanId={s.plan_id ?? null}
                               currentEndDate={s.end_date}
                               currentHasEnded={stateOf(s) === "EXPIRED"}
+                            />
+                          ) : null}
+                          {stateOf(s) === "SCHEDULED" ? (
+                            <DeletePlanButton
+                              studentId={student.id}
+                              subscriptionId={s.id}
+                              planName={s.plans?.name ?? "this plan"}
+                              startDate={formatServiceDate(s.start_date)}
                             />
                           ) : null}
                           {stateOf(s) === "RUNNING" ? (

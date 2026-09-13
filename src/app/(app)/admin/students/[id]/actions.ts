@@ -16,9 +16,9 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import type { MealSlot, StudentStatus } from "@/core/domain/enums";
 import { toPaise } from "@/core/money";
-import { activateSubscription } from "@/core/policies/plan.policy";
+import { activateSubscription, canDeleteScheduledSubscription } from "@/core/policies/plan.policy";
 import { changeStudentStatus } from "@/core/policies/student-admin.policy";
-import { toServiceDate } from "@/core/time";
+import { serviceDateOf, toServiceDate } from "@/core/time";
 import { createAdminClient } from "@/infra/supabase/admin";
 import { getSessionUser } from "@/infra/auth/session";
 import { SupabaseAuditLogRepository } from "@/infra/supabase/repositories";
@@ -479,6 +479,112 @@ export async function endSubscription(
   revalidatePath("/admin/students");
 
   return { success: "Plan ended. You can now assign a new one." };
+}
+
+// --- Delete an upcoming subscription ---------------------------------------
+
+/**
+ * Deletes a plan that has not started — usually an early renewal on the wrong
+ * plan or dates, which otherwise holds its dates and blocks the correction.
+ *
+ * The full row goes to the audit log before it is removed, so "I renewed him for
+ * October and it vanished" still has an answer. A term that has started is
+ * never deleted; see `canDeleteScheduledSubscription`.
+ */
+export async function deleteScheduledSubscription(
+  studentId: string,
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const loaded = await loadOwnedStudent(studentId);
+  if ("error" in loaded) return { error: loaded.error };
+  const { user, admin, student } = loaded;
+
+  const parsed = endSchema.safeParse({
+    subscriptionId: formData.get("subscriptionId"),
+    reason: formData.get("reason") ?? "",
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Check the form." };
+  }
+  const subscriptionId = parsed.data.subscriptionId;
+
+  const [{ data: row }, cuts, pauses] = await Promise.all([
+    admin
+      .from("subscriptions")
+      .select(
+        "id, plan_id, status, start_date, end_date, price_paise_snapshot, included_meal_slots_snapshot",
+      )
+      .eq("id", subscriptionId)
+      .eq("tenant_id", user.tenantId)
+      .eq("student_id", student.id)
+      .maybeSingle(),
+    admin
+      .from("mess_cuts")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", user.tenantId)
+      .eq("subscription_id", subscriptionId)
+      .in("status", ["PENDING", "APPROVED", "CREDITED"]),
+    admin
+      .from("subscription_pauses")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", user.tenantId)
+      .eq("subscription_id", subscriptionId)
+      .eq("status", "ACTIVE"),
+  ]);
+  if (!row) return { error: "That plan no longer exists. Reload the page." };
+
+  const today = serviceDateOf(user.timezone, new Date());
+  const decision = canDeleteScheduledSubscription({
+    actorRole: user.role,
+    subscription: {
+      status: row.status,
+      startDate: toServiceDate(row.start_date),
+      endDate: toServiceDate(row.end_date),
+    },
+    today,
+    liveAbsences: cuts.count ?? 0,
+    livePauses: pauses.count ?? 0,
+  });
+  if (!decision.ok) return { error: decision.error.message };
+
+  const { error, count } = await admin
+    .from("subscriptions")
+    .delete({ count: "exact" })
+    .eq("id", subscriptionId)
+    .eq("tenant_id", user.tenantId)
+    .eq("student_id", student.id)
+    .eq("status", "ACTIVE")
+    // The real guarantee, not the check above: a page left open past midnight
+    // must not delete a term that has since started.
+    .gt("start_date", today);
+
+  if (error) return { error: `Could not delete the plan: ${error.message}` };
+  if (count === 0) {
+    return { error: "That plan has started or changed. Reload the page." };
+  }
+
+  await new SupabaseAuditLogRepository(admin).write({
+    tenantId: user.tenantId,
+    actorProfileId: user.actorProfileId,
+    action: "SUBSCRIPTION_DELETED",
+    entityType: "subscription",
+    entityId: subscriptionId,
+    before: {
+      planId: row.plan_id,
+      status: row.status,
+      startDate: row.start_date,
+      endDate: row.end_date,
+      pricePaise: row.price_paise_snapshot,
+      mealSlots: row.included_meal_slots_snapshot.join(","),
+    },
+    after: { deleted: true, reason: parsed.data.reason },
+  });
+
+  revalidatePath(`/admin/students/${student.id}`);
+  revalidatePath("/admin/students");
+
+  return { success: "Upcoming plan deleted. Its dates are free again." };
 }
 
 // --- Photo -----------------------------------------------------------------

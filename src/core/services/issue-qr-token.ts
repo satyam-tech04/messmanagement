@@ -18,8 +18,12 @@
 import type { MealSlot } from "../domain/enums";
 import type { TenantContext } from "../domain/tenant-context";
 import { domainError, forbidden, infrastructureError, type DomainError } from "../errors";
-import { checkMealEligibility } from "../policies/eligibility.policy";
-import { resolveServiceState } from "../policies/menu.policy";
+import {
+  activeSubscriptionsOf,
+  checkMealEligibility,
+  mealToShow,
+} from "../policies/eligibility.policy";
+import { serviceSlotsInOrder } from "../policies/menu.policy";
 import { issueToken } from "../policies/qr.policy";
 import type {
   AttendanceRepository,
@@ -29,7 +33,7 @@ import type {
 } from "../ports/repositories";
 import type { TokenSigner } from "../ports/token-signer";
 import { err, isErr, ok, type Result } from "../result";
-import type { ServiceDate } from "../time";
+import { isWithinWindow, type ServiceDate } from "../time";
 
 export interface IssueQrTokenDeps {
   readonly tenants: TenantRepository;
@@ -79,17 +83,24 @@ export async function issueQrToken(
   if (!settings) return err(infrastructureError("tenant settings lookup"));
   if (!secret) return err(infrastructureError("QR signing secret lookup"));
 
-  // Which meal is this code for? During a window, that one. Between windows,
-  // the next — showing a lunch code at 16:30 would be useless, and showing
-  // nothing would look broken.
-  const state = resolveServiceState({ timeZone: ctx.timezone, now, slots: settings.mealSlots });
-  const target = state.current ?? state.next;
+  const student = await deps.students.findForVerification(ctx.tenantId, studentId);
+  if (!student) return err(domainError("NOT_FOUND", "Student record not found."));
+
+  // Which meal is this code for? The soonest one this student's plan includes:
+  // the open meal if they bought it, otherwise their next. Showing a lunch code
+  // at 16:30 would be useless, and refusing a lunch-and-dinner subscriber at
+  // breakfast told them they had "no active plan" for a plan they had just paid
+  // for. The counter still checks the slot being served, so a code for a later
+  // meal cannot be used early.
+  const candidates = serviceSlotsInOrder({
+    timeZone: ctx.timezone,
+    now,
+    slots: settings.mealSlots,
+  });
+  const target = mealToShow(candidates, activeSubscriptionsOf(student));
   if (!target) {
     return err(domainError("SLOT_NOT_SERVED", "This mess has no meal times configured."));
   }
-
-  const student = await deps.students.findForVerification(ctx.tenantId, studentId);
-  if (!student) return err(domainError("NOT_FOUND", "Student record not found."));
 
   const cuts = await deps.messCuts.findForStudentOnDate(
     ctx.tenantId,
@@ -150,7 +161,7 @@ export async function issueQrToken(
     serviceDate: target.serviceDate,
     expiresAt: issued.value.expiresAt,
     refreshSeconds: issued.value.refreshSeconds,
-    isOpenNow: state.current?.slot === target.slot,
+    isOpenNow: isWithinWindow(now, target),
     opensAt: target.opensAt,
     closesAt: target.closesAt,
     studentName: student.fullName,

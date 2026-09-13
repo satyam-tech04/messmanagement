@@ -12,6 +12,7 @@ import type { MealSlotConfig } from "@/core/domain/tenant-context";
 import {
   parseMenuDraft,
   resolveServiceState,
+  serviceSlotsInOrder,
   type MenuDraftInput,
 } from "@/core/policies/menu.policy";
 import { toServiceDate, toWallClockTime } from "@/core/time";
@@ -213,5 +214,53 @@ describe("resolveServiceState — what the student sees right now", () => {
       slots: late,
     });
     expect(state.current?.slot).toBe(MealSlot.DINNER);
+  });
+});
+
+describe("serviceSlotsInOrder — every meal a code could be for, soonest first", () => {
+  const FOUR: readonly MealSlotConfig[] = [
+    { slot: MealSlot.BREAKFAST, start: toWallClockTime("07:30"), end: toWallClockTime("09:30") },
+    { slot: MealSlot.LUNCH, start: toWallClockTime("12:00"), end: toWallClockTime("14:30") },
+    { slot: MealSlot.SNACKS, start: toWallClockTime("17:00"), end: toWallClockTime("18:00") },
+    { slot: MealSlot.DINNER, start: toWallClockTime("19:30"), end: toWallClockTime("22:00") },
+  ];
+  const at = (iso: string, slots = FOUR) =>
+    serviceSlotsInOrder({ timeZone: TZ, now: new Date(iso), slots }).map(
+      (s) => `${s.serviceDate} ${s.slot}`,
+    );
+
+  it("puts the open meal first, then the rest of today, then tomorrow", () => {
+    // 02:30 UTC = 08:00 IST, breakfast open.
+    expect(at("2026-07-25T02:30:00Z")).toEqual([
+      "2026-07-25 BREAKFAST",
+      "2026-07-25 LUNCH",
+      "2026-07-25 SNACKS",
+      "2026-07-25 DINNER",
+      "2026-07-26 BREAKFAST",
+      "2026-07-26 LUNCH",
+      "2026-07-26 SNACKS",
+      "2026-07-26 DINNER",
+    ]);
+  });
+
+  it("drops meals that have already closed today", () => {
+    // 11:00 UTC = 16:30 IST, between lunch and snacks.
+    expect(at("2026-07-25T11:00:00Z").slice(0, 3)).toEqual([
+      "2026-07-25 SNACKS",
+      "2026-07-25 DINNER",
+      "2026-07-26 BREAKFAST",
+    ]);
+  });
+
+  it("agrees with resolveServiceState on current and next", () => {
+    const now = new Date("2026-07-25T07:00:00Z");
+    const state = resolveServiceState({ timeZone: TZ, now, slots: FOUR });
+    const ordered = serviceSlotsInOrder({ timeZone: TZ, now, slots: FOUR });
+    expect(ordered[0]).toEqual(state.current);
+    expect(ordered[1]).toEqual(state.next);
+  });
+
+  it("is empty when the mess serves nothing", () => {
+    expect(at("2026-07-25T07:00:00Z", [])).toEqual([]);
   });
 });

@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { AlertCircle, Check, Loader2, Plus, RefreshCw, XCircle } from "lucide-react";
+import { AlertCircle, Check, Loader2, Plus, RefreshCw, Trash2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,7 +18,13 @@ import {
 } from "@/components/ui/dialog";
 import { addDays, isServiceDate, toServiceDate } from "@/core/time";
 import { cn } from "@/lib/utils";
-import { assignPlan, endSubscription, renewSubscription, type ActionState } from "./actions";
+import {
+  assignPlan,
+  deleteScheduledSubscription,
+  endSubscription,
+  renewSubscription,
+  type ActionState,
+} from "./actions";
 
 export interface AssignablePlan {
   readonly id: string;
@@ -341,6 +347,74 @@ export function EndPlanButton({
             <DialogClose render={<Button type="button" variant="ghost" />}>Cancel</DialogClose>
             <Button type="submit">
               <Submitting idle="End plan" busy="Ending…" />
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/**
+ * Deletes a plan that has not started yet.
+ *
+ * Offered only on an upcoming term. A running one is ended instead — it has
+ * meals served against it — and the server refuses to delete anything that has
+ * started, however the page was left open.
+ */
+export function DeletePlanButton({
+  studentId,
+  subscriptionId,
+  planName,
+  startDate,
+}: {
+  studentId: string;
+  subscriptionId: string;
+  planName: string;
+  startDate: string;
+}) {
+  const [state, formAction] = useActionState<ActionState, FormData>(
+    deleteScheduledSubscription.bind(null, studentId),
+    {},
+  );
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger render={<Button variant="outline" size="sm" />}>
+        <Trash2 className="size-4" aria-hidden="true" />
+        Delete
+      </DialogTrigger>
+      <DialogContent>
+        <form action={formAction}>
+          <input type="hidden" name="subscriptionId" value={subscriptionId} />
+          <DialogHeader>
+            <DialogTitle>Delete {planName}?</DialogTitle>
+            <DialogDescription>
+              This plan has not started — it was due to begin on {startDate}. Deleting it frees
+              those dates so the right plan can be assigned. The removal is recorded in the audit
+              log with your name.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2 py-4">
+            <Label htmlFor={`delete-reason-${subscriptionId}`}>Reason</Label>
+            <Input
+              id={`delete-reason-${subscriptionId}`}
+              name="reason"
+              required
+              minLength={3}
+              autoComplete="off"
+              placeholder="Renewed on the wrong plan"
+            />
+          </div>
+
+          <Feedback state={state} />
+
+          <DialogFooter>
+            <DialogClose render={<Button type="button" variant="ghost" />}>Keep plan</DialogClose>
+            <Button type="submit" variant="destructive">
+              <Submitting idle="Delete plan" busy="Deleting…" />
             </Button>
           </DialogFooter>
         </form>

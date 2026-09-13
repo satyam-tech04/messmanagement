@@ -276,6 +276,42 @@ always allowed it, the UI never rendered the control), the student sees both the
 resume date (§12, §24), and a completed pause is still visible with the subscription end
 date (§23).
 
+### NF-10 — Field issues reported 13 Sep 2026 🚧 six fixed, one not reproduced
+
+Seven issues raised after testing the app and web. Each was analysed against the code
+first; the fixes below have tests written before the change.
+
+| #   | Issue                                                   | Finding                                                                                                                                                               | State           |
+| --- | ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
+| 1   | Dashboards not updating served meals (staff, admin)     | Web counter hard-coded **Lunch/Dinner** cards (breakfast and snacks scans never showed) and neither page refreshed after a scan; the app's scanner total loaded once. | ✅ fixed        |
+| 2   | QR not shown when a plan is added with today's date     | Dates were fine. The code targeted the meal **being served**, not one the plan **includes** — a lunch-and-dinner plan at breakfast read "No active plan".             | ✅ fixed (D-27) |
+| 3   | Remove per-meal price from the student section          | Shown on web `/student/plan` and the app plan screen.                                                                                                                 | ✅ removed      |
+| 4   | Special-meal announcements visible in the app?          | **No.** Web student home only; the app had no endpoint or screen.                                                                                                     | ✅ fixed        |
+| 5   | Finalised bills saved as Unpaid                         | **Intentional** per billing spec §10 / A10. Gap: staff have no way to mark a bill paid — only `/admin/counter-sales`.                                                 | ⏳ D-29 open    |
+| 6   | After renewal the existing plan breaks; 2nd renew hangs | Two more `status = ACTIVE … maybeSingle()` reads broke on a renewed student: web student home plan card, and the pause actions. The hang itself not reproduced.       | 🚧 partly fixed |
+| 7   | Delete a scheduled meal plan                            | No control existed for an upcoming subscription.                                                                                                                      | ✅ added (D-28) |
+
+**What changed**
+
+- [x] `serviceSlotsInOrder()` + `mealToShow()` — the QR, the web counter state and the token endpoint all pick the soonest meal the covering plan includes
+- [x] `activeSubscriptionsOf()` — one place that reads a student's ACTIVE terms; `request-absence` reuses it
+- [x] Web student home reads the plan through `readStudentPlan` (date-derived), not `maybeSingle()`
+- [x] `pausableSubscription()` — the page and the pause actions agree on the term (soonest upcoming, not latest)
+- [x] `perMealPaise` removed from `readStudentPlan`, so already-installed app builds stop showing it too
+- [x] `readStudentAnnouncements` shared reader + `GET /api/student/announcements`; app card on the QR home (hidden while a code is on screen)
+- [x] `useLiveAttendance` hook extracted from Live count; `LiveServedProvider` drives the counter and admin dashboard; counter shows one card per configured meal
+- [x] App scanner reconciles today's total every 15 s
+- [x] `canDeleteScheduledSubscription()` + `deleteScheduledSubscription` action + Delete on "Starts later" rows
+
+**Still open**
+
+- **#6 hang** — needs a reproduction on the deployment (browser + runtime logs). Not
+  reachable from the session that did this work.
+- **Pause × renewal** — pausing a term extends its end date; with a renewal right after it
+  the extension overlaps the next term and the DB constraint refuses it with a raw error.
+  The pause policy does not yet know about the following term.
+- **D-29** below.
+
 ### NF-9 — Import a menu from a spreadsheet ✅
 
 Requested 6 Sep 2026 with the mess's own weekly menu sheet. Upload once, publish across a
@@ -382,6 +418,31 @@ there once resolved.
 | D-24  | Mobile: PWA / Capacitor / Flutter           | NF-8   | ⏳ open     |
 | D-25  | Menu import ignores the per-meal price      | NF-9   | ✅ resolved |
 | D-26  | Extras block becomes counter items          | NF-9   | ✅ resolved |
+| D-27  | Which meal a student's QR is for            | NF-10  | ✅ resolved |
+| D-28  | Deleting an upcoming subscription           | NF-10  | ✅ resolved |
+| D-29  | Paid / Unpaid chosen at finalise?           | NF-10  | ⏳ open     |
+
+### D-27 — The QR is for the soonest meal the plan includes
+
+Previously the meal being served, whether or not the student bought it, so a
+lunch-and-dinner subscriber at breakfast was refused with "No active plan". Now the
+soonest current-or-upcoming meal their covering plan includes. The counter still verifies
+against the meal being served, so a lunch code cannot be used at breakfast. When no plan
+includes any upcoming meal, the soonest meal is used so the refusal still explains why.
+
+### D-28 — Only a subscription that has not started may be deleted
+
+A running or finished term is ended (CANCELLED, audited), never deleted — it has meals and
+money against it. An upcoming one may be deleted, with a reason and the full row written to
+`audit_log` first. Refused while it has live absence requests or an active pause, because
+both cascade on delete and would vanish silently.
+
+### D-29 — Should staff choose Paid / Unpaid when finalising a bill? ⏳
+
+Today a bill always finalises as Unpaid (spec §10, A10) and only the admin counter-sales page
+can change it — the staff web counter and the app have no control, although the spec lets
+staff change it. Options: (a) Paid/Unpaid choice in the finalise dialog, defaulting to Paid;
+(b) keep finalise as is and add a Mark paid control to staff's finalised bills; (c) both.
 
 ### D-15 — A pause may start today, never in the past
 

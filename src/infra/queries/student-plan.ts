@@ -8,6 +8,8 @@
  * cron job wrote.
  *
  * Money leaves here as integer paise. Rupees exist only at the render boundary.
+ * There is deliberately no per-meal rate: a plan is a fixed price, and quoting
+ * a student "₹45 a meal" invites them to expect that back for every meal missed.
  */
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -25,10 +27,10 @@ export interface StudentSubscription {
   readonly endDate: string;
   readonly pricePaise: number;
   readonly includedMealSlots: readonly string[];
+  /** The stored status — only meaningful beside `state`, which is what to show. */
+  readonly status: string;
   /** Derived from the dates today, not the stored status. */
   readonly state: string;
-  /** Floored, so the parts can never sum above what was paid. */
-  readonly perMealPaise: number | null;
 }
 
 export interface StudentPlan {
@@ -59,11 +61,6 @@ export async function readStudentPlan(
     const plan = firstRelated<{ name: string; duration_days: number }>(row.plans as never);
     const slots = (row.included_meal_slots_snapshot as string[]) ?? [];
 
-    // Meals the plan actually promises across its whole period. Dividing by
-    // days alone would overstate the per-meal rate for a plan covering two of
-    // four slots.
-    const meals = plan ? plan.duration_days * slots.length : 0;
-
     return {
       id: row.id,
       planName: plan?.name ?? null,
@@ -72,6 +69,7 @@ export async function readStudentPlan(
       endDate: row.end_date,
       pricePaise: row.price_paise_snapshot,
       includedMealSlots: slots,
+      status: row.status,
       state: subscriptionStateOf(
         {
           status: row.status,
@@ -80,7 +78,6 @@ export async function readStudentPlan(
         },
         today,
       ),
-      perMealPaise: meals > 0 ? Math.floor(row.price_paise_snapshot / meals) : null,
     };
   });
 

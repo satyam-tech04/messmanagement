@@ -135,16 +135,6 @@ class _CurrentPlanCard extends StatelessWidget {
                     value: formatPaiseCompact(s.pricePaise),
                   ),
                 ),
-                if (s.perMealPaise != null)
-                  Expanded(
-                    child: _Figure(
-                      label: 'Per meal',
-                      value: formatPaise(s.perMealPaise!),
-                      // Floored by the server, so the parts can never sum above
-                      // what was actually paid.
-                      hint: 'approx.',
-                    ),
-                  ),
               ],
             ),
             const Gap.lg(),
@@ -177,11 +167,10 @@ class _CurrentPlanCard extends StatelessWidget {
 }
 
 class _Figure extends StatelessWidget {
-  const _Figure({required this.label, required this.value, this.hint});
+  const _Figure({required this.label, required this.value});
 
   final String label;
   final String value;
-  final String? hint;
 
   @override
   Widget build(BuildContext context) {
@@ -204,13 +193,6 @@ class _Figure extends StatelessWidget {
             fontFeatures: const [FontFeature.tabularFigures()],
           ),
         ),
-        if (hint != null)
-          Text(
-            hint!,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
       ],
     );
   }

@@ -170,10 +170,39 @@ export interface ServiceStateRequest {
  * service has closed — "next" is tomorrow's first meal rather than nothing.
  */
 export function resolveServiceState(request: ServiceStateRequest): ServiceState {
+  const serviceDate = serviceDateOf(request.timeZone, request.now);
+  const { current, upcoming } = windowsAround(request);
+  const next = upcoming[0];
+
+  return {
+    serviceDate,
+    ...(current ? { current } : {}),
+    ...(next ? { next } : {}),
+  };
+}
+
+/**
+ * Every meal a student's code could be for, soonest first: the one open now (if
+ * any), then each later window today and tomorrow.
+ *
+ * `resolveServiceState` answers "what is the mess serving?"; this answers "what
+ * could this student be served?" — which is not the same question for someone
+ * whose plan covers only some meals. A lunch-and-dinner subscriber at breakfast
+ * time needs their lunch code, not a refusal for a meal they never bought.
+ */
+export function serviceSlotsInOrder(request: ServiceStateRequest): readonly ServiceSlot[] {
+  const { current, upcoming } = windowsAround(request);
+  return current ? [current, ...upcoming] : upcoming;
+}
+
+function windowsAround(request: ServiceStateRequest): {
+  current: ServiceSlot | undefined;
+  upcoming: ServiceSlot[];
+} {
   const { timeZone, now, slots } = request;
   const serviceDate = serviceDateOf(timeZone, now);
 
-  if (slots.length === 0) return { serviceDate };
+  if (slots.length === 0) return { current: undefined, upcoming: [] };
 
   // Ordered by time of day, not by however the settings JSON happened to be
   // written, so "next" is genuinely the next one.
@@ -202,15 +231,11 @@ export function resolveServiceState(request: ServiceStateRequest): ServiceState 
     isWithinWindow(now, { opensAt: s.opensAt, closesAt: s.closesAt }),
   );
 
-  const next = [...today, ...tomorrow]
+  const upcoming = [...today, ...tomorrow]
     .filter((s) => s.opensAt.getTime() > now.getTime())
-    .sort((a, b) => a.opensAt.getTime() - b.opensAt.getTime())[0];
+    .sort((a, b) => a.opensAt.getTime() - b.opensAt.getTime());
 
-  return {
-    serviceDate,
-    ...(current ? { current } : {}),
-    ...(next ? { next } : {}),
-  };
+  return { current, upcoming };
 }
 
 /** Whether `date` is in the past relative to the tenant's today. */

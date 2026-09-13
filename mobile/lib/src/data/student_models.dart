@@ -64,7 +64,6 @@ class StudentSubscription {
     required this.pricePaise,
     required this.includedMealSlots,
     required this.state,
-    required this.perMealPaise,
     required this.durationDays,
   });
 
@@ -79,7 +78,6 @@ class StudentSubscription {
 
   /// Derived from the dates by the server, never the stored status column.
   final String state;
-  final int? perMealPaise;
   final int? durationDays;
 
   /// A plan inside its last week.
@@ -123,7 +121,6 @@ class StudentSubscription {
             .map((e) => '$e')
             .toList(),
         state: j['state'] as String? ?? 'EXPIRED',
-        perMealPaise: (j['perMealPaise'] as num?)?.toInt(),
         durationDays: (j['durationDays'] as num?)?.toInt(),
       );
 }
@@ -280,4 +277,36 @@ class StudentFeedback {
         .map((e) => FeedbackTarget.fromJson((e as Map).cast<String, dynamic>()))
         .toList(),
   );
+}
+
+/// A special-meal notice from the mess (spec §10). Read-only: nothing to tap,
+/// acknowledge or dismiss.
+class Announcement {
+  const Announcement({
+    required this.id,
+    required this.title,
+    this.body,
+    this.serviceDate,
+    this.mealSlot,
+  });
+
+  final String id;
+  final String title;
+  final String? body;
+
+  /// The day it is about, in the mess's timezone. Null when it is about no
+  /// particular day.
+  final String? serviceDate;
+  final String? mealSlot;
+
+  factory Announcement.fromJson(Map<String, dynamic> j) {
+    final body = (j['body'] as String?)?.trim();
+    return Announcement(
+      id: j['id'] as String? ?? '',
+      title: j['title'] as String? ?? '',
+      body: body == null || body.isEmpty ? null : body,
+      serviceDate: j['serviceDate'] as String?,
+      mealSlot: j['mealSlot'] as String?,
+    );
+  }
 }

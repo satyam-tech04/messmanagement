@@ -111,8 +111,13 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
     _flush();
     // Retry the buffered scans periodically as well as on demand: counter
     // Wi-Fi returns without anyone noticing, and nobody should have to
-    // remember to press something.
-    _flushTimer = Timer.periodic(const Duration(seconds: 15), (_) => _flush());
+    // remember to press something. The day's total is reconciled on the same
+    // tick — it was loaded once on open, so meals scanned at another counter
+    // (or on the web) never reached this screen.
+    _flushTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      _flush();
+      _loadToday();
+    });
   }
 
   @override

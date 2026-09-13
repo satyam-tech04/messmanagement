@@ -182,7 +182,10 @@ describe("issueQrToken — account status (§6.1, re-checked at verification)", 
     if (isErr(result)) expect(result.error.code).toBe("NO_ACTIVE_PLAN");
   });
 
-  it("denies when the plan does not include the meal being served", async () => {
+  it("skips a meal the plan does not include and shows the next one it does", async () => {
+    // A dinner-only student opening the app at lunch was told "No active plan"
+    // — reading as though the plan they had just paid for did not exist. Their
+    // code is for dinner; the counter still refuses it until dinner opens.
     students = new FakeStudentRepository([
       student({
         subscription: {
@@ -191,6 +194,28 @@ describe("issueQrToken — account status (§6.1, re-checked at verification)", 
           startDate: toServiceDate("2026-07-01"),
           endDate: toServiceDate("2026-07-31"),
           includedMealSlots: ["DINNER"],
+          pauses: [],
+        },
+      }),
+    ]);
+    const result = await issueQrToken(studentCtx, build(DURING_LUNCH));
+    expect(isOk(result)).toBe(true);
+    if (isOk(result)) {
+      expect(unwrap(result).mealSlot).toBe("DINNER");
+      expect(unwrap(result).serviceDate).toBe("2026-07-15");
+      expect(unwrap(result).isOpenNow).toBe(false);
+    }
+  });
+
+  it("still denies when the plan includes no meal this mess serves", async () => {
+    students = new FakeStudentRepository([
+      student({
+        subscription: {
+          id: "sub-1",
+          status: "ACTIVE",
+          startDate: toServiceDate("2026-07-01"),
+          endDate: toServiceDate("2026-07-31"),
+          includedMealSlots: ["BREAKFAST"],
           pauses: [],
         },
       }),
@@ -282,6 +307,13 @@ describe("issueQrToken — the token itself", () => {
     const result = await issueQrToken(studentCtx, build(DURING_LUNCH));
     expect(isErr(result)).toBe(true);
     if (isErr(result)) expect(result.error.code).toBe("INFRASTRUCTURE_ERROR");
+  });
+
+  it("refuses when the mess has no meal times configured", async () => {
+    tenants = tenantRepo({ ...settings, mealSlots: [] });
+    const result = await issueQrToken(studentCtx, build(DURING_LUNCH));
+    expect(isErr(result)).toBe(true);
+    if (isErr(result)) expect(result.error.code).toBe("SLOT_NOT_SERVED");
   });
 
   it("fails closed when tenant settings are missing", async () => {
@@ -378,5 +410,88 @@ describe("issueQrToken — once the student has eaten", () => {
 
     const result = await issueQrToken(studentCtx, build(DURING_LUNCH));
     expect(isOk(result)).toBe(true);
+  });
+});
+
+describe("issueQrToken — a plan added today", () => {
+  const FOUR_SLOTS: TenantSettings = tenantSettings({
+    tenantId: TENANT,
+    mealSlots: [
+      { slot: "BREAKFAST", start: toWallClockTime("07:30"), end: toWallClockTime("09:30") },
+      { slot: "LUNCH", start: toWallClockTime("12:00"), end: toWallClockTime("14:30") },
+      { slot: "SNACKS", start: toWallClockTime("17:00"), end: toWallClockTime("18:00") },
+      { slot: "DINNER", start: toWallClockTime("19:30"), end: toWallClockTime("22:00") },
+    ],
+    qrTokenTtlSeconds: 30,
+    qrRefreshSeconds: 15,
+  });
+  /** 08:00 IST on 15 July — breakfast is open. */
+  const DURING_BREAKFAST = new Date("2026-07-15T02:30:00Z");
+
+  const startsToday = (slots: string[]) => ({
+    id: "sub-new",
+    status: "ACTIVE" as const,
+    startDate: toServiceDate("2026-07-15"),
+    endDate: toServiceDate("2026-08-13"),
+    includedMealSlots: slots as StudentForVerification["subscriptions"] extends
+      readonly (infer S)[] | undefined
+      ? S extends { includedMealSlots: infer M }
+        ? M
+        : never
+      : never,
+    pauses: [],
+  });
+
+  beforeEach(() => {
+    tenants = tenantRepo(FOUR_SLOTS);
+  });
+
+  it("mints during the open meal for a plan that starts today", async () => {
+    students = new FakeStudentRepository([
+      student({ subscription: null, subscriptions: [startsToday(["BREAKFAST", "LUNCH"])] }),
+    ]);
+    const result = await issueQrToken(studentCtx, build(DURING_BREAKFAST));
+    expect(isOk(result)).toBe(true);
+    if (isOk(result)) {
+      expect(unwrap(result).mealSlot).toBe("BREAKFAST");
+      expect(unwrap(result).isOpenNow).toBe(true);
+    }
+  });
+
+  it("shows lunch at breakfast time for a lunch-and-dinner plan starting today", async () => {
+    students = new FakeStudentRepository([
+      student({ subscription: null, subscriptions: [startsToday(["LUNCH", "DINNER"])] }),
+    ]);
+    const result = await issueQrToken(studentCtx, build(DURING_BREAKFAST));
+    expect(isOk(result)).toBe(true);
+    if (isOk(result)) {
+      expect(unwrap(result).mealSlot).toBe("LUNCH");
+      expect(unwrap(result).serviceDate).toBe("2026-07-15");
+      expect(unwrap(result).isOpenNow).toBe(false);
+    }
+  });
+
+  it("mints when the old term still reads ACTIVE beside a new one starting today", async () => {
+    // Nothing flips an ended plan's status, so a student re-enrolled today holds
+    // two ACTIVE rows. The ended one must not shadow the new one.
+    students = new FakeStudentRepository([
+      student({
+        subscription: null,
+        subscriptions: [
+          {
+            id: "sub-old",
+            status: "ACTIVE",
+            startDate: toServiceDate("2026-06-01"),
+            endDate: toServiceDate("2026-06-30"),
+            includedMealSlots: ["BREAKFAST", "LUNCH", "SNACKS", "DINNER"],
+            pauses: [],
+          },
+          startsToday(["BREAKFAST", "LUNCH"]),
+        ],
+      }),
+    ]);
+    const result = await issueQrToken(studentCtx, build(DURING_BREAKFAST));
+    expect(isOk(result)).toBe(true);
+    if (isOk(result)) expect(unwrap(result).mealSlot).toBe("BREAKFAST");
   });
 });

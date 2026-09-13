@@ -24,6 +24,7 @@ import type { MealSlot } from "../domain/enums";
 import type { MealSlotConfig, TenantContext } from "../domain/tenant-context";
 import { domainError, forbidden, infrastructureError, type DomainError } from "../errors";
 import { daysUsedInMonth, requestAbsence, type AbsenceKind } from "../policies/absence.policy";
+import { activeSubscriptionsOf } from "../policies/eligibility.policy";
 import type {
   AbsenceRow,
   MessCutRepository,
@@ -76,15 +77,7 @@ export async function requestAbsenceForStudent(
   const student = await deps.students.findForVerification(ctx.tenantId, studentId);
   if (!student) return err(domainError("NOT_FOUND", "Student record not found."));
 
-  // Support both multi-subscription (migration 017 renewals) and legacy single-subscription mocks
-  const allPlans =
-    student.subscriptions && student.subscriptions.length > 0
-      ? student.subscriptions
-      : student.subscription
-        ? [student.subscription]
-        : [];
-
-  const activePlans = allPlans.filter((p) => p.status === "ACTIVE");
+  const activePlans = activeSubscriptionsOf(student);
   if (activePlans.length === 0) {
     return err(
       domainError(

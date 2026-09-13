@@ -20,7 +20,7 @@ export function StatCard({
 }: {
   label: string;
   value: ReactNode;
-  hint?: string;
+  hint?: ReactNode;
   icon?: string;
   tone?: "default" | "success" | "warning" | "danger";
   className?: string;

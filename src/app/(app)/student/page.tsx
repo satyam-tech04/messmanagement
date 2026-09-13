@@ -6,14 +6,18 @@ import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { requireSessionUser } from "@/infra/auth/session";
 import { createClient } from "@/infra/supabase/server";
-import { serviceDateOf, toServiceDate } from "@/core/time";
-import { visibleAnnouncements } from "@/core/policies/announcement.policy";
-import { resolveServiceState } from "@/core/policies/menu.policy";
+import type { MealSlot } from "@/core/domain/enums";
+import { isWithinWindow, serviceDateOf, toServiceDate } from "@/core/time";
+import { mealToShow } from "@/core/policies/eligibility.policy";
+import { serviceSlotsInOrder } from "@/core/policies/menu.policy";
+import { readStudentPlan } from "@/infra/queries/student-plan";
+import { subscriptionStateLabel, type SubscriptionState } from "@/core/policies/subscription-state";
 import { createAdminClient } from "@/infra/supabase/admin";
 import { SupabaseTenantRepository } from "@/infra/supabase/repositories";
 import { formatServiceDate } from "@/lib/format";
 import { QrDisplay } from "./qr-display";
-import { AnnouncementsCard, type LiveAnnouncement } from "./announcements-card";
+import { AnnouncementsCard } from "./announcements-card";
+import { readStudentAnnouncements } from "@/infra/queries/student-announcements";
 import { pageTitle } from "@/lib/app-info";
 
 export const metadata: Metadata = { title: pageTitle("My QR") };
@@ -25,18 +29,17 @@ export default async function StudentPage() {
 
   // RLS restricts these to the signed-in student's own rows; the explicit
   // tenant filter is the application-layer half of the same guarantee (§5.1).
-  const [studentRes, subRes, menuRes, attendanceRes] = await Promise.all([
+  const [studentRes, plan, menuRes, attendanceRes] = await Promise.all([
     supabase
       .from("students")
       .select("roll_number, status, block, room_number")
       .eq("tenant_id", user.tenantId)
       .maybeSingle(),
-    supabase
-      .from("subscriptions")
-      .select("status, start_date, end_date, included_meal_slots_snapshot")
-      .eq("tenant_id", user.tenantId)
-      .eq("status", "ACTIVE")
-      .maybeSingle(),
+    // The shared reader, not `status = ACTIVE … maybeSingle()`: since renewals
+    // (migration 017) a student can hold several ACTIVE rows — an ended term
+    // still reads ACTIVE — and maybeSingle() errors on two, which showed a
+    // renewed student "You have no active meal plan".
+    readStudentPlan(supabase, user),
     supabase
       .from("menus")
       .select("meal_slot, items")
@@ -61,40 +64,26 @@ export default async function StudentPage() {
     user.tenantId,
   );
 
-  // Live announcements. Filtered by date in the query and again by the policy,
-  // so a row that slips through a date edge case still cannot render.
-  const { data: announcementRows } = settings?.allowAnnouncements
-    ? await supabase
-        .from("announcements")
-        .select("id, title, body, service_date, meal_slot, starts_on, ends_on, status")
-        .eq("tenant_id", user.tenantId)
-        .eq("status", "PUBLISHED")
-        .lte("starts_on", today)
-        .gte("ends_on", today)
-        .order("starts_on", { ascending: false })
-    : { data: null };
+  // Shared with GET /api/student/announcements, so the app shows the same notices.
+  const liveAnnouncements = await readStudentAnnouncements(supabase, user);
 
-  const liveAnnouncements: LiveAnnouncement[] = visibleAnnouncements(
-    (announcementRows ?? []).map((a) => ({
-      id: a.id,
-      title: a.title,
-      body: a.body,
-      serviceDate: a.service_date,
-      mealSlot: a.meal_slot,
-      status: a.status,
-      startsOn: toServiceDate(a.starts_on),
-      endsOn: toServiceDate(a.ends_on),
-    })),
-    today,
-  );
-  const serviceState = settings
-    ? resolveServiceState({ timeZone: user.timezone, now: new Date(), slots: settings.mealSlots })
-    : null;
-  const current = serviceState?.current ?? null;
-  const upcoming = serviceState?.next ?? null;
+  // The same meal the token endpoint will mint for, so the page never says
+  // "breakfast is open" to a student whose plan starts at lunch.
+  const now = new Date();
+  const target = settings
+    ? mealToShow(
+        serviceSlotsInOrder({ timeZone: user.timezone, now, slots: settings.mealSlots }),
+        plan.history.map((s) => ({
+          status: s.status,
+          startDate: toServiceDate(s.startDate),
+          endDate: toServiceDate(s.endDate),
+          includedMealSlots: s.includedMealSlots as MealSlot[],
+        })),
+      )
+    : undefined;
 
   const student = studentRes.data;
-  const subscription = subRes.data;
+  const subscription = plan.current;
   const eatenSlots = new Set((attendanceRes.data ?? []).map((a) => a.meal_slot));
 
   return (
@@ -127,19 +116,19 @@ export default async function StudentPage() {
             <QrDisplay
               timeZone={user.timezone}
               counter={
-                current
-                  ? {
-                      state: "OPEN",
-                      mealSlot: current.slot,
-                      closesAt: current.closesAt.toISOString(),
-                    }
-                  : upcoming
+                !target
+                  ? { state: "NONE" }
+                  : isWithinWindow(now, target)
                     ? {
-                        state: "CLOSED",
-                        mealSlot: upcoming.slot,
-                        opensAt: upcoming.opensAt.toISOString(),
+                        state: "OPEN",
+                        mealSlot: target.slot,
+                        closesAt: target.closesAt.toISOString(),
                       }
-                    : { state: "NONE" }
+                    : {
+                        state: "CLOSED",
+                        mealSlot: target.slot,
+                        opensAt: target.opensAt.toISOString(),
+                      }
               }
             />
           </div>
@@ -158,21 +147,22 @@ export default async function StudentPage() {
                 <div className="flex items-center justify-between">
                   <dt className="text-muted-foreground">Status</dt>
                   <dd>
-                    <StatusBadge status={subscription.status} />
+                    <StatusBadge
+                      status={subscriptionStateLabel(subscription.state as SubscriptionState)}
+                      tone="success"
+                    />
                   </dd>
                 </div>
                 <div className="flex items-center justify-between">
                   <dt className="text-muted-foreground">Meals included</dt>
                   <dd className="font-medium capitalize">
-                    {subscription.included_meal_slots_snapshot
-                      .map((s) => s.toLowerCase())
-                      .join(", ")}
+                    {subscription.includedMealSlots.map((s) => s.toLowerCase()).join(", ")}
                   </dd>
                 </div>
                 <div className="flex items-center justify-between">
                   <dt className="text-muted-foreground">Valid until</dt>
                   <dd className="font-medium tabular-nums">
-                    {formatServiceDate(subscription.end_date)}
+                    {formatServiceDate(subscription.endDate)}
                   </dd>
                 </div>
               </dl>

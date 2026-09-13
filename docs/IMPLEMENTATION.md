@@ -207,6 +207,10 @@ the pilot runs on it:
 7. **Phase 2 (money)** — D-05 and D-06 are now settled (see DECISIONS.md); the remaining
    blockers are the ledger and Razorpay, not product questions.
 
+**Field issues, 13 Sep 2026** — seven reported from app and web testing; six fixed, the
+second-renewal hang not yet reproduced, and D-29 (paid/unpaid at finalise) awaiting a
+decision. Full status: [TRACKER.md NF-10](new_features/TRACKER.md).
+
 ### Deferred to the end, by the user's instruction
 
 - The GitHub repo is still **Public** and should be Private before real student data.

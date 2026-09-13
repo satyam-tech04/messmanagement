@@ -23,7 +23,7 @@ import { domainError, forbidden, type DomainError } from "@/core/errors";
 import { perMealPaise, type Paise } from "@/core/money";
 import { err, ok, type Result } from "@/core/result";
 import { validateSubscriptionStart } from "@/core/policies/student-admin.policy";
-import type { SubscriptionDates } from "@/core/policies/subscription-state";
+import { subscriptionStateOf, type SubscriptionDates } from "@/core/policies/subscription-state";
 import { addDays, compareServiceDates, serviceDateOf, type ServiceDate } from "@/core/time";
 import { parseAssignmentPricing, parsePlanPricing } from "@/core/policies/pricing.policy";
 
@@ -348,4 +348,72 @@ export function activateSubscription(
     endDate: period.endDate,
     perMealPaise: perMealPaise(priced.value.finalPricePaise, meals),
   });
+}
+
+// --- Deleting an upcoming subscription -------------------------------------
+
+export interface DeleteScheduledSubscriptionRequest {
+  readonly actorRole: UserRole;
+  readonly subscription: SubscriptionDates;
+  readonly today: ServiceDate;
+  /** PENDING, APPROVED or CREDITED absence requests on this subscription. */
+  readonly liveAbsences: number;
+  /** Non-cancelled pauses on this subscription. */
+  readonly livePauses: number;
+}
+
+/**
+ * Whether an upcoming subscription may be deleted outright.
+ *
+ * Only one that has not started. A term that has begun has meals served
+ * against it and is a record an owner will be asked about, so it is ended
+ * (CANCELLED, audited), never deleted. An upcoming one is usually an early
+ * renewal on the wrong plan or dates, and while it exists its dates stay
+ * claimed under `subscriptions_no_overlap` — blocking the correction.
+ *
+ * Refused while anything a student relies on hangs off it. Absence requests
+ * and pauses reference the subscription with ON DELETE CASCADE, so deleting
+ * the plan would quietly delete them too; the admin clears them first, which
+ * is a decision the student can be told about.
+ */
+export function canDeleteScheduledSubscription(
+  request: DeleteScheduledSubscriptionRequest,
+): Result<true, DomainError> {
+  if (!isAdmin(request.actorRole)) {
+    return err(forbidden("Only an admin can delete a meal plan."));
+  }
+
+  const state = subscriptionStateOf(request.subscription, request.today);
+  if (state === "RUNNING") {
+    return err(
+      domainError(
+        "VALIDATION_FAILED",
+        "This plan has already started, so it cannot be deleted. Use End plan instead.",
+      ),
+    );
+  }
+  if (state !== "SCHEDULED") {
+    return err(
+      domainError("VALIDATION_FAILED", "Only a plan that has not started yet can be deleted."),
+    );
+  }
+
+  if (request.liveAbsences > 0) {
+    return err(
+      domainError(
+        "CONFLICT",
+        "The student has an absence request on this plan. Reject or cancel it first, then delete the plan.",
+      ),
+    );
+  }
+  if (request.livePauses > 0) {
+    return err(
+      domainError(
+        "CONFLICT",
+        "A pause is set on this plan. Cancel the pause first, then delete the plan.",
+      ),
+    );
+  }
+
+  return ok(true);
 }

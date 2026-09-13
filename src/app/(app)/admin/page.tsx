@@ -9,6 +9,8 @@ import { requireSessionUser } from "@/infra/auth/session";
 import { createClient } from "@/infra/supabase/server";
 import { serviceDateOf } from "@/core/time";
 import { pageTitle } from "@/lib/app-info";
+import { readStaffHome } from "@/infra/queries/staff-home";
+import { LiveServedBreakdown, LiveServedCount, LiveServedProvider } from "./headcount/live-served";
 
 export const metadata: Metadata = { title: pageTitle("Dashboard") };
 
@@ -20,7 +22,7 @@ export default async function AdminDashboardPage() {
   // 00:30 IST must show the new day, not yesterday.
   const today = serviceDateOf(user.timezone, new Date());
 
-  const [students, activeSubs, menusToday, attendanceToday] = await Promise.all([
+  const [students, activeSubs, menusToday, served] = await Promise.all([
     supabase.from("students").select("status", { count: "exact" }).eq("tenant_id", user.tenantId),
     supabase
       .from("subscriptions")
@@ -32,13 +34,9 @@ export default async function AdminDashboardPage() {
       .select("meal_slot")
       .eq("tenant_id", user.tenantId)
       .eq("service_date", today),
-    supabase
-      .from("attendance")
-      .select("meal_slot", { count: "exact" })
-      .eq("tenant_id", user.tenantId)
-      .eq("service_date", today)
-      // A reversed meal never happened.
-      .is("reversed_at", null),
+    // The counter's own reader, so the dashboard and the counter agree on what
+    // "served today" means — including that a reversed meal never happened.
+    readStaffHome(supabase, user),
   ]);
 
   const rows = students.data ?? [];
@@ -98,12 +96,21 @@ export default async function AdminDashboardPage() {
               icon="ClipboardList"
               tone="success"
             />
-            <StatCard
-              label="Meals served today"
-              value={attendanceToday.count ?? 0}
-              hint={`${menusToday.data?.length ?? 0} menus published`}
-              icon="ScanLine"
-            />
+            <LiveServedProvider
+              tenantId={user.tenantId}
+              serviceDate={served.serviceDate}
+              initialPerSlot={served.perSlot}
+              initialManual={served.manualCount}
+            >
+              {/* Live: this moved only on a reload, so an owner watching service
+                  saw a number that stopped at whenever they opened the page. */}
+              <StatCard
+                label="Meals served today"
+                value={<LiveServedCount />}
+                hint={<LiveServedBreakdown slots={served.slots} />}
+                icon="ScanLine"
+              />
+            </LiveServedProvider>
             <StatCard
               label="Needs attention"
               value={counts.grace + counts.blocked}

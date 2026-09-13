@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Radio, TrendingDown, TrendingUp } from "lucide-react";
-import { createRealtimeClient } from "@/infra/supabase/client";
+import { useLiveAttendance } from "./use-live-attendance";
 import { cn } from "@/lib/utils";
 
 export interface SlotCount {
@@ -37,57 +37,12 @@ export function LiveCount({
   serviceDate: string;
 }) {
   const [counts, setCounts] = useState<readonly SlotCount[]>(initial);
-  const [live, setLive] = useState(false);
 
-  useEffect(() => {
-    let cleanup: (() => void) | null = null;
-    let cancelled = false;
-
-    void (async () => {
-      // RLS applies to realtime, and the socket authenticates separately from
-      // REST calls — without the access token it subscribes as anonymous,
-      // matches nothing, and reports SUBSCRIBED while never firing. This screen
-      // showed a "Live" badge over a number that never moved.
-      const supabase = await createRealtimeClient();
-      if (!supabase || cancelled) return;
-
-      const channel = supabase
-        .channel(`attendance:${tenantId}:${serviceDate}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "INSERT",
-            schema: "public",
-            table: "attendance",
-            // RLS still applies to realtime, so this filter is a bandwidth
-            // optimisation rather than the security boundary.
-            filter: `tenant_id=eq.${tenantId}`,
-          },
-          (payload) => {
-            const row = payload.new as { service_date?: string; meal_slot?: string };
-            // A late scan for yesterday's dinner must not bump today's number.
-            if (row.service_date !== serviceDate || !row.meal_slot) return;
-
-            setCounts((current) =>
-              current.map((c) =>
-                c.mealSlot === row.meal_slot ? { ...c, served: c.served + 1 } : c,
-              ),
-            );
-          },
-        )
-        .subscribe((status) => setLive(status === "SUBSCRIBED"));
-
-      cleanup = () => {
-        void supabase.removeChannel(channel);
-        setLive(false);
-      };
-    })();
-
-    return () => {
-      cancelled = true;
-      cleanup?.();
-    };
-  }, [tenantId, serviceDate]);
+  const live = useLiveAttendance(tenantId, serviceDate, ({ mealSlot }) =>
+    setCounts((current) =>
+      current.map((c) => (c.mealSlot === mealSlot ? { ...c, served: c.served + 1 } : c)),
+    ),
+  );
 
   return (
     <div className="space-y-4">

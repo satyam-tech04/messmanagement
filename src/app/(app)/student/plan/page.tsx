@@ -12,8 +12,7 @@ import {
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { TableEmpty, TableError, TableShell } from "@/components/data-table";
-import { formatPaise, perMealPaise, toPaise } from "@/core/money";
-import { planMealsInPeriod } from "@/core/policies/plan.policy";
+import { formatPaise, toPaise } from "@/core/money";
 import { toServiceDate } from "@/core/time";
 import { subscriptionStateLabel, subscriptionStateOf } from "@/core/policies/subscription-state";
 import { requireSessionUser } from "@/infra/auth/session";
@@ -129,24 +128,6 @@ export default async function StudentPlanPage() {
                   {formatPaise(toPaise(active.price_paise_snapshot))}
                 </dd>
               </div>
-
-              {active.plans ? (
-                <div className="flex items-center justify-between gap-4 py-3">
-                  <dt className="text-muted-foreground">Works out at</dt>
-                  <dd className="font-medium tabular-nums">
-                    {formatPaise(
-                      perMealPaise(
-                        toPaise(active.price_paise_snapshot),
-                        planMealsInPeriod(
-                          active.included_meal_slots_snapshot.length,
-                          active.plans.duration_days,
-                        ),
-                      ),
-                    )}
-                    <span className="text-muted-foreground font-normal"> / meal</span>
-                  </dd>
-                </div>
-              ) : null}
             </dl>
 
             {/* The price is frozen — worth saying, because a student who hears

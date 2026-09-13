@@ -54,6 +54,29 @@ export function isReplaceable(subscription: SubscriptionDates | null, today: Ser
   return state === "EXPIRED" || state === "CANCELLED";
 }
 
+/**
+ * The term a pause applies to: the one running today, otherwise the soonest one
+ * still to start.
+ *
+ * Needed because a renewal leaves a student with several ACTIVE rows — the
+ * current term, the next, and any finished term nothing has flipped — so
+ * "the ACTIVE subscription" no longer names one row. The student page and the
+ * pause actions both ask this, so the form an admin fills in and the row the
+ * action writes to are always the same term.
+ */
+export function pausableSubscription<T extends SubscriptionDates>(
+  subscriptions: readonly T[],
+  today: ServiceDate,
+): T | null {
+  const running = subscriptions.find((s) => subscriptionStateOf(s, today) === "RUNNING");
+  if (running) return running;
+
+  const upcoming = subscriptions
+    .filter((s) => subscriptionStateOf(s, today) === "SCHEDULED")
+    .sort((a, b) => compareServiceDates(a.startDate, b.startDate));
+  return upcoming[0] ?? null;
+}
+
 /** Human label for a derived state, used wherever a subscription is shown. */
 export function subscriptionStateLabel(state: SubscriptionState): string {
   switch (state) {

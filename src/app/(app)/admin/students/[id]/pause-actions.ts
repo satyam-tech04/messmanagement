@@ -27,6 +27,7 @@ import {
   pauseStateOf,
   resumePauseEarly,
 } from "@/core/policies/pause.policy";
+import { pausableSubscription } from "@/core/policies/subscription-state";
 import { serviceDateOf, toServiceDate, type ServiceDate } from "@/core/time";
 import { createAdminClient } from "@/infra/supabase/admin";
 import { getSessionUser } from "@/infra/auth/session";
@@ -61,13 +62,25 @@ async function loadPauseContext(studentId: string) {
     .maybeSingle();
   if (!student) return { error: "Student not found." as const };
 
-  const { data: subscription } = await admin
+  // Every term, then the same choice the student page makes. Not
+  // `status = ACTIVE … maybeSingle()`: after a renewal a student holds several
+  // ACTIVE rows, maybeSingle() errors on two, and the admin was told this
+  // student "has no plan to pause".
+  const { data: rows } = await admin
     .from("subscriptions")
     .select("id, status, start_date, end_date")
     .eq("tenant_id", user.tenantId)
-    .eq("student_id", student.id)
-    .eq("status", "ACTIVE")
-    .maybeSingle();
+    .eq("student_id", student.id);
+
+  const today = serviceDateOf(user.timezone, new Date());
+  const subscription = pausableSubscription(
+    (rows ?? []).map((row) => ({
+      ...row,
+      startDate: toServiceDate(row.start_date),
+      endDate: toServiceDate(row.end_date),
+    })),
+    today,
+  );
   if (!subscription) {
     return { error: "This student has no plan to pause." as const };
   }
@@ -84,8 +97,6 @@ async function loadPauseContext(studentId: string) {
     .order("start_date", { ascending: false })
     .limit(1)
     .maybeSingle();
-
-  const today = serviceDateOf(user.timezone, new Date());
 
   return { user, admin, student, subscription, pause: pause ?? null, today };
 }

@@ -18,6 +18,58 @@ import type { StudentForVerification } from "../ports/repositories";
 import { isCutFromMeal } from "./headcount.policy";
 import { activePauseOn } from "./pause.policy";
 import type { MessCutSnapshot } from "./headcount.policy";
+import type { ServiceSlot } from "./menu.policy";
+
+type SubscriptionForVerification = NonNullable<StudentForVerification["subscription"]>;
+
+/**
+ * A student's ACTIVE subscriptions, from either repository shape.
+ *
+ * Since migration 017 a renewal means several may be ACTIVE at once — including
+ * a term that has already ended, because nothing flips the column when time
+ * passes. Every caller must pick the one covering the date in question, never
+ * the first.
+ */
+export function activeSubscriptionsOf(
+  student: StudentForVerification,
+): readonly SubscriptionForVerification[] {
+  const all =
+    student.subscriptions && student.subscriptions.length > 0
+      ? student.subscriptions
+      : student.subscription
+        ? [student.subscription]
+        : [];
+  return all.filter((s) => s.status === "ACTIVE");
+}
+
+/**
+ * The meal a student's code should be for.
+ *
+ * The soonest of `candidates` (see `serviceSlotsInOrder`) that the plan covering
+ * that day actually includes. A lunch-and-dinner subscriber at breakfast time is
+ * shown their lunch code rather than refused for a meal they never bought.
+ *
+ * Falls back to the soonest candidate when no plan includes any of them, so the
+ * eligibility check then explains why — no plan, lapsed, or the wrong meals —
+ * instead of the screen showing nothing at all.
+ */
+export function mealToShow(
+  candidates: readonly ServiceSlot[],
+  subscriptions: readonly Pick<
+    SubscriptionForVerification,
+    "status" | "startDate" | "endDate" | "includedMealSlots"
+  >[],
+): ServiceSlot | undefined {
+  const included = candidates.find((candidate) =>
+    subscriptions.some(
+      (s) =>
+        s.status === "ACTIVE" &&
+        isWithinDateRange(candidate.serviceDate, s.startDate, s.endDate) &&
+        s.includedMealSlots.includes(candidate.slot),
+    ),
+  );
+  return included ?? candidates[0];
+}
 
 export interface EligibilityInput {
   readonly student: StudentForVerification;
@@ -62,15 +114,7 @@ export function checkMealEligibility(
   // GRACE deliberately passes: the grace period exists so a student with unpaid
   // dues keeps eating for a few days rather than being cut off overnight.
 
-  // Support both multi-subscription (migration 017 renewals) and legacy single-subscription mocks
-  const allSubs =
-    student.subscriptions && student.subscriptions.length > 0
-      ? student.subscriptions
-      : student.subscription
-        ? [student.subscription]
-        : [];
-
-  const activeSubs = allSubs.filter((s) => s.status === "ACTIVE");
+  const activeSubs = activeSubscriptionsOf(student);
   if (activeSubs.length === 0) {
     return err(
       domainError("NO_ACTIVE_PLAN", `${student.fullName} has no active meal plan.`, {

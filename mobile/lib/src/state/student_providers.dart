@@ -20,6 +20,19 @@ final studentMenuProvider = FutureProvider.autoDispose<List<MenuDay>>((
       .toList();
 });
 
+/// Special meals live today. Refetched on reconnect so a notice posted while
+/// the phone was offline still appears.
+final studentAnnouncementsProvider =
+    FutureProvider.autoDispose<List<Announcement>>((ref) async {
+      ref.watch(reconnectTickProvider);
+      final json = await ref
+          .watch(apiClientProvider)
+          .get('/api/student/announcements');
+      return ((json['announcements'] as List?) ?? const [])
+          .map((e) => Announcement.fromJson((e as Map).cast<String, dynamic>()))
+          .toList();
+    });
+
 final studentPlanProvider = FutureProvider.autoDispose<StudentPlan>((
   ref,
 ) async {
