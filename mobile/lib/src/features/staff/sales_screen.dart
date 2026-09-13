@@ -20,6 +20,7 @@ import '../../design/theme.dart';
 import '../../state/staff_providers.dart';
 import '../../design/components.dart';
 import '../../design/tokens.dart';
+import 'finalise_dialog.dart';
 
 class SalesScreen extends ConsumerWidget {
   const SalesScreen({super.key});
@@ -264,7 +265,7 @@ class _BillCard extends ConsumerWidget {
                   // it too, but disabling here saves a round trip at a counter.
                   onPressed: bill.lines.isEmpty
                       ? null
-                      : () => _run(context, ref, 'finalizeBill'),
+                      : () => _confirmFinalise(context, ref),
                   child: const Text('Finalise'),
                 ),
               ],
@@ -287,6 +288,24 @@ class _BillCard extends ConsumerWidget {
       ref,
       'addBillLine',
       fields: {'billId': bill.id, 'itemId': item.id, 'quantity': 1},
+    );
+  }
+
+  /// Finalising cannot be undone, and it now records whether the bill was paid
+  /// — so it is confirmed, where it used to happen on a single tap (D-29).
+  Future<void> _confirmFinalise(BuildContext context, WidgetRef ref) async {
+    final payment = await showFinaliseDialog(
+      context,
+      billNumber: bill.billNumber,
+      personName: bill.personName,
+      totalPaise: bill.totalPaise,
+    );
+    if (payment == null || !context.mounted) return;
+    await _run(
+      context,
+      ref,
+      'finalizeBill',
+      fields: {'paymentStatus': payment},
     );
   }
 

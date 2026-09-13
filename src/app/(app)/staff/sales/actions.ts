@@ -27,6 +27,7 @@ import {
   billTotalPaise,
   canCancelBill,
   canFinalizeBill,
+  finalizePaymentStatus,
   canTogglePayment,
   parsePersonName,
   planLineAddition,
@@ -338,11 +339,16 @@ export async function removeBillLine(
 export async function finalizeBill(
   billId: string,
   _prev: SaleActionState,
-  _formData: FormData,
+  formData: FormData,
 ): Promise<SaleActionState> {
   const auth = await requireCounterUser();
   if ("error" in auth) return { error: auth.error };
   const { user, admin } = auth;
+
+  // Chosen in the finalise dialog (D-29). Absent from older app builds, which
+  // finalise as Unpaid exactly as they always did.
+  const payment = finalizePaymentStatus(formData.get("paymentStatus")?.toString());
+  if (!payment.ok) return { error: payment.error.message };
 
   const loaded = await loadBill(admin, user.tenantId, billId);
   if (!loaded) return { error: "Bill not found." };
@@ -366,6 +372,11 @@ export async function finalizeBill(
         // timestamp — India is UTC+5:30, so a bill finalised at 00:30 local
         // would otherwise land in yesterday's takings.
         service_date: serviceDateOf(user.timezone, now),
+        // Set in the same statement as FINALIZED, so the
+        // paid-only-when-finalized CHECK sees the finished row, never a paid
+        // open bill.
+        payment_status: payment.value,
+        ...(payment.value === "PAID" ? { payment_updated_by: user.actorProfileId } : {}),
       },
       { count: "exact" },
     )
@@ -388,12 +399,15 @@ export async function finalizeBill(
       personName: loaded.bill.person_name,
       totalPaise: decision.value,
       lines: loaded.lines.length,
+      paymentStatus: payment.value,
     },
   });
 
   revalidatePath("/staff/sales");
   revalidatePath("/admin/counter-sales");
-  return { success: `${loaded.bill.bill_number} finalised.` };
+  return {
+    success: `${loaded.bill.bill_number} finalised as ${payment.value === "PAID" ? "paid" : "unpaid"}.`,
+  };
 }
 
 export async function cancelBill(

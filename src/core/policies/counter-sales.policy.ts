@@ -175,6 +175,26 @@ export function canFinalizeBill(
   return ok(billTotalPaise(lines));
 }
 
+/**
+ * The payment status a bill finalises with (D-29).
+ *
+ * Staff choose Paid or Unpaid in the finalise dialog, defaulting to Paid, since
+ * at a cash counter the money usually changes hands as the bill is closed. The
+ * spec originally finalised every bill as Unpaid and left the change to a later
+ * toggle only the admin screen offered.
+ *
+ * No choice at all means Unpaid. App builds released before this change send
+ * nothing, and recording those as paid would claim money the mess never
+ * confirmed receiving (rule 7: fail closed on money).
+ */
+export function finalizePaymentStatus(
+  raw: string | null | undefined,
+): Result<PaymentStatus, DomainError> {
+  if (raw === null || raw === undefined || raw === "") return ok("UNPAID");
+  if (raw === "PAID" || raw === "UNPAID") return ok(raw);
+  return err(domainError("VALIDATION_FAILED", "Choose whether the bill was paid."));
+}
+
 export function canCancelBill(bill: BillSnapshot): Result<void, DomainError> {
   if (bill.status !== "OPEN") {
     // Finalized is somebody's receipt. Undoing it is a refund, and v1 does not

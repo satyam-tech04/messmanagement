@@ -29,6 +29,7 @@ import {
   canEditBill,
   canFinalizeBill,
   canTogglePayment,
+  finalizePaymentStatus,
   lineTotalPaise,
   matchesItemSearch,
   parseCounterItemDraft,
@@ -198,6 +199,33 @@ describe("planLineAddition", () => {
 // ---------------------------------------------------------------------------
 // The state machine (spec §10)
 // ---------------------------------------------------------------------------
+
+describe("finalizePaymentStatus — paid or unpaid, chosen at finalise (D-29)", () => {
+  it("records a bill as paid when staff say it was paid", () => {
+    const r = finalizePaymentStatus("PAID");
+    expect(r.ok && r.value).toBe("PAID");
+  });
+
+  it("records a bill as unpaid when staff say it was not", () => {
+    const r = finalizePaymentStatus("UNPAID");
+    expect(r.ok && r.value).toBe("UNPAID");
+  });
+
+  it("stays unpaid when no choice was sent", () => {
+    // App builds released before this change send nothing. Marking those paid
+    // would record money the mess never confirmed receiving.
+    for (const missing of [null, undefined, ""]) {
+      const r = finalizePaymentStatus(missing);
+      expect(r.ok && r.value).toBe("UNPAID");
+    }
+  });
+
+  it("refuses anything else rather than guessing", () => {
+    const r = finalizePaymentStatus("paid-ish");
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error.code).toBe("VALIDATION_FAILED");
+  });
+});
 
 describe("bill status", () => {
   it("allows editing only while open", () => {

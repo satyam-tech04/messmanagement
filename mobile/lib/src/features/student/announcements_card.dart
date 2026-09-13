@@ -49,7 +49,10 @@ class AnnouncementsCard extends ConsumerWidget {
 
     return spacingBelow == 0
         ? card
-        : Padding(padding: EdgeInsets.only(bottom: spacingBelow), child: card);
+        : Padding(
+            padding: EdgeInsets.only(bottom: spacingBelow),
+            child: card,
+          );
   }
 }
 

@@ -208,8 +208,7 @@ the pilot runs on it:
    blockers are the ledger and Razorpay, not product questions.
 
 **Field issues, 13 Sep 2026** — seven reported from app and web testing; six fixed, the
-second-renewal hang not yet reproduced, and D-29 (paid/unpaid at finalise) awaiting a
-decision. Full status: [TRACKER.md NF-10](new_features/TRACKER.md).
+second-renewal hang not yet reproduced. Bills now choose Paid/Unpaid at finalise (D-29). Full status: [TRACKER.md NF-10](new_features/TRACKER.md).
 
 ### Deferred to the end, by the user's instruction
 

@@ -15,6 +15,8 @@ import { useActionState, useMemo, useOptimistic, useRef, useState } from "react"
 import { useFormStatus } from "react-dom";
 import {
   AlertCircle,
+  CircleCheck,
+  Clock,
   Loader2,
   Minus,
   Plus,
@@ -183,12 +185,22 @@ function ConfirmDialog({
   const action = kind === "FINALIZE" ? finalizeBill : cancelBill;
   const [state, formAction] = useActionState(action.bind(null, billId), {} as SaleActionState);
   const [open, setOpen] = useState(false);
+  // Paid by default: at a cash counter the money usually changes hands as the
+  // bill is closed (D-29). Reset on every open, so one unpaid bill does not
+  // quietly make the next one unpaid too.
+  const [payment, setPayment] = useState<"PAID" | "UNPAID">("PAID");
   if (state.success && open) setOpen(false);
 
   const finalising = kind === "FINALIZE";
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (next) setPayment("PAID");
+        setOpen(next);
+      }}
+    >
       <DialogTrigger
         render={
           <Button
@@ -226,6 +238,68 @@ function ConfirmDialog({
               <span className="text-muted-foreground text-sm">Total</span>
               <span className="text-xl font-semibold tabular-nums">{rupees(total)}</span>
             </div>
+            {finalising ? (
+              <div className="space-y-2">
+                <input type="hidden" name="paymentStatus" value={payment} />
+                <p id={`payment-${billId}`} className="text-sm font-medium">
+                  Payment
+                </p>
+                <div
+                  role="radiogroup"
+                  aria-labelledby={`payment-${billId}`}
+                  className="grid grid-cols-2 gap-2"
+                >
+                  {(
+                    [
+                      { value: "PAID", label: "Paid", hint: "Money received now" },
+                      { value: "UNPAID", label: "Unpaid", hint: "To be collected later" },
+                    ] as const
+                  ).map((option) => {
+                    const selected = payment === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        onClick={() => setPayment(option.value)}
+                        className={cn(
+                          "flex items-start gap-2 rounded-lg border px-3 py-2.5 text-left text-sm transition-colors",
+                          "focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none",
+                          selected
+                            ? option.value === "PAID"
+                              ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40"
+                              : "border-amber-500 bg-amber-50 dark:bg-amber-950/40"
+                            : "hover:bg-muted/50",
+                        )}
+                      >
+                        {option.value === "PAID" ? (
+                          <CircleCheck
+                            className={cn(
+                              "mt-0.5 size-4 shrink-0",
+                              selected ? "text-emerald-600" : "text-muted-foreground",
+                            )}
+                            aria-hidden="true"
+                          />
+                        ) : (
+                          <Clock
+                            className={cn(
+                              "mt-0.5 size-4 shrink-0",
+                              selected ? "text-amber-600" : "text-muted-foreground",
+                            )}
+                            aria-hidden="true"
+                          />
+                        )}
+                        <span>
+                          <span className="block font-medium">{option.label}</span>
+                          <span className="text-muted-foreground block text-xs">{option.hint}</span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
             <Feedback state={state} />
           </div>
           <DialogFooter>
@@ -234,7 +308,13 @@ function ConfirmDialog({
             </DialogClose>
             <Button type="submit" variant={finalising ? "default" : "destructive"}>
               <Submitting
-                idle={finalising ? "Finalise bill" : "Cancel bill"}
+                idle={
+                  finalising
+                    ? payment === "PAID"
+                      ? "Finalise as paid"
+                      : "Finalise as unpaid"
+                    : "Cancel bill"
+                }
                 busy={finalising ? "Finalising…" : "Cancelling…"}
               />
             </Button>

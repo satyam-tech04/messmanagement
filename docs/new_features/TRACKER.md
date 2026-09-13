@@ -287,7 +287,7 @@ first; the fixes below have tests written before the change.
 | 2   | QR not shown when a plan is added with today's date     | Dates were fine. The code targeted the meal **being served**, not one the plan **includes** — a lunch-and-dinner plan at breakfast read "No active plan".             | ✅ fixed (D-27) |
 | 3   | Remove per-meal price from the student section          | Shown on web `/student/plan` and the app plan screen.                                                                                                                 | ✅ removed      |
 | 4   | Special-meal announcements visible in the app?          | **No.** Web student home only; the app had no endpoint or screen.                                                                                                     | ✅ fixed        |
-| 5   | Finalised bills saved as Unpaid                         | **Intentional** per billing spec §10 / A10. Gap: staff have no way to mark a bill paid — only `/admin/counter-sales`.                                                 | ⏳ D-29 open    |
+| 5   | Finalised bills saved as Unpaid                         | Was intentional per billing spec §10 / A10, but staff had no way to mark a bill paid. Now chosen in the finalise dialog, default **Paid**.                            | ✅ fixed (D-29) |
 | 6   | After renewal the existing plan breaks; 2nd renew hangs | Two more `status = ACTIVE … maybeSingle()` reads broke on a renewed student: web student home plan card, and the pause actions. The hang itself not reproduced.       | 🚧 partly fixed |
 | 7   | Delete a scheduled meal plan                            | No control existed for an upcoming subscription.                                                                                                                      | ✅ added (D-28) |
 
@@ -310,7 +310,6 @@ first; the fixes below have tests written before the change.
 - **Pause × renewal** — pausing a term extends its end date; with a renewal right after it
   the extension overlaps the next term and the DB constraint refuses it with a raw error.
   The pause policy does not yet know about the following term.
-- **D-29** below.
 
 ### NF-9 — Import a menu from a spreadsheet ✅
 
@@ -420,7 +419,7 @@ there once resolved.
 | D-26  | Extras block becomes counter items          | NF-9   | ✅ resolved |
 | D-27  | Which meal a student's QR is for            | NF-10  | ✅ resolved |
 | D-28  | Deleting an upcoming subscription           | NF-10  | ✅ resolved |
-| D-29  | Paid / Unpaid chosen at finalise?           | NF-10  | ⏳ open     |
+| D-29  | Paid / Unpaid chosen at finalise?           | NF-10  | ✅ resolved |
 
 ### D-27 — The QR is for the soonest meal the plan includes
 
@@ -437,12 +436,22 @@ money against it. An upcoming one may be deleted, with a reason and the full row
 `audit_log` first. Refused while it has live absence requests or an active pause, because
 both cascade on delete and would vanish silently.
 
-### D-29 — Should staff choose Paid / Unpaid when finalising a bill? ⏳
+### D-29 — Staff choose Paid or Unpaid when finalising, defaulting to Paid
 
-Today a bill always finalises as Unpaid (spec §10, A10) and only the admin counter-sales page
-can change it — the staff web counter and the app have no control, although the spec lets
-staff change it. Options: (a) Paid/Unpaid choice in the finalise dialog, defaulting to Paid;
-(b) keep finalise as is and add a Mark paid control to staff's finalised bills; (c) both.
+Decided by the owner, 13 Sep 2026, option (a). Deviates from billing spec §10 / A10, where
+every bill finalised as Unpaid and only a later toggle — offered on the admin screen alone —
+could change it.
+
+The finalise dialog on the web counter and the app now asks, with **Paid** pre-selected:
+at a cash counter the money nearly always changes hands as the bill is closed. The status
+is written in the same UPDATE as `FINALIZED`, so the paid-only-when-finalised CHECK never
+sees a paid open bill, and it is recorded in the finalise audit entry.
+
+A request with **no** choice finalises as Unpaid. App builds released before this change
+send nothing, and marking those paid would record money the mess never confirmed receiving
+(rule 7). The app also gains a confirmation it never had: finalising was a single tap.
+
+The admin toggle on `/admin/counter-sales` is unchanged, for correcting a bill later.
 
 ### D-15 — A pause may start today, never in the past
 
