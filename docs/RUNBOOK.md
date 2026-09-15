@@ -157,6 +157,16 @@ Only once **every mess on this deployment** has students and counter staff on th
 
 To undo during service, set it back to `false` and redeploy — no data changes either way.
 
+### 6a½. Link previews (share poster, logo, title)
+
+A shared link shows the poster from `src/app/opengraph-image.tsx` (rendered by
+`src/app/_og/poster.tsx`), the title and description from `src/lib/site.ts`, and the logo
+from `src/app/icon.png`. Preview URLs must be absolute: `resolveSiteUrl` uses
+`NEXT_PUBLIC_APP_URL` unless it is localhost, then Vercel's production domain. **If you add
+a custom domain, set `NEXT_PUBLIC_APP_URL` to it** and redeploy. After a deploy, check with
+<https://www.opengraph.xyz> or by pasting the URL into WhatsApp. WhatsApp caches previews
+per URL for days — test a changed poster with `/?v=2`.
+
 ### 6b. Entering a student's account as the operator (D-31)
 
 `superuser` → **Student** → search → **Enter as** → confirm. A banner shows while inside;

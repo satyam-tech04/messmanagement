@@ -24,7 +24,7 @@ export function AppOnlyNotice({
       <AuroraBackdrop />
       <div className="bg-card/80 relative z-10 w-full max-w-md space-y-6 rounded-3xl border p-8 text-center shadow-xl backdrop-blur-xl">
         <div className="flex justify-center">
-          <AuroraMark className="size-12 rounded-2xl" />
+          <AuroraMark className="h-14" />
         </div>
         <div className="space-y-3">
           <AuroraEyebrow className="justify-center">{roleLabel(role)}</AuroraEyebrow>

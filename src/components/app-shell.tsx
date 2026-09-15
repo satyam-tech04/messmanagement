@@ -16,7 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { AuroraBackdrop, AuroraMark } from "@/components/aurora-backdrop";
+import { AuroraBackdrop } from "@/components/aurora-backdrop";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { navigationForPath, roleLabel, type NavFeatures, type NavSection } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
@@ -167,10 +167,7 @@ export function AppShell({
       />
       <div className="min-w-0">
         <p className="font-heading truncate text-sm font-bold tracking-tight">{user.tenantName}</p>
-        <p className="text-muted-foreground flex items-center gap-1.5 truncate font-mono text-[10px] tracking-[0.16em] uppercase">
-          <AuroraMark className="size-3 rounded-[3px]" />
-          {APP_NAME}
-        </p>
+        <p className="text-muted-foreground truncate text-xs">{APP_NAME}</p>
       </div>
     </div>
   );

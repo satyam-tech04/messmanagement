@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 /**
@@ -72,23 +73,21 @@ export function AuroraBackdrop({
   );
 }
 
-/** The brand tile: the gradient square that stands beside the wordmark. */
+/**
+ * The MealAdda logo — the blue cloud with a spoon and fork — the same asset as
+ * the favicon, app icon and share poster, so the brand is one mark everywhere.
+ * Sized by `className` (height); the mark is wider than it is tall.
+ */
 export function AuroraMark({ className }: { className?: string }) {
   return (
-    <span
-      aria-hidden="true"
-      className={cn(
-        "aurora-fill relative inline-flex size-8 shrink-0 items-center justify-center rounded-[9px]",
-        className,
-      )}
-    >
-      {/* A plate seen from above with a scan line across it: a meal, verified. */}
-      <svg viewBox="0 0 24 24" className="size-[62%]" fill="none" stroke="currentColor">
-        <circle cx="12" cy="12" r="8" strokeWidth="2" />
-        <circle cx="12" cy="12" r="4" strokeWidth="1.6" opacity="0.7" />
-        <path d="M3 12h18" strokeWidth="2" strokeLinecap="round" />
-      </svg>
-    </span>
+    <Image
+      src="/brand/mark.png"
+      alt=""
+      width={256}
+      height={218}
+      priority
+      className={cn("h-9 w-auto shrink-0 object-contain", className)}
+    />
   );
 }
 

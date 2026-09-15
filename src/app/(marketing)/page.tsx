@@ -47,10 +47,10 @@ import {
 } from "./content";
 import { ScrollProgress } from "./scroll-progress";
 
+// Inherits the site-wide title, description, Open Graph and share poster from
+// the root layout. Only the canonical URL is page-specific.
 export const metadata: Metadata = {
-  title: `${APP_NAME} — Hostel mess management, from menu to plate`,
-  description:
-    "MealAdda runs your hostel mess: weekly menus, meal plans, a QR meal pass for every student and a live count so the kitchen cooks for who's actually eating.",
+  alternates: { canonical: "/" },
 };
 
 const AUDIENCE_ICONS: Record<Audience["icon"], typeof ChefHat> = {
@@ -601,7 +601,7 @@ export default function LandingPage() {
         <footer className="text-muted-foreground border-t">
           <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-6 px-4 py-10 text-sm sm:px-8">
             <div className="flex items-center gap-2.5">
-              <AuroraMark className="size-6 rounded-md" />
+              <AuroraMark className="h-6" />
               <span className="text-foreground font-heading font-black">{APP_NAME}</span>
               <span className="hidden sm:inline">· Hostel mess management</span>
             </div>

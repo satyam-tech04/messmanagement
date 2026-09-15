@@ -23,6 +23,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { persistentCookieOptions } from "./infra/auth/session-lifetime";
 import { NextResponse, type NextRequest } from "next/server";
+import { isPublicMetadataPath } from "./lib/site";
 
 /** Reachable without a session. Everything else requires one. */
 const PUBLIC_PATHS = [
@@ -90,8 +91,12 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   // The landing page is public at exactly "/", never as a prefix — every path
   // starts with a slash.
+  // Share poster, manifest and robots are fetched by crawlers with no session;
+  // redirecting them to /login is what turns a link preview into a bare URL.
   const isPublic =
-    pathname === "/" || PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+    pathname === "/" ||
+    isPublicMetadataPath(pathname) ||
+    PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
   const isSignedIn = Boolean(claims?.sub);
 
   // --- Unauthenticated: the landing page and public paths render; everything else goes to /login ---

@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
 import { APP_NAME } from "@/lib/app-info";
+import { SITE_DESCRIPTION, SITE_KEYWORDS, SITE_TITLE, resolveSiteUrl } from "@/lib/site";
 import "./globals.css";
 
 /**
@@ -48,12 +49,42 @@ const archivo = Archivo({
 });
 
 export const metadata: Metadata = {
+  // Absolute, so the share poster and icons resolve for WhatsApp, Slack and X.
+  metadataBase: resolveSiteUrl({
+    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+    VERCEL_PROJECT_PRODUCTION_URL: process.env.VERCEL_PROJECT_PRODUCTION_URL,
+  }),
   title: {
-    default: APP_NAME,
+    default: SITE_TITLE,
     template: "%s",
   },
-  description:
-    "MealAdda runs hostel mess operations — signed QR meal attendance, subscriptions, menus and a live headcount the kitchen can cook to.",
+  description: SITE_DESCRIPTION,
+  applicationName: APP_NAME,
+  keywords: SITE_KEYWORDS,
+  category: "food",
+  creator: APP_NAME,
+  publisher: APP_NAME,
+  // The poster itself comes from `opengraph-image.tsx` / `twitter-image.tsx`,
+  // which Next attaches to every route under this layout.
+  openGraph: {
+    type: "website",
+    siteName: APP_NAME,
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    locale: "en_IN",
+    url: "/",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+  },
+  appleWebApp: {
+    capable: true,
+    title: APP_NAME,
+    statusBarStyle: "default",
+  },
+  formatDetection: { telephone: false, email: false, address: false },
 };
 
 export const viewport: Viewport = {
