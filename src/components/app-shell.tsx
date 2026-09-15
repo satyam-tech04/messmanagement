@@ -16,7 +16,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { navigationFor, roleLabel, type NavFeatures, type NavSection } from "@/lib/navigation";
+import { AuroraBackdrop, AuroraMark } from "@/components/aurora-backdrop";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { navigationForPath, roleLabel, type NavFeatures, type NavSection } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 import type { UserRole } from "@/core/domain/enums";
 import { APP_NAME } from "@/lib/app-info";
@@ -48,7 +50,7 @@ function NavLinks({
       {sections.map((section, i) => (
         <div key={section.heading ?? i} className="space-y-1">
           {section.heading ? (
-            <p className="text-muted-foreground px-3 pb-1 text-xs font-medium tracking-wide uppercase">
+            <p className="text-muted-foreground px-3 pb-1 font-mono text-[10px] font-medium tracking-[0.18em] uppercase">
               {section.heading}
             </p>
           ) : null}
@@ -61,6 +63,7 @@ function NavLinks({
               (item.href !== "/admin" &&
                 item.href !== "/staff" &&
                 item.href !== "/student" &&
+                item.href !== "/superuser" &&
                 pathname.startsWith(`${item.href}/`));
 
             if (item.disabled) {
@@ -88,14 +91,28 @@ function NavLinks({
                 onClick={onNavigate}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                  "relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors",
                   "focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none",
                   active
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                    ? "bg-accent text-accent-foreground"
+                    : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
                 )}
               >
-                <NavIcon name={item.icon} className="size-4 shrink-0" />
+                {/* The Aurora rail marks the current page in colour AND shape,
+                    so it survives a colour-vision deficiency. */}
+                {active ? (
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-y-1.5 left-0 w-[3px] rounded-full"
+                    style={{
+                      background: "linear-gradient(180deg, var(--aurora-1), var(--aurora-2))",
+                    }}
+                  />
+                ) : null}
+                <NavIcon
+                  name={item.icon}
+                  className={cn("size-4 shrink-0", active && "text-aurora-1")}
+                />
                 {item.label}
               </Link>
             );
@@ -104,6 +121,11 @@ function NavLinks({
       ))}
     </nav>
   );
+}
+
+export interface AppShellImpersonation {
+  readonly studentName: string;
+  readonly exitAction: () => Promise<void>;
 }
 
 export interface AppShellUser {
@@ -116,17 +138,20 @@ export function AppShell({
   user,
   features,
   signOutAction,
+  impersonation,
   children,
 }: {
   user: AppShellUser;
   /** Tenant toggles that decide which optional links appear. */
   features?: NavFeatures;
   signOutAction: () => Promise<void>;
+  /** Present while the platform operator is inside a student's account. */
+  impersonation?: AppShellImpersonation;
   children: ReactNode;
 }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const sections = navigationFor(user.role, features);
+  const sections = navigationForPath(user.role, pathname, features);
 
   const brand = (
     <div className="flex items-center gap-2.5">
@@ -141,8 +166,11 @@ export function AppShell({
         priority
       />
       <div className="min-w-0">
-        <p className="truncate text-sm font-semibold tracking-tight">{user.tenantName}</p>
-        <p className="text-muted-foreground truncate text-xs">{APP_NAME}</p>
+        <p className="font-heading truncate text-sm font-bold tracking-tight">{user.tenantName}</p>
+        <p className="text-muted-foreground flex items-center gap-1.5 truncate font-mono text-[10px] tracking-[0.16em] uppercase">
+          <AuroraMark className="size-3 rounded-[3px]" />
+          {APP_NAME}
+        </p>
       </div>
     </div>
   );
@@ -159,7 +187,7 @@ export function AppShell({
         aria-label="Account menu"
       >
         <Avatar className="size-8">
-          <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
+          <AvatarFallback className="aurora-fill text-xs font-semibold">
             {initialsOf(user.fullName)}
           </AvatarFallback>
         </Avatar>
@@ -186,11 +214,15 @@ export function AppShell({
           <p className="text-muted-foreground text-xs">{roleLabel(user.role)}</p>
         </div>
         <DropdownMenuSeparator />
-        <DropdownMenuItem render={<Link href="/change-password" />}>
-          <Icons.KeyRound className="size-4" aria-hidden="true" />
-          Change password
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
+        {impersonation ? null : (
+          <>
+            <DropdownMenuItem render={<Link href="/change-password" />}>
+              <Icons.KeyRound className="size-4" aria-hidden="true" />
+              Change password
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
 
         {/* The menu item IS the submit button, so sign-out works without
             JavaScript and keeps the item's keyboard and focus behaviour. */}
@@ -204,28 +236,72 @@ export function AppShell({
     </DropdownMenu>
   );
 
+  const banner = impersonation ? (
+    <div
+      role="status"
+      className="aurora-fill sticky top-0 z-40 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 px-4 py-2 text-center text-sm font-medium"
+    >
+      <span className="inline-flex items-center gap-2">
+        <Icons.Eye className="size-4" aria-hidden="true" />
+        Platform admin view — you are inside {impersonation.studentName}&rsquo;s account
+      </span>
+      <form action={impersonation.exitAction}>
+        <button
+          type="submit"
+          className="rounded-full bg-black/15 px-3 py-1 text-xs font-bold tracking-wide uppercase transition-colors hover:bg-black/25 focus-visible:ring-2 focus-visible:ring-current focus-visible:outline-none"
+        >
+          Exit
+        </button>
+      </form>
+    </div>
+  ) : null;
+
   return (
-    <div className="bg-muted/30 min-h-svh">
+    <div className="relative min-h-svh">
+      <AuroraBackdrop intensity="subtle" />
+      {banner}
+
       {/* Desktop sidebar */}
-      <aside className="border-border bg-background fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r lg:flex">
-        <div className="border-border flex h-16 items-center border-b px-4">{brand}</div>
+      <aside
+        className={cn(
+          "border-sidebar-border bg-sidebar/85 fixed bottom-0 left-0 z-30 hidden w-64 flex-col border-r backdrop-blur-xl lg:flex",
+          impersonation ? "top-9" : "top-0",
+        )}
+      >
+        <div className="border-sidebar-border flex h-16 items-center border-b px-4">{brand}</div>
         <div className="flex-1 overflow-y-auto p-3">
           <NavLinks sections={sections} pathname={pathname} />
         </div>
-        <div className="border-border border-t p-2">{accountMenu(false)}</div>
+        <div className="border-sidebar-border space-y-2 border-t p-2">
+          <div className="flex items-center justify-between px-2 pt-1">
+            <span className="text-muted-foreground font-mono text-[10px] tracking-[0.16em] uppercase">
+              Theme
+            </span>
+            <ThemeToggle />
+          </div>
+          {accountMenu(false)}
+        </div>
       </aside>
 
       {/* Mobile top bar */}
-      <header className="border-border bg-background/95 sticky top-0 z-20 flex h-16 items-center gap-3 border-b px-4 backdrop-blur lg:hidden">
+      <header
+        className={cn(
+          "border-border sticky z-20 flex h-16 items-center gap-3 border-b px-4 backdrop-blur-xl lg:hidden",
+          impersonation ? "top-9" : "top-0",
+        )}
+        style={{ background: "var(--glass-header)" }}
+      >
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetTrigger
             render={<Button variant="ghost" size="icon" aria-label="Open navigation" />}
           >
             <Icons.Menu className="size-5" aria-hidden="true" />
           </SheetTrigger>
-          <SheetContent side="left" className="w-72 p-0">
+          <SheetContent side="left" className="bg-sidebar w-72 p-0">
             <SheetTitle className="sr-only">Navigation</SheetTitle>
-            <div className="border-border flex h-16 items-center border-b px-4">{brand}</div>
+            <div className="border-sidebar-border flex h-16 items-center border-b px-4">
+              {brand}
+            </div>
             <div className="flex-1 overflow-y-auto p-3">
               <NavLinks
                 sections={sections}
@@ -233,7 +309,15 @@ export function AppShell({
                 onNavigate={() => setMobileOpen(false)}
               />
             </div>
-            <div className="border-border border-t p-2">{accountMenu(false)}</div>
+            <div className="border-sidebar-border space-y-2 border-t p-2">
+              <div className="flex items-center justify-between px-2 pt-1">
+                <span className="text-muted-foreground font-mono text-[10px] tracking-[0.16em] uppercase">
+                  Theme
+                </span>
+                <ThemeToggle />
+              </div>
+              {accountMenu(false)}
+            </div>
           </SheetContent>
         </Sheet>
 
@@ -245,7 +329,7 @@ export function AppShell({
         {accountMenu(true)}
       </header>
 
-      <main className="lg:pl-64">
+      <main className="relative z-10 lg:pl-64">
         <div className="mx-auto w-full max-w-[1600px] p-4 sm:p-6 lg:p-8">{children}</div>
       </main>
     </div>

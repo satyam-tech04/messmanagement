@@ -36,6 +36,7 @@ const PUBLIC_PATHS = [
 
 /** Route prefix → roles allowed to enter it. */
 const ROLE_GATES: ReadonlyArray<{ prefix: string; allow: readonly string[] }> = [
+  { prefix: "/superuser", allow: ["SUPER_ADMIN"] },
   { prefix: "/admin", allow: ["ADMIN", "SUPER_ADMIN"] },
   // Admins can operate a counter; that is a real need during a rush, and the
   // manual-override audit trail records who actually did it.
@@ -46,7 +47,9 @@ const ROLE_GATES: ReadonlyArray<{ prefix: string; allow: readonly string[] }> = 
 function homeFor(role: string | undefined): string {
   if (role === "STUDENT") return "/student";
   if (role === "STAFF") return "/staff";
-  if (role === "ADMIN" || role === "SUPER_ADMIN") return "/admin";
+  if (role === "ADMIN") return "/admin";
+  // The operator chooses a persona first: admin, counter, or a student.
+  if (role === "SUPER_ADMIN") return "/superuser";
   return "/login";
 }
 
@@ -85,10 +88,13 @@ export async function proxy(request: NextRequest) {
   const claims = data?.claims as { sub?: string; user_role?: string } | undefined;
 
   const { pathname } = request.nextUrl;
-  const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+  // The landing page is public at exactly "/", never as a prefix — every path
+  // starts with a slash.
+  const isPublic =
+    pathname === "/" || PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
   const isSignedIn = Boolean(claims?.sub);
 
-  // --- Unauthenticated: everything except public paths goes to /login ---
+  // --- Unauthenticated: the landing page and public paths render; everything else goes to /login ---
   if (!isSignedIn) {
     if (isPublic) return response;
 

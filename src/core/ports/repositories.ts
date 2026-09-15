@@ -16,6 +16,7 @@ import type { TenantSettings } from "../domain/tenant-context";
 import type { ServiceDate } from "../time";
 import type { MessCutSnapshot, SubscriberSnapshot } from "../policies/headcount.policy";
 import type { SwitchableTenant } from "../policies/tenant-switch.policy";
+import type { ImpersonationCandidate } from "../policies/operator-access.policy";
 
 export interface SubscriptionForVerification {
   readonly id: string;
@@ -152,6 +153,17 @@ export interface TenantDirectory {
    * pointing a real admin or a student at another hostel would be unrecoverable.
    */
   moveOperator(profileId: string, tenantId: string): Promise<void>;
+}
+
+/**
+ * Reads the account the platform operator asked to enter as a student.
+ *
+ * Implementations MUST filter by `tenantId` in the query itself. The read runs
+ * with the service role (it needs the auth address), so that filter is what
+ * stops an id from another mess resolving at all.
+ */
+export interface ImpersonationDirectory {
+  findStudentAccount(tenantId: string, profileId: string): Promise<ImpersonationCandidate | null>;
 }
 
 export interface MessCutRepository {

@@ -9,7 +9,12 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
-  --font-heading: var(--font-sans);
+  --font-heading: var(--font-display);
+  --color-aurora-1: var(--aurora-1);
+  --color-aurora-2: var(--aurora-2);
+  --color-aurora-3: var(--aurora-3);
+  --color-aurora-on: var(--aurora-on);
+  --color-live: var(--live);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -48,73 +53,119 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/*
+ * Aurora Depth — the MealAdda palette (DESIGN.md §0).
+ *
+ * Two schemes, one product:
+ *   light → Cool Mist & Indigo   (a mess office at noon, dense tables, print-like)
+ *   dark  → Obsidian Teal         (the counter at dinner, the student's phone at 9pm)
+ *
+ * Everything below is a token. A screen names `bg-primary` or `var(--aurora-1)`,
+ * never a hex value, so a palette change stays a one-file edit. Status colours
+ * (emerald / amber / red / slate) are deliberately NOT part of the brand palette —
+ * "blocked" must stay red whichever theme is showing.
+ *
+ * The aurora tokens (`--aurora-*`, `--grid-line`, `--glow`) drive the ambient
+ * backdrop and the gradient accents; the rest are the shadcn contract.
+ */
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --background: #eef1f6;
+  --foreground: #141728;
+  --card: #ffffff;
+  --card-foreground: #141728;
+  --popover: #ffffff;
+  --popover-foreground: #141728;
+  --primary: #3b3fa1;
+  --primary-foreground: #f4f5ff;
+  --secondary: #e4e7f3;
+  --secondary-foreground: #262a72;
+  --muted: #e6e9f1;
+  --muted-foreground: #5c6280;
+  --accent: #e3e5f6;
+  --accent-foreground: #262a72;
+  --destructive: #c0283a;
+  --border: #d6dae5;
+  --input: #cdd2de;
+  --ring: #6a6fd6;
+  --chart-1: #3b3fa1;
+  --chart-2: #6a6fd6;
+  --chart-3: #2b86b8;
+  --chart-4: #2f7a55;
+  --chart-5: #b4552b;
+  --radius: 0.75rem;
+  --sidebar: #f7f8fc;
+  --sidebar-foreground: #141728;
+  --sidebar-primary: #3b3fa1;
+  --sidebar-primary-foreground: #f4f5ff;
+  --sidebar-accent: #e3e5f6;
+  --sidebar-accent-foreground: #262a72;
+  --sidebar-border: #d6dae5;
+  --sidebar-ring: #6a6fd6;
+
+  /* Aurora */
+  --aurora-1: #3b3fa1; /* primary accent */
+  --aurora-2: #6a6fd6; /* gradient partner */
+  --aurora-3: #262a72; /* eyebrow text, deep accent */
+  --aurora-on: #f4f5ff; /* text on the gradient */
+  --orb-1: rgba(59, 63, 161, 0.14);
+  --orb-2: rgba(106, 111, 214, 0.14);
+  --orb-3: rgba(150, 170, 220, 0.18);
+  --grid-line: rgba(20, 23, 40, 0.05);
+  --chip: rgba(59, 63, 161, 0.06);
+  --chip-border: rgba(20, 23, 40, 0.14);
+  --glass: rgba(255, 255, 255, 0.78);
+  --glass-header: rgba(238, 241, 246, 0.8);
+  --glow: rgba(59, 63, 161, 0.28);
+  --live: #2f7a55;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: #05070a;
+  --foreground: #edf2f4;
+  --card: #0c1015;
+  --card-foreground: #edf2f4;
+  --popover: #0e1318;
+  --popover-foreground: #edf2f4;
+  --primary: #5fd0c4;
+  --primary-foreground: #04171a;
+  --secondary: #121820;
+  --secondary-foreground: #edf2f4;
+  --muted: #11161c;
+  --muted-foreground: #8d9ba5;
+  --accent: #0f2224;
+  --accent-foreground: #9ff3e4;
+  --destructive: #ff6b7a;
+  --border: #1c2228;
+  --input: #252c33;
+  --ring: #5fd0c4;
+  --chart-1: #5fd0c4;
+  --chart-2: #2f8fd6;
+  --chart-3: #8f7bff;
+  --chart-4: #8ce7ad;
+  --chart-5: #e0c188;
+  --sidebar: #080b0f;
+  --sidebar-foreground: #edf2f4;
+  --sidebar-primary: #5fd0c4;
+  --sidebar-primary-foreground: #04171a;
+  --sidebar-accent: #0f2224;
+  --sidebar-accent-foreground: #9ff3e4;
+  --sidebar-border: #1c2228;
+  --sidebar-ring: #5fd0c4;
+
+  --aurora-1: #5fd0c4;
+  --aurora-2: #2f8fd6;
+  --aurora-3: #9ff3e4;
+  --aurora-on: #04171a;
+  --orb-1: rgba(47, 143, 214, 0.34);
+  --orb-2: rgba(95, 208, 196, 0.26);
+  --orb-3: rgba(124, 92, 255, 0.22);
+  --grid-line: rgba(255, 255, 255, 0.035);
+  --chip: rgba(255, 255, 255, 0.05);
+  --chip-border: rgba(255, 255, 255, 0.16);
+  --glass: rgba(12, 16, 21, 0.72);
+  --glass-header: rgba(5, 7, 10, 0.6);
+  --glow: rgba(95, 208, 196, 0.5);
+  --live: #8ce7ad;
 }
 
 @layer base {
@@ -159,7 +210,12 @@
   h2,
   h3,
   h4 {
+    font-family: var(--font-display), var(--font-sans), system-ui, sans-serif;
     letter-spacing: -0.02em;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--aurora-1) 28%, transparent);
   }
 }
 
@@ -229,5 +285,145 @@
   .tap-hint-ripple,
   .tap-hint-ripple-delayed {
     display: none;
+  }
+}
+
+/*
+ * Aurora Depth — ambient backdrop and accents.
+ *
+ * Plain classes rather than Tailwind utilities for the same reason as the tap
+ * hint above: they are compound (gradients, masks, keyframes) and must honour
+ * reduced motion in one place.
+ */
+@keyframes aurora-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(0, -30px, 0) scale(1.06);
+  }
+}
+
+@keyframes aurora-rise {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes aurora-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.5);
+  }
+}
+
+@keyframes aurora-sweep {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
+}
+
+@keyframes aurora-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes aurora-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.aurora-orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(30px);
+  animation: aurora-float 19s ease-in-out infinite;
+}
+
+.aurora-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 80px 80px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 30%, #000, transparent);
+}
+
+/* The signature gradient: headline words, the brand tile, primary CTAs. */
+.aurora-text {
+  background: linear-gradient(100deg, var(--aurora-1), var(--aurora-2) 70%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.aurora-fill {
+  background: linear-gradient(135deg, var(--aurora-1), var(--aurora-2));
+  color: var(--aurora-on);
+}
+
+.aurora-glow {
+  box-shadow: 0 18px 46px -18px var(--glow);
+}
+
+.aurora-glass {
+  background: var(--glass);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.aurora-chip {
+  background: var(--chip);
+  border: 1px solid var(--chip-border);
+}
+
+.aurora-rise {
+  animation: aurora-rise 0.9s cubic-bezier(0.16, 0.8, 0.3, 1) both;
+}
+
+.aurora-pulse {
+  animation: aurora-pulse 2.4s ease-in-out infinite;
+}
+
+.aurora-sweep {
+  animation: aurora-sweep 4.5s linear infinite;
+}
+
+.aurora-marquee {
+  animation: aurora-marquee 32s linear infinite;
+}
+
+.aurora-spin {
+  animation: aurora-spin 18s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora-orb,
+  .aurora-rise,
+  .aurora-pulse,
+  .aurora-sweep,
+  .aurora-marquee,
+  .aurora-spin {
+    animation: none;
   }
 }

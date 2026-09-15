@@ -11,7 +11,12 @@ import { login, type LoginState } from "./actions";
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" size="lg" disabled={pending} className="h-12 w-full text-base">
+    <Button
+      type="submit"
+      size="lg"
+      disabled={pending}
+      className="aurora-fill aurora-glow h-12 w-full rounded-xl text-base font-bold hover:opacity-90"
+    >
       {pending ? (
         <>
           <Loader2 className="size-4 animate-spin" aria-hidden="true" />
@@ -27,7 +32,7 @@ function SubmitButton() {
   );
 }
 
-export function LoginForm({ next }: { next?: string }) {
+export function LoginForm({ next, appOnly = false }: { next?: string; appOnly?: boolean }) {
   const [state, formAction] = useActionState<LoginState, FormData>(login, {});
   const [showPassword, setShowPassword] = useState(false);
 
@@ -36,28 +41,30 @@ export function LoginForm({ next }: { next?: string }) {
       {next ? <input type="hidden" name="next" value={next} /> : null}
 
       <div className="space-y-2">
-        <Label htmlFor="identifier">Mobile number</Label>
+        <Label htmlFor="identifier">{appOnly ? "Email" : "Email or mobile number"}</Label>
         <Input
           id="identifier"
           name="identifier"
           type="text"
           required
           autoFocus
-          // `tel` rather than `numeric`: students type this on a phone, and the
-          // telephone keypad is the one that offers + and the separators they
-          // are used to seeing in their own number.
-          inputMode="tel"
+          // `email` once the website is admin-only. Before that, `text`: a
+          // student typing a mobile number and an admin typing an address share
+          // this field, and the email keypad hides digits on some phones.
+          inputMode={appOnly ? "email" : "text"}
           autoComplete="username"
           autoCapitalize="none"
           autoCorrect="off"
           spellCheck={false}
-          placeholder="9876543210"
+          placeholder={appOnly ? "admin@yourmess.com" : "admin@yourmess.com or 9876543210"}
           aria-describedby="identifier-hint"
           aria-invalid={state.error ? true : undefined}
-          className="h-12 text-base"
+          className="bg-background/60 h-12 rounded-xl text-base"
         />
         <p id="identifier-hint" className="text-muted-foreground text-xs">
-          Staff and admins: use your email address instead.
+          {appOnly
+            ? "Students and counter staff sign in on the app, not here."
+            : "Students sign in with the mobile number the mess has on file."}
         </p>
       </div>
 
@@ -71,7 +78,7 @@ export function LoginForm({ next }: { next?: string }) {
             required
             autoComplete="current-password"
             aria-invalid={state.error ? true : undefined}
-            className="h-12 pr-12 text-base"
+            className="bg-background/60 h-12 rounded-xl pr-12 text-base"
           />
           <button
             type="button"

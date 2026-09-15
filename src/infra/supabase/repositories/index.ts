@@ -68,6 +68,7 @@ export function createRepositories(
 }
 
 export { rateLimitBuckets } from "./rate-limiter";
+export { SupabaseImpersonationDirectory } from "./impersonation.repository";
 export {
   SupabaseAttendanceRepository,
   SupabaseAuditLogRepository,

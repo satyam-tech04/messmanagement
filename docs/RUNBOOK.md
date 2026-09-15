@@ -145,6 +145,25 @@ Set every variable from `.env.example` in the Vercel project settings. `NEXT_PUB
 values are embedded in the client bundle at build time — changing one requires a redeploy,
 not just an env update.
 
+### 6a. Making the website admin-only (D-30)
+
+Only once **every mess on this deployment** has students and counter staff on the app:
+
+1. Vercel → Project → Settings → Environment Variables → `WEB_SIGNIN_APP_ONLY` = `true`
+   (Production).
+2. Redeploy (server env is read at boot).
+3. Check: a staff login on `/login` shows "Students and counter staff sign in on the
+   MealAdda app"; an admin still lands on `/admin`.
+
+To undo during service, set it back to `false` and redeploy — no data changes either way.
+
+### 6b. Entering a student's account as the operator (D-31)
+
+`superuser` → **Student** → search → **Enter as** → confirm. A banner shows while inside;
+**Exit** returns to `/superuser`. Switch mess first to reach another hostel's students.
+Visits appear in that mess's audit log as `IMPERSONATION_START` / `IMPERSONATION_END`.
+If Exit ever lands on `/login`, the way back had expired (two hours) — sign in again.
+
 ---
 
 ## 7. Health checks after any deploy

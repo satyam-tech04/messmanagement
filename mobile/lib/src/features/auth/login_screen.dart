@@ -16,6 +16,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_failure.dart';
+import '../../design/aurora.dart';
 import '../../design/brand.dart';
 import '../../state/auth_controller.dart';
 import '../../design/components.dart';
@@ -76,146 +77,150 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(
-              horizontal: Space.xxl,
-              vertical: Space.xxxl,
-            ),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const BrandMark(size: 96),
-                    const Gap.xl(),
-                    Text(
-                      AppInfo.name,
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
+      body: AuroraBackground(
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(
+                horizontal: Space.xxl,
+                vertical: Space.xxxl,
+              ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const BrandMark(size: 96),
+                      const Gap.xl(),
+                      const Center(
+                        child: AuroraEyebrow('Hostel mess', pulse: true),
                       ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const Gap.sm(),
-                    Text(
-                      'Sign in to show your meal code',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
+                      const Gap.sm(),
+                      AuroraGradientText(
+                        AppInfo.name,
+                        style: theme.textTheme.displaySmall,
+                        textAlign: TextAlign.center,
                       ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const Gap.xxxl(),
-
-                    TextFormField(
-                      controller: _identifier,
-                      autofillHints: const [AutofillHints.username],
-                      // Not `TextInputType.phone`: staff sign in with an email
-                      // on the same field, and a numeric-only keypad would lock
-                      // them out of their own login.
-                      keyboardType: TextInputType.emailAddress,
-                      textInputAction: TextInputAction.next,
-                      autocorrect: false,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.deny(RegExp(r'\s')),
-                      ],
-                      decoration: const InputDecoration(
-                        labelText: 'Mobile number or email',
-                        prefixIcon: Icon(Icons.person_outline_rounded),
-                      ),
-                      validator: (v) => (v == null || v.trim().isEmpty)
-                          ? 'Enter your mobile number or email'
-                          : null,
-                    ),
-                    const Gap.lg(),
-
-                    TextFormField(
-                      controller: _password,
-                      obscureText: _obscured,
-                      autofillHints: const [AutofillHints.password],
-                      textInputAction: TextInputAction.done,
-                      onFieldSubmitted: (_) => _submit(),
-                      decoration: InputDecoration(
-                        labelText: 'Password',
-                        prefixIcon: const Icon(Icons.lock_outline_rounded),
-                        suffixIcon: IconButton(
-                          onPressed: () =>
-                              setState(() => _obscured = !_obscured),
-                          icon: Icon(
-                            _obscured
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined,
-                          ),
-                          tooltip: _obscured
-                              ? 'Show password'
-                              : 'Hide password',
+                      const Gap.sm(),
+                      Text(
+                        'Sign in to show your meal code',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
+                        textAlign: TextAlign.center,
                       ),
-                      validator: (v) => (v == null || v.isEmpty)
-                          ? 'Enter your password'
-                          : null,
-                    ),
+                      const Gap.xxxl(),
 
-                    if (_error != null) ...[
+                      TextFormField(
+                        controller: _identifier,
+                        autofillHints: const [AutofillHints.username],
+                        // Not `TextInputType.phone`: staff sign in with an email
+                        // on the same field, and a numeric-only keypad would lock
+                        // them out of their own login.
+                        keyboardType: TextInputType.emailAddress,
+                        textInputAction: TextInputAction.next,
+                        autocorrect: false,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.deny(RegExp(r'\s')),
+                        ],
+                        decoration: const InputDecoration(
+                          labelText: 'Mobile number or email',
+                          prefixIcon: Icon(Icons.person_outline_rounded),
+                        ),
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Enter your mobile number or email'
+                            : null,
+                      ),
                       const Gap.lg(),
-                      // Announced, not merely coloured — a failure nobody is
-                      // told about is a form that appears to do nothing.
-                      Semantics(
-                        liveRegion: true,
-                        child: Container(
-                          padding: const EdgeInsets.all(Space.md),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.errorContainer,
-                            borderRadius: BorderRadius.circular(Radii.md),
+
+                      TextFormField(
+                        controller: _password,
+                        obscureText: _obscured,
+                        autofillHints: const [AutofillHints.password],
+                        textInputAction: TextInputAction.done,
+                        onFieldSubmitted: (_) => _submit(),
+                        decoration: InputDecoration(
+                          labelText: 'Password',
+                          prefixIcon: const Icon(Icons.lock_outline_rounded),
+                          suffixIcon: IconButton(
+                            onPressed: () =>
+                                setState(() => _obscured = !_obscured),
+                            icon: Icon(
+                              _obscured
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined,
+                            ),
+                            tooltip: _obscured
+                                ? 'Show password'
+                                : 'Hide password',
                           ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.error_outline_rounded,
-                                size: 20,
-                                color: theme.colorScheme.onErrorContainer,
-                              ),
-                              const Gap.sm(),
-                              Expanded(
-                                child: Text(
-                                  _error!,
-                                  style: TextStyle(
-                                    color: theme.colorScheme.onErrorContainer,
+                        ),
+                        validator: (v) => (v == null || v.isEmpty)
+                            ? 'Enter your password'
+                            : null,
+                      ),
+
+                      if (_error != null) ...[
+                        const Gap.lg(),
+                        // Announced, not merely coloured — a failure nobody is
+                        // told about is a form that appears to do nothing.
+                        Semantics(
+                          liveRegion: true,
+                          child: Container(
+                            padding: const EdgeInsets.all(Space.md),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.errorContainer,
+                              borderRadius: BorderRadius.circular(Radii.md),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.error_outline_rounded,
+                                  size: 20,
+                                  color: theme.colorScheme.onErrorContainer,
+                                ),
+                                const Gap.sm(),
+                                Expanded(
+                                  child: Text(
+                                    _error!,
+                                    style: TextStyle(
+                                      color: theme.colorScheme.onErrorContainer,
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
+                      ],
+
+                      const Gap.xxl(),
+                      FilledButton(
+                        // Disabled while in flight, so a double-tap cannot burn
+                        // two of the ten attempts the rate limit allows.
+                        onPressed: _busy ? null : _submit,
+                        child: _busy
+                            ? const SizedBox(
+                                height: 22,
+                                width: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                ),
+                              )
+                            : const Text('Sign in'),
+                      ),
+                      const Gap.lg(),
+                      Text(
+                        'First time? Your password is your mobile number.',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
                     ],
-
-                    const Gap.xxl(),
-                    FilledButton(
-                      // Disabled while in flight, so a double-tap cannot burn
-                      // two of the ten attempts the rate limit allows.
-                      onPressed: _busy ? null : _submit,
-                      child: _busy
-                          ? const SizedBox(
-                              height: 22,
-                              width: 22,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.5,
-                              ),
-                            )
-                          : const Text('Sign in'),
-                    ),
-                    const Gap.lg(),
-                    Text(
-                      'First time? Your password is your mobile number.',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),

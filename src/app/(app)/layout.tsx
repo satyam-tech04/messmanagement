@@ -6,6 +6,11 @@ import { createClient } from "@/infra/supabase/server";
 import { createAdminClient } from "@/infra/supabase/admin";
 import { SupabaseTenantRepository } from "@/infra/supabase/repositories";
 import { signOut } from "@/app/(auth)/login/actions";
+import { exitImpersonation } from "@/app/(operator)/superuser/actions";
+import { AppOnlyNotice } from "@/components/app-only-notice";
+import { canSignInOnWeb } from "@/core/policies/operator-access.policy";
+import { readImpersonation } from "@/infra/auth/impersonation";
+import { serverEnv } from "@/lib/env.server";
 
 /**
  * Shell for every authenticated surface.
@@ -22,7 +27,22 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   // Belt and braces behind the proxy. If this ever fires, route gating is
   // broken — and failing closed is the right response either way.
   if (!user) redirect("/login");
-  if (user.mustChangePassword) redirect("/change-password");
+
+  // The operator inside a student's account. Verified and bound to this
+  // session, so a student cannot mint one to dodge the checks below.
+  const impersonation =
+    user.role === "STUDENT" ? await readImpersonation(user.actorProfileId) : null;
+
+  // Never while impersonating: the operator must not choose a student's password.
+  if (user.mustChangePassword && !impersonation) redirect("/change-password");
+
+  // Sessions that predate the app-only switch are turned away here, not only at
+  // the sign-in form. Rendered rather than redirected: signing out needs a
+  // cookie write, which a layout cannot do, and a GET that signs people out is
+  // a link anyone could send them.
+  if (!impersonation && !canSignInOnWeb(user.role, { appOnly: serverEnv.WEB_SIGNIN_APP_ONLY })) {
+    return <AppOnlyNotice fullName={user.fullName} role={user.role} signOutAction={signOut} />;
+  }
 
   // One cached read, not two live queries. This layout wraps every authenticated
   // page, so what was here ran on every navigation in the app for a name that
@@ -45,6 +65,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         allowFeedback: chrome?.allowFeedback ?? false,
       }}
       signOutAction={signOut}
+      impersonation={
+        impersonation ? { studentName: user.fullName, exitAction: exitImpersonation } : undefined
+      }
     >
       {children}
     </AppShell>

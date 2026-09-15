@@ -11,7 +11,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { UserRole } from "@/core/domain/enums";
-import { navigationFor, type NavSection } from "@/lib/navigation";
+import { navigationFor, navigationForPath, type NavSection } from "@/lib/navigation";
 
 const hrefs = (sections: readonly NavSection[]): string[] =>
   sections.flatMap((s) => s.items.map((i) => i.href));
@@ -165,5 +165,52 @@ describe("feature toggles reach the navigation", () => {
     hrefs("ADMIN", { allowAnnouncements: true, allowFeedback: true });
     expect(hrefs("ADMIN")).not.toContain("/admin/announcements");
     expect(hrefs("ADMIN")).not.toContain("/admin/feedback");
+  });
+});
+
+describe("navigationFor — the operator's persona switch", () => {
+  it("gives the platform operator a way back to the persona chooser", () => {
+    expect(hrefs(navigationFor(UserRole.SUPER_ADMIN))).toContain("/superuser");
+  });
+
+  it("never shows the persona chooser to anyone else", () => {
+    for (const role of [UserRole.STUDENT, UserRole.STAFF, UserRole.ADMIN]) {
+      expect(hrefs(navigationFor(role))).not.toContain("/superuser");
+    }
+  });
+});
+
+describe("navigationForPath — the counter workspace", () => {
+  it("shows the counter nav to an admin working the counter", () => {
+    // An admin who opens the scanner during a rush needs Manual entry one tap
+    // away, not an admin sidebar that has no link to it.
+    const nav = hrefs(navigationForPath(UserRole.ADMIN, "/staff/manual"));
+    expect(nav).toContain("/staff/manual");
+    expect(nav).toContain("/staff/counts");
+  });
+
+  it("gives that admin a way back to the admin workspace", () => {
+    expect(hrefs(navigationForPath(UserRole.ADMIN, "/staff"))).toContain("/admin");
+  });
+
+  it("does the same for the operator, keeping the persona chooser", () => {
+    const nav = hrefs(navigationForPath(UserRole.SUPER_ADMIN, "/staff"));
+    expect(nav).toContain("/staff");
+    expect(nav).toContain("/admin");
+    expect(nav).toContain("/superuser");
+  });
+
+  it("leaves real staff with exactly their own nav", () => {
+    expect(navigationForPath(UserRole.STAFF, "/staff")).toEqual(navigationFor(UserRole.STAFF));
+  });
+
+  it("uses the role's own nav everywhere outside the counter", () => {
+    expect(navigationForPath(UserRole.ADMIN, "/admin/students")).toEqual(
+      navigationFor(UserRole.ADMIN),
+    );
+  });
+
+  it("does not treat a path that merely starts with the letters as the counter", () => {
+    expect(hrefs(navigationForPath(UserRole.ADMIN, "/staffing"))).not.toContain("/staff/manual");
   });
 });

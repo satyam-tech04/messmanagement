@@ -180,7 +180,9 @@ export function homeRouteFor(role: UserRole): string {
     case "STAFF":
       return "/staff";
     case "ADMIN":
-    case "SUPER_ADMIN":
       return "/admin";
+    case "SUPER_ADMIN":
+      // Admin, counter, or a student — the operator picks before landing.
+      return "/superuser";
   }
 }

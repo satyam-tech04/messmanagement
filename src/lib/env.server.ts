@@ -31,6 +31,20 @@ const serverSchema = z.object({
   /** Guards /api/cron/*; the scheduler sends it as the `x-cron-secret` header (§9). */
   CRON_SECRET: z.string().min(16, "Use at least 16 chars: openssl rand -base64 32"),
 
+  /**
+   * When "true", only admins and the platform operator may sign in on the
+   * website; students and counter staff are sent to the MealAdda app.
+   *
+   * Off by default, deliberately. A mess whose students have not installed the
+   * app yet would lose its web QR codes the moment this turned on, so it is a
+   * decision taken per deployment once the app is in their hands — not a side
+   * effect of shipping the code.
+   */
+  WEB_SIGNIN_APP_ONLY: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
+
   // --- Migration tooling. Absent in a deployed runtime, which is fine. ---
   SUPABASE_PROJECT_REF: z.string().optional(),
   SUPABASE_DB_PASSWORD: z.string().optional(),

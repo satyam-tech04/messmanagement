@@ -11,6 +11,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/infra/supabase/server";
 import { getSessionUser, homeRouteFor } from "@/infra/auth/session";
+import { readImpersonation } from "@/infra/auth/impersonation";
 
 const schema = z
   .object({
@@ -32,6 +33,14 @@ export async function changePassword(
 ): Promise<ChangePasswordState> {
   const user = await getSessionUser();
   if (!user) redirect("/login");
+
+  // The operator inside a student's account must never choose that student's
+  // password — it would lock the real student out of their own meals.
+  if (await readImpersonation(user.actorProfileId)) {
+    return {
+      error: "You are viewing this account as the platform admin. Exit first to change a password.",
+    };
+  }
 
   const parsed = schema.safeParse({
     password: formData.get("password"),

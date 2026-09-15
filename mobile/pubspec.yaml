@@ -90,6 +90,16 @@ flutter:
           weight: 700
         - asset: assets/fonts/Inter-ExtraBold.ttf
           weight: 800
+    # Aurora Depth display face, headlines only. SIL OFL — see
+    # assets/fonts/Archivo-OFL.txt.
+    - family: Archivo
+      fonts:
+        - asset: assets/fonts/Archivo-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Archivo-ExtraBold.ttf
+          weight: 800
+        - asset: assets/fonts/Archivo-Black.ttf
+          weight: 900
 
   # To add assets to your application, add an assets section, like this:
   # assets:
@@ -144,11 +154,11 @@ flutter_launcher_icons:
 # blank white rectangle and then jumps to a branded screen, which is most of why
 # a cold start feels cheap.
 #
-# Colours match the app's own surfaces so there is no visible seam between the
+# Colours match the Aurora Depth grounds (mist / obsidian) so there is no visible seam between the
 # native screen and the first Flutter frame.
 flutter_native_splash:
-  color: "#FAFAFD"
-  color_dark: "#121317"
+  color: "#EEF1F6"
+  color_dark: "#05070A"
   image: assets/brand/splash.png
   image_dark: assets/brand/splash.png
 
@@ -157,8 +167,8 @@ flutter_native_splash:
     # so this variant is inset further than the one older versions use.
     image: assets/brand/splash_android12.png
     image_dark: assets/brand/splash_android12.png
-    color: "#FAFAFD"
-    color_dark: "#121317"
+    color: "#EEF1F6"
+    color_dark: "#05070A"
 
   android: true
   ios: true

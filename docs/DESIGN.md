@@ -11,6 +11,33 @@ edit them rather than wrapping them in ever-deeper layers.
 
 ---
 
+## 0. Aurora Depth — the visual language
+
+Adopted 15 Sep 2026 from the owner's theme study. Two palettes, one product, on the web
+**and** in the Flutter app:
+
+| Scheme | Palette            | Ground    | Accent pair           | Ink       |
+| ------ | ------------------ | --------- | --------------------- | --------- |
+| Light  | Cool Mist & Indigo | `#eef1f6` | `#3b3fa1` → `#6a6fd6` | `#141728` |
+| Dark   | Obsidian Teal      | `#05070a` | `#5fd0c4` → `#2f8fd6` | `#edf2f4` |
+
+- **Tokens, never hex.** Web: `src/app/globals.css` (`--primary`, `--aurora-1/2/3`,
+  `--orb-*`, `--grid-line`, `--chip`, `--glass`, `--live`). App:
+  `mobile/lib/src/design/theme.dart` (`AuroraPalette`, `context.aurora`). The two files
+  mirror each other; change both or neither.
+- **Type.** Archivo (800–900, tight tracking) for headings and display; Inter for body
+  and every table; JetBrains Mono for eyebrows, IDs and roll numbers.
+- **Signature pieces.** `AuroraBackdrop` (drifting orbs over a fading grid — `subtle`
+  inside the app so it never competes with data), `AuroraMark` (gradient tile),
+  `.aurora-text` (gradient headline words), `.aurora-fill` (primary CTA), mono
+  `AuroraEyebrow` with a live pulse, glass headers.
+- **Where it is loud:** landing page, sign-in, the operator's persona chooser. **Where it
+  is quiet:** admin tables, the scanner verdict, the QR panel (which stays white for scan
+  contrast).
+- **Theme choice:** light / dark / match device, persisted per device (`next-themes` on
+  web, `ThemeController` in the app). Every animation stops under reduced motion.
+- **Status colours are not brand colours** — §3 still holds in both schemes.
+
 ## Non-negotiables
 
 ### 1. Every list is a real table
@@ -69,7 +96,9 @@ focus ring. Forms use real `<label>` elements tied to inputs. Errors are announc
 
 ### 6. Dark mode works everywhere
 
-Both themes are first-class. Never ship a screen that was only checked in one.
+Both themes are first-class — Indigo light and Teal dark (§0). Never ship a screen that
+was only checked in one. The toggle lives in the sidebar footer, the landing header and
+the app's account menu.
 
 ### 7. Loading is never a blank screen
 

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { LoginForm } from "./login-form";
-import { pageTitle } from "@/lib/app-info";
+import { APP_NAME, pageTitle } from "@/lib/app-info";
+import { AuroraEyebrow } from "@/components/aurora-backdrop";
+import { serverEnv } from "@/lib/env.server";
 
 export const metadata: Metadata = {
   title: pageTitle("Sign in"),
@@ -15,16 +17,21 @@ export default async function LoginPage(props: { searchParams: Promise<{ next?: 
   // link bounce a freshly-authenticated user onto a phishing page.
   const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : undefined;
 
+  const appOnly = serverEnv.WEB_SIGNIN_APP_ONLY;
+
   return (
     <div className="space-y-8">
-      <div className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>
-        <p className="text-muted-foreground text-sm">
-          Students: sign in with your mobile number. Staff and admins: use your email address.
+      <div className="space-y-3">
+        <AuroraEyebrow>{appOnly ? "Admin sign in" : "Sign in"}</AuroraEyebrow>
+        <h1 className="text-3xl font-black tracking-tight">Welcome back</h1>
+        <p className="text-muted-foreground text-sm leading-relaxed">
+          {appOnly
+            ? `Mess admins sign in with their email. Students and counter staff: use the ${APP_NAME} app.`
+            : "Admins and staff: use your email address. Students: your mobile number."}
         </p>
       </div>
 
-      <LoginForm {...(safeNext ? { next: safeNext } : {})} />
+      <LoginForm appOnly={appOnly} {...(safeNext ? { next: safeNext } : {})} />
     </div>
   );
 }

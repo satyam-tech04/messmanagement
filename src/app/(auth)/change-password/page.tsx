@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { ChevronLeft, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getSessionUser, homeRouteFor } from "@/infra/auth/session";
+import { readImpersonation } from "@/infra/auth/impersonation";
 import { ChangePasswordForm } from "./change-password-form";
 import { pageTitle } from "@/lib/app-info";
 
@@ -14,6 +15,9 @@ export const metadata: Metadata = {
 export default async function ChangePasswordPage() {
   const user = await getSessionUser();
   if (!user) redirect("/login");
+  // Not a screen the operator uses inside a student's account (the action
+  // refuses too; this keeps them from reaching a form that cannot work).
+  if (await readImpersonation(user.actorProfileId)) redirect(homeRouteFor(user.role));
 
   // Reachable two ways: forced after an admin reset, or chosen from the account
   // menu. Previously the second case redirected away, so nobody — student,

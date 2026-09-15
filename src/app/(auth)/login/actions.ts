@@ -16,6 +16,9 @@ import { rateLimitBuckets, SupabaseRateLimiter } from "@/infra/supabase/reposito
 import { homeRouteFor } from "@/infra/auth/session";
 import { resolveLoginEmail } from "@/infra/auth/resolve-login-email";
 import type { UserRole } from "@/core/domain/enums";
+import { canSignInOnWeb } from "@/core/policies/operator-access.policy";
+import { discardImpersonation } from "@/infra/auth/impersonation";
+import { serverEnv } from "@/lib/env.server";
 
 const loginSchema = z.object({
   identifier: z.string().min(1, "Enter your roll number or email").max(320),
@@ -36,6 +39,9 @@ export interface LoginState {
  * someone probing.
  */
 const GENERIC_FAILURE = "Incorrect roll number, email, or password.";
+
+const APP_ONLY_MESSAGE =
+  "Students and counter staff sign in on the MealAdda app. This website is for mess admins.";
 
 export async function login(_prev: LoginState, formData: FormData): Promise<LoginState> {
   const parsed = loginSchema.safeParse({
@@ -85,6 +91,15 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
   const { data: claimsData } = await supabase.auth.getClaims();
   const role = (claimsData?.claims as { user_role?: UserRole } | undefined)?.user_role;
 
+  // The website is for running a mess once the app-only switch is on. Checked
+  // after the password, so this message confirms nothing to someone guessing —
+  // and the session just issued is revoked on this device only, never the
+  // student's session on their own phone.
+  if (!role || !canSignInOnWeb(role, { appOnly: serverEnv.WEB_SIGNIN_APP_ONLY })) {
+    await supabase.auth.signOut({ scope: "local" });
+    return { error: APP_ONLY_MESSAGE };
+  }
+
   // Only ever redirect to a path within this app. An absolute URL from the
   // query string is an open redirect straight into a phishing page.
   const next = parsed.data.next;
@@ -95,6 +110,9 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
 
 export async function signOut(): Promise<void> {
   const supabase = await createClient();
-  await supabase.auth.signOut();
+  // Local, not global: signing out of the website must not sign the same
+  // person out of the app on their phone.
+  await supabase.auth.signOut({ scope: "local" });
+  await discardImpersonation();
   redirect("/login");
 }

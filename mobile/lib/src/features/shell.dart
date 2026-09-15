@@ -15,6 +15,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/session.dart';
 import '../core/config.dart';
+import '../design/aurora.dart';
 import '../design/async_view.dart';
 import '../design/brand.dart';
 import '../design/offline_banner.dart';
@@ -233,13 +234,16 @@ class _AppShellState extends ConsumerState<AppShell> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // Above the content, so it never covers what a screen is saying about
-          // what it can still do while offline.
-          const OfflineBanner(),
-          Expanded(child: _screenFor(tab)),
-        ],
+      body: AuroraBackground(
+        subtle: true,
+        child: Column(
+          children: [
+            // Above the content, so it never covers what a screen is saying
+            // about what it can still do while offline.
+            const OfflineBanner(),
+            Expanded(child: _screenFor(tab)),
+          ],
+        ),
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,

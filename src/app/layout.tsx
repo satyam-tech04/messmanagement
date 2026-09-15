@@ -1,7 +1,8 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { Archivo, Inter, JetBrains_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ThemeProvider } from "@/components/theme-provider";
 import { APP_NAME } from "@/lib/app-info";
 import "./globals.css";
 
@@ -32,19 +33,34 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
+/**
+ * Archivo for headings and display type — the Aurora Depth voice (DESIGN.md §0).
+ *
+ * Headings only. Body copy and every table stay in Inter for the reasons above;
+ * Archivo's tight, wide caps read beautifully at 40px and poorly in a roll
+ * number at 13px.
+ */
+const archivo = Archivo({
+  variable: "--font-display",
+  subsets: ["latin"],
+  display: "swap",
+  weight: ["500", "600", "700", "800", "900"],
+});
+
 export const metadata: Metadata = {
   title: {
     default: APP_NAME,
     template: "%s",
   },
   description:
-    "Mess management for hostels — QR attendance, meal plans, menus and headcount projection.",
+    "MealAdda runs hostel mess operations — signed QR meal attendance, subscriptions, menus and a live headcount the kitchen can cook to.",
 };
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#020617" },
+    // The Aurora Depth grounds, so the browser chrome continues the page.
+    { media: "(prefers-color-scheme: light)", color: "#eef1f6" },
+    { media: "(prefers-color-scheme: dark)", color: "#05070a" },
   ],
   width: "device-width",
   initialScale: 1,
@@ -62,12 +78,14 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      className={`${inter.variable} ${jetbrainsMono.variable} ${archivo.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="bg-background text-foreground flex min-h-full flex-col">
-        <TooltipProvider delay={200}>{children}</TooltipProvider>
-        <Toaster richColors position="top-center" />
+        <ThemeProvider>
+          <TooltipProvider delay={200}>{children}</TooltipProvider>
+          <Toaster richColors position="top-center" />
+        </ThemeProvider>
       </body>
     </html>
   );

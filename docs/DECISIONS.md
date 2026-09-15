@@ -193,6 +193,46 @@ for one who is here is the failure the product exists to prevent. PENDING noneth
 consumes the monthly allowance while it waits, or a student could spend the same five days
 repeatedly while the admin is deciding.
 
+### D-30 — The website is for admins; students and staff use the app (15 Sep 2026)
+
+**Decision:** web sign-in is for mess admins and the platform operator. Students and
+counter staff sign in on the MealAdda app.
+
+**Held behind a switch.** `WEB_SIGNIN_APP_ONLY` (server env, default `false`). The app is
+still reaching Campus Crave's phones, and turning this on early would leave a live hostel
+with no web QR codes and no web counter. The owner turns it on per deployment once the app
+is in hand (RUNBOOK §6a).
+
+**When on:** the login form refuses STUDENT/STAFF _after_ the password check (so the
+message confirms nothing to a guesser) and revokes that one session locally; the app
+layout turns away sessions that predate the switch with a "use the app" screen. Admins
+keep `/staff` for rush-hour counter work. The mobile API is untouched.
+
+**Rule:** `canSignInOnWeb` in `operator-access.policy.ts`. Sign-out on the web is now
+`scope: "local"` — signing out of a browser must not sign the same person out of the app.
+
+### D-31 — The operator can work as admin, staff or a specific student (15 Sep 2026)
+
+**Decision:** after signing in, `superuser` lands on `/superuser` and picks a persona.
+Admin and staff need nothing new (the operator already passes both gates; staff screens
+show the counter nav with "Back to admin"). **Student** means entering one real
+student's account, because a student screen is one student's day.
+
+**Mechanism:** a one-time sign-in link generated with the service role and verified on
+the server swaps the operator's session for the student's. The operator's own tokens are
+kept in an httpOnly cookie for Exit, beside a signed, session-bound, two-hour marker that
+(a) shows the banner and (b) exempts the session from the forced password change. The
+student's own phone stays signed in; Exit revokes only the added session.
+
+**Confined like the mess switcher:** SUPER_ADMIN only; students only;
+the operator's **current** mess only (another mess answers NOT_FOUND); active accounts
+only. `IMPERSONATION_START`, `IMPERSONATION_FAILED` and `IMPERSONATION_END` are written to
+that mess's audit trail. The change-password action refuses while impersonating.
+
+**Rejected:** a read-only "preview as student" rendered with the service role — it would
+need a second data path behind every student page, and a second path is where a
+cross-tenant read eventually slips in.
+
 ---
 
 ## Open — must be answered before Phase 2

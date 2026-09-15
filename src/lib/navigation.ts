@@ -110,7 +110,11 @@ const ADMIN_NAV: readonly NavSection[] = [
  */
 const PLATFORM_NAV: NavSection = {
   heading: "Platform",
-  items: [{ label: "Messes", href: "/admin/messes", icon: "Building2" }],
+  items: [
+    { label: "Messes", href: "/admin/messes", icon: "Building2" },
+    // Back to the admin / staff / student chooser the operator lands on.
+    { label: "Switch persona", href: "/superuser", icon: "Sparkles" },
+  ],
 };
 
 const STAFF_NAV: readonly NavSection[] = [
@@ -182,6 +186,36 @@ export function navigationFor(role: UserRole, features: NavFeatures = {}): reado
       // customers, so it must see exactly the screens their admin sees.
       return [...adminNav(features), PLATFORM_NAV];
   }
+}
+
+/**
+ * The nav for the page being shown, not only the role holding the session.
+ *
+ * Admins and the operator may work the counter (`proxy.ts` lets them into
+ * `/staff`), and on those screens they need the counter's links — Manual entry,
+ * Live count — plus a way back. Real staff, and every other path, get exactly
+ * `navigationFor`.
+ */
+export function navigationForPath(
+  role: UserRole,
+  pathname: string,
+  features: NavFeatures = {},
+): readonly NavSection[] {
+  const onCounter = pathname === "/staff" || pathname.startsWith("/staff/");
+  if (!onCounter || (role !== "ADMIN" && role !== "SUPER_ADMIN")) {
+    return navigationFor(role, features);
+  }
+
+  const back: NavSection = {
+    heading: "Workspace",
+    items: [
+      { label: "Back to admin", href: "/admin", icon: "LayoutDashboard" },
+      ...(role === "SUPER_ADMIN"
+        ? [{ label: "Switch persona", href: "/superuser", icon: "Sparkles" }]
+        : []),
+    ],
+  };
+  return [...STAFF_NAV, back];
 }
 
 /** Human label for a role, for the user menu. */
