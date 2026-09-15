@@ -100,8 +100,21 @@ one constant in `mobile/lib/src/core/config.dart`.
 
 - **App Store Connect** — a new app with bundle id `com.mealadda.app`.
 - **Play Console** — a new app, package `com.mealadda.app`.
-- Privacy policy URL: `https://<domain>/privacy` (the page is public and needs
-  no sign-in — `proxy.ts` allows it explicitly, which is what a reviewer needs).
+- The public legal site is `site/`, served by GitHub Pages from the `gh-pages`
+  branch. Edit the HTML on main, then `npm run site:publish`. The URLs each store
+  asks for:
+
+  | Field                                     | URL                                                            |
+  | ----------------------------------------- | -------------------------------------------------------------- |
+  | Privacy Policy (both stores)              | https://satyam-tech04.github.io/messmanagement/privacy/        |
+  | Terms of Use / EULA (App Store, optional) | https://satyam-tech04.github.io/messmanagement/terms/          |
+  | Support URL (App Store, required)         | https://satyam-tech04.github.io/messmanagement/#support        |
+  | Marketing URL (App Store, optional)       | https://satyam-tech04.github.io/messmanagement/                |
+  | Delete account URL (Play Data safety)     | https://satyam-tech04.github.io/messmanagement/delete-account/ |
+
+  The web app's old `/privacy` route now 308-redirects to the Pages copy, so there
+  is exactly one policy. `site/vercel.json` stops Vercel building the `gh-pages`
+  branch.
 
 ---
 
@@ -155,7 +168,7 @@ the bundle size.
 
 ## The forms both stores ask about
 
-Answer these consistently with `/privacy`, because a policy that claims less than
+Answer these consistently with the [privacy page](https://satyam-tech04.github.io/messmanagement/privacy/), because a policy that claims less than
 the app collects is the fastest way to fail review.
 
 **Collected, and linked to the user:** name, phone number, email address where
@@ -163,14 +176,27 @@ present, photographs, and app activity (meals served, absences, ratings).
 
 **Not collected:** location, contacts, browsing history, anything outside the app.
 
-**Children.** Some messes serve students under 18. Advertising, when it ships, is
+**Ads.** The app contains **no** ads SDK, analytics or tracking today — answer
+"No ads" and "No tracking" (App Store: _Data Not Used to Track You_).
+
+**Children.** Some messes serve students under 18. Advertising, if it ever ships, is
 requested **child-directed and non-personalised for every user without
 exception** — the app cannot know an individual student's age, so the strictest
 setting applies to all of them. Declare this on both stores.
 
-**Account deletion.** Play requires a route to it. Mess administrators can delete
-a student from the admin console; the privacy page says so and gives a contact
-address for anyone whose mess will not act.
+**Account deletion.** Play requires a route to it. **There is no delete-student
+feature** — admins can deactivate a student and remove a photo, nothing more. The
+`delete-account` page therefore promises a request handled by us: the student asks
+their mess or emails support, we verify with the mess, and delete within 30 days
+(profile, contact details, photo, feedback; attendance and payment rows are kept
+but unlinked). Until a delete tool exists, each request is done by hand against the
+database. Declare on Play: deletion is by request, some data retained for
+accounting.
+
+**Support email.** Every page names `support@mealadda.app`, but `mealadda.app` has
+no DNS records, so that address cannot receive mail. Set up the domain and a
+mailbox, or change the address in `site/` and `app.config.json`, **before**
+submitting — reviewers and deletion requests will use it.
 
 ---
 
