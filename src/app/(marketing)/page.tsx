@@ -22,14 +22,13 @@ import {
   Sunrise,
   UtensilsCrossed,
 } from "lucide-react";
-import { AuroraBackdrop, AuroraMark } from "@/components/aurora-backdrop";
+import { AuroraBackdrop } from "@/components/aurora-backdrop";
 import {
   MEAL_TIMES,
   MealChip,
   PhoneMock,
   ThaliIllustration,
 } from "@/components/mess-illustrations";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { APP_NAME, SUPPORT_EMAIL } from "@/lib/app-info";
 import { cn } from "@/lib/utils";
 import {
@@ -38,7 +37,6 @@ import {
   DAY,
   DISHES,
   FEATURES,
-  NAV_LINKS,
   PRICING,
   PROMISES,
   type Audience,
@@ -46,6 +44,7 @@ import {
   type Feature,
 } from "./content";
 import { ScrollProgress } from "./scroll-progress";
+import { SiteFooter, SiteHeader } from "./site-chrome";
 
 // Inherits the site-wide title, description, Open Graph and share poster from
 // the root layout. Only the canonical URL is page-specific.
@@ -68,8 +67,6 @@ const FEATURE_ICONS: Record<Feature["icon"], typeof ChefHat> = {
 };
 const DAY_ICONS: Record<DayMoment["icon"], typeof ChefHat> = { Sunrise, Soup, House, Moon };
 const PROMISE_ICONS = { ShieldCheck, HeartHandshake, Lock, IndianRupee } as const;
-
-const LEGAL_SITE = "https://satyam-tech04.github.io/messmanagement";
 
 /** Small, warm section label — sentence case, not a terminal readout. */
 function Kicker({
@@ -172,59 +169,13 @@ function HeroPlate() {
 }
 
 export default function LandingPage() {
-  const year = new Date().getFullYear();
-
   return (
     <div className="relative min-h-svh overflow-x-clip">
       <ScrollProgress />
       <AuroraBackdrop />
 
       <div className="relative z-10">
-        {/* ── Header ─────────────────────────────────────────────── */}
-        <header
-          className="sticky top-0 z-40 border-b backdrop-blur-xl"
-          style={{ background: "var(--glass-header)" }}
-        >
-          <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-8">
-            <Link href="/" className="flex items-center gap-2.5" aria-label={`${APP_NAME} home`}>
-              <AuroraMark />
-              <span className="font-heading text-lg font-black tracking-tight">{APP_NAME}</span>
-            </Link>
-
-            <nav
-              aria-label="Sections"
-              className="text-muted-foreground hidden items-center gap-8 text-sm font-medium md:flex"
-            >
-              {NAV_LINKS.map((l) => (
-                <a key={l.href} href={l.href} className="hover:text-foreground transition-colors">
-                  {l.label}
-                </a>
-              ))}
-            </nav>
-
-            <div className="flex items-center gap-2">
-              <ThemeToggle className="hidden sm:inline-flex" />
-              <Link
-                href="/login"
-                className="bg-foreground text-background focus-visible:ring-ring/50 inline-flex h-10 items-center gap-2 rounded-full px-5 text-sm font-bold transition-transform hover:-translate-y-0.5 focus-visible:ring-[3px] focus-visible:outline-none"
-              >
-                <LogIn className="size-4" aria-hidden="true" />
-                Sign in
-              </Link>
-            </div>
-          </div>
-          <nav
-            aria-label="Sections"
-            className="text-muted-foreground flex items-center gap-5 overflow-x-auto border-t px-4 py-2 text-xs font-medium md:hidden"
-          >
-            {NAV_LINKS.map((l) => (
-              <a key={l.href} href={l.href} className="hover:text-foreground whitespace-nowrap">
-                {l.label}
-              </a>
-            ))}
-            <ThemeToggle className="ml-auto shrink-0 sm:hidden" />
-          </nav>
-        </header>
+        <SiteHeader />
 
         <main>
           {/* ── Hero ─────────────────────────────────────────────── */}
@@ -597,36 +548,7 @@ export default function LandingPage() {
           </section>
         </main>
 
-        {/* ── Footer ─────────────────────────────────────────────── */}
-        <footer className="text-muted-foreground border-t">
-          <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-6 px-4 py-10 text-sm sm:px-8">
-            <div className="flex items-center gap-2.5">
-              <AuroraMark className="h-6" />
-              <span className="text-foreground font-heading font-black">{APP_NAME}</span>
-              <span className="hidden sm:inline">· Hostel mess management</span>
-            </div>
-            <nav aria-label="Footer" className="flex flex-wrap gap-6">
-              <a href="#features" className="hover:text-foreground">
-                Features
-              </a>
-              <a href="#pricing" className="hover:text-foreground">
-                Pricing
-              </a>
-              <a href={`${LEGAL_SITE}/privacy/`} className="hover:text-foreground">
-                Privacy
-              </a>
-              <a href={`${LEGAL_SITE}/terms/`} className="hover:text-foreground">
-                Terms
-              </a>
-              <a href={`mailto:${SUPPORT_EMAIL}`} className="hover:text-foreground">
-                Support
-              </a>
-            </nav>
-            <p>
-              © {year} {APP_NAME}
-            </p>
-          </div>
-        </footer>
+        <SiteFooter />
       </div>
     </div>
   );

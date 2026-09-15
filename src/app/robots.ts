@@ -1,8 +1,8 @@
 import type { MetadataRoute } from "next";
-import { resolveSiteUrl } from "@/lib/site";
+import { LEGAL_PAGES, resolveSiteUrl } from "@/lib/site";
 
 /**
- * Index the landing page; keep every signed-in surface out of search results.
+ * Index the landing page and the legal pages; keep every signed-in surface out of search results.
  * (Those routes require a session anyway — this only stops crawlers wasting
  * requests on redirects to /login.)
  */
@@ -15,7 +15,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: ["/", "/login"],
+        allow: ["/", "/login", ...LEGAL_PAGES.map((page) => page.href)],
         disallow: ["/admin", "/staff", "/student", "/superuser", "/change-password", "/api"],
       },
     ],

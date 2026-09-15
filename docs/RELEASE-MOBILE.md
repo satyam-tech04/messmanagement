@@ -100,21 +100,23 @@ one constant in `mobile/lib/src/core/config.dart`.
 
 - **App Store Connect** — a new app with bundle id `com.mealadda.app`.
 - **Play Console** — a new app, package `com.mealadda.app`.
-- The public legal site is `site/`, served by GitHub Pages from the `gh-pages`
-  branch. Edit the HTML on main, then `npm run site:publish`. The URLs each store
-  asks for:
+- The legal and help pages are ordinary routes in the web app, served at
+  **mealadda.in** (`src/app/(marketing)/(legal)/`). They are public — `LEGAL_PAGES`
+  in `src/lib/site.ts` feeds the proxy, footer, sitemap and robots, and
+  `tests/unit/site.test.ts` fails if any of them would redirect to sign-in. The
+  URLs each store asks for:
 
-  | Field                                     | URL                                                            |
-  | ----------------------------------------- | -------------------------------------------------------------- |
-  | Privacy Policy (both stores)              | https://satyam-tech04.github.io/messmanagement/privacy/        |
-  | Terms of Use / EULA (App Store, optional) | https://satyam-tech04.github.io/messmanagement/terms/          |
-  | Support URL (App Store, required)         | https://satyam-tech04.github.io/messmanagement/#support        |
-  | Marketing URL (App Store, optional)       | https://satyam-tech04.github.io/messmanagement/                |
-  | Delete account URL (Play Data safety)     | https://satyam-tech04.github.io/messmanagement/delete-account/ |
+  | Field                                     | URL                                    |
+  | ----------------------------------------- | -------------------------------------- |
+  | Privacy Policy (both stores)              | https://www.mealadda.in/privacy        |
+  | Terms of Use / EULA (App Store, optional) | https://www.mealadda.in/terms          |
+  | Support URL (App Store, required)         | https://www.mealadda.in/support        |
+  | Marketing URL (App Store, optional)       | https://www.mealadda.in/               |
+  | Delete account URL (Play Data safety)     | https://www.mealadda.in/delete-account |
 
-  The web app's old `/privacy` route now 308-redirects to the Pages copy, so there
-  is exactly one policy. `site/vercel.json` stops Vercel building the `gh-pages`
-  branch.
+  Use the `www.` form: the bare `mealadda.in` answers with a redirect to it, and a
+  store link should land directly. The old GitHub Pages copy
+  (`satyam-tech04.github.io/messmanagement`) is retired and forwards here.
 
 ---
 
@@ -168,7 +170,7 @@ the bundle size.
 
 ## The forms both stores ask about
 
-Answer these consistently with the [privacy page](https://satyam-tech04.github.io/messmanagement/privacy/), because a policy that claims less than
+Answer these consistently with the [privacy page](https://www.mealadda.in/privacy), because a policy that claims less than
 the app collects is the fastest way to fail review.
 
 **Collected, and linked to the user:** name, phone number, email address where
@@ -193,10 +195,11 @@ but unlinked). Until a delete tool exists, each request is done by hand against 
 database. Declare on Play: deletion is by request, some data retained for
 accounting.
 
-**Support email.** Every page names `support@mealadda.app`, but `mealadda.app` has
-no DNS records, so that address cannot receive mail. Set up the domain and a
-mailbox, or change the address in `site/` and `app.config.json`, **before**
-submitting — reviewers and deletion requests will use it.
+**Support email.** Every page and both apps name `support@mealadda.in`
+(`supportEmail` in `app.config.json`, applied by `npm run app:name`). The domain
+has **no MX record yet**, so the address cannot receive mail. Set up a mailbox or
+forwarding at Hostinger **before** submitting — reviewers and deletion requests
+will use it.
 
 ---
 

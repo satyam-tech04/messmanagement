@@ -7,7 +7,7 @@
  * no logo, and nothing in the app itself looks wrong.
  */
 import { describe, expect, it } from "vitest";
-import { isPublicMetadataPath, resolveSiteUrl } from "@/lib/site";
+import { LEGAL_PAGES, isPublicMetadataPath, isPublicPagePath, resolveSiteUrl } from "@/lib/site";
 
 describe("resolveSiteUrl", () => {
   it("uses an explicitly configured public URL", () => {
@@ -73,6 +73,48 @@ describe("isPublicMetadataPath", () => {
   it("does not open anything else", () => {
     for (const path of ["/admin", "/opengraph", "/student/opengraph-image", "/robots", "/api/me"]) {
       expect(isPublicMetadataPath(path)).toBe(false);
+    }
+  });
+});
+
+describe("isPublicPagePath", () => {
+  it("serves every legal page to someone who is not signed in", () => {
+    // Both app stores open these URLs before the app, with no account. A
+    // redirect to /login here is a rejection, and Play's account-deletion URL
+    // must work for someone who can no longer sign in at all.
+    for (const page of LEGAL_PAGES) {
+      expect(isPublicPagePath(page.href)).toBe(true);
+    }
+    expect(LEGAL_PAGES.map((p) => p.href)).toEqual([
+      "/privacy",
+      "/terms",
+      "/delete-account",
+      "/support",
+    ]);
+  });
+
+  it("keeps sign-in reachable, with and without a trailing path", () => {
+    expect(isPublicPagePath("/login")).toBe(true);
+    expect(isPublicPagePath("/auth/callback")).toBe(true);
+    expect(isPublicPagePath("/privacy/")).toBe(true);
+  });
+
+  it("does not treat a name that merely starts the same as public", () => {
+    for (const path of ["/privacy-export", "/terms2", "/supporters", "/login-as"]) {
+      expect(isPublicPagePath(path)).toBe(false);
+    }
+  });
+
+  it("never opens a role shell or the API", () => {
+    for (const path of [
+      "/admin",
+      "/staff",
+      "/student",
+      "/superuser",
+      "/change-password",
+      "/api/me",
+    ]) {
+      expect(isPublicPagePath(path)).toBe(false);
     }
   });
 });

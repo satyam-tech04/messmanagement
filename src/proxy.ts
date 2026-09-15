@@ -23,17 +23,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { persistentCookieOptions } from "./infra/auth/session-lifetime";
 import { NextResponse, type NextRequest } from "next/server";
-import { isPublicMetadataPath } from "./lib/site";
-
-/** Reachable without a session. Everything else requires one. */
-const PUBLIC_PATHS = [
-  "/login",
-  "/auth/callback",
-  // Both app stores require a privacy policy reachable **without signing in** —
-  // a reviewer opens it before they open the app, and gating it behind login is
-  // a rejection.
-  "/privacy",
-];
+import { isPublicMetadataPath, isPublicPagePath } from "./lib/site";
 
 /** Route prefix → roles allowed to enter it. */
 const ROLE_GATES: ReadonlyArray<{ prefix: string; allow: readonly string[] }> = [
@@ -93,10 +83,9 @@ export async function proxy(request: NextRequest) {
   // starts with a slash.
   // Share poster, manifest and robots are fetched by crawlers with no session;
   // redirecting them to /login is what turns a link preview into a bare URL.
-  const isPublic =
-    pathname === "/" ||
-    isPublicMetadataPath(pathname) ||
-    PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+  // Sign-in and the legal pages (which both app stores open with no account)
+  // come from one list in lib/site.
+  const isPublic = pathname === "/" || isPublicMetadataPath(pathname) || isPublicPagePath(pathname);
   const isSignedIn = Boolean(claims?.sub);
 
   // --- Unauthenticated: the landing page and public paths render; everything else goes to /login ---

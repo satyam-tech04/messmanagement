@@ -71,3 +71,29 @@ const PUBLIC_METADATA =
 export function isPublicMetadataPath(pathname: string): boolean {
   return PUBLIC_METADATA.test(pathname);
 }
+
+/**
+ * The public legal and help pages, in the order they are listed in the footer.
+ *
+ * The App Store and Play Console link to these, and a reviewer opens them with
+ * no account — so they must never sit behind the proxy's sign-in redirect. One
+ * list feeds the proxy, the footer, the sitemap and robots, so a page cannot be
+ * linked from the stores and still be gated.
+ */
+export const LEGAL_PAGES = [
+  { href: "/privacy", label: "Privacy Policy" },
+  { href: "/terms", label: "Terms & Conditions" },
+  { href: "/delete-account", label: "Delete account" },
+  { href: "/support", label: "Support" },
+] as const;
+
+/** Pages reachable without a session (the landing page `/` is handled separately). */
+const PUBLIC_PAGE_PATHS = ["/login", "/auth/callback", ...LEGAL_PAGES.map((p) => p.href)];
+
+/**
+ * Whether a page path is public. Matches the path itself or anything beneath it,
+ * never a mere prefix: `/privacy-export` is not `/privacy`.
+ */
+export function isPublicPagePath(pathname: string): boolean {
+  return PUBLIC_PAGE_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}

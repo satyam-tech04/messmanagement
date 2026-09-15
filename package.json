@@ -41,7 +41,6 @@
     "verify:mobile-auth": "tsx scripts/verify-mobile-auth.mts",
     "app:name": "node scripts/apply-app-identity.mjs",
     "app:bundle-id": "node scripts/apply-app-identity.mjs --bundle-id",
-    "site:publish": "git push origin \"$(git subtree split --prefix=site main)\":refs/heads/gh-pages",
     "create:test-accounts": "tsx scripts/create-test-accounts.ts"
   },
   "lint-staged": {

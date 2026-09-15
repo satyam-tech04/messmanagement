@@ -16,39 +16,39 @@ conversation: everything needed to continue correctly is here or linked from her
 
 ### What is done and verified
 
-| Area                                   | State                                                                       |
-| -------------------------------------- | --------------------------------------------------------------------------- |
-| Repo, tooling, CI, import boundaries   | ✅ `npm run verify` green                                                   |
-| Core domain (pure, no I/O)             | ✅ **839 tests**, 99%+ coverage                                             |
-| Database schema                        | ✅ migrations 001–012 **applied + sealed** on the live project              |
-| JWT auth hook                          | ✅ enabled and verified end-to-end                                          |
-| Generated DB types                     | ✅ `src/infra/supabase/database.types.ts` (incl. RPC Functions)             |
-| Infrastructure layer (`src/infra`)     | ✅ env, clients, HMAC signer, 7 repositories                                |
-| **Phase 0 — auth and shells**          | ✅ **complete, both exit criteria proven**                                  |
-| Seeded demo data                       | ✅ 2 tenants, 10 students, plans, menus                                     |
-| UI foundation                          | ✅ shadcn/Base UI, design tokens, app shell, [DESIGN.md](DESIGN.md)         |
-| **Phase 1.2 — students, full CRUD**    | ✅ list, add, detail, edit, status change, password reset, audited          |
-| **Phase 1.3 — plans & subscriptions**  | ✅ plan CRUD, assign/end with price + meal-slot snapshot                    |
-| **Phase 1.4 — menus**                  | ✅ week planner, student view, service-state resolution                     |
-| **Phase 1.5b — student QR**            | ✅ rotating code, denial states, eligibility checked at issuance            |
-| **Phase 1.6b — counter scanner**       | ✅ camera, distinct outcomes, manual fallback, offline queue                |
-| **Phase 1.7b — live headcount**        | ✅ realtime count, snapshot cron with locking                               |
-| **Phase 1.8 — exit criteria**          | ✅ **14 checks pass against the live DB** (`npm run verify:phase1`)         |
-| **MVP (Phase 0 + 1)**                  | ✅ **complete** — every nav route resolves                                  |
-| **Absences (skip / away)**             | ✅ policy, service, settings toggles, student + admin screens               |
-| **First live client — Campus Crave**   | ✅ onboarded on the live project: 3 admins, 3 staff, 26 students            |
-| **Platform operator (SUPER_ADMIN)**    | ✅ `superuser` login + mess switcher, 13 live checks pass                   |
-| **Students sign in with a mobile**     | ✅ generated `profiles.mobile`, login resolves it to their account          |
-| **Auto-assigned roll numbers**         | ✅ per-mess toggle, allocated under a row lock (010)                        |
-| **Counter photo from the camera**      | ✅ getUserMedia capture, same upload action as a picked file                |
-| **Mobile app — Slice 0 (transport)**   | ✅ `/api/*` reachable over a bearer token, 4 live checks pass               |
-| **Mobile app — Slice 1a (auth API)**   | ✅ login / change-password / logout / me, 9 live checks pass                |
-| **Mobile app — Slice 1b (Flutter)**    | ✅ login → role-routed shell, run on iOS against production                 |
-| **Store legal site (GitHub Pages)**    | ✅ privacy, terms, delete-account, support — `site/`, see RELEASE-MOBILE.md |
-| **Aurora Depth UI revamp (web + app)** | ✅ Indigo light / Teal dark, theme toggle, Archivo — DESIGN.md §0           |
-| **Public landing page (`/`)**          | ✅ features, how it works, pricing ("Talk to us"), about us, sign in        |
-| **Admin-only web sign-in (D-30)**      | ✅ built, **switch off** (`WEB_SIGNIN_APP_ONLY`) — 6 live checks pass       |
-| **Operator persona chooser (D-31)**    | ✅ `/superuser`: admin / staff / enter as student — 24 live checks pass     |
+| Area                                   | State                                                                                     |
+| -------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Repo, tooling, CI, import boundaries   | ✅ `npm run verify` green                                                                 |
+| Core domain (pure, no I/O)             | ✅ **839 tests**, 99%+ coverage                                                           |
+| Database schema                        | ✅ migrations 001–012 **applied + sealed** on the live project                            |
+| JWT auth hook                          | ✅ enabled and verified end-to-end                                                        |
+| Generated DB types                     | ✅ `src/infra/supabase/database.types.ts` (incl. RPC Functions)                           |
+| Infrastructure layer (`src/infra`)     | ✅ env, clients, HMAC signer, 7 repositories                                              |
+| **Phase 0 — auth and shells**          | ✅ **complete, both exit criteria proven**                                                |
+| Seeded demo data                       | ✅ 2 tenants, 10 students, plans, menus                                                   |
+| UI foundation                          | ✅ shadcn/Base UI, design tokens, app shell, [DESIGN.md](DESIGN.md)                       |
+| **Phase 1.2 — students, full CRUD**    | ✅ list, add, detail, edit, status change, password reset, audited                        |
+| **Phase 1.3 — plans & subscriptions**  | ✅ plan CRUD, assign/end with price + meal-slot snapshot                                  |
+| **Phase 1.4 — menus**                  | ✅ week planner, student view, service-state resolution                                   |
+| **Phase 1.5b — student QR**            | ✅ rotating code, denial states, eligibility checked at issuance                          |
+| **Phase 1.6b — counter scanner**       | ✅ camera, distinct outcomes, manual fallback, offline queue                              |
+| **Phase 1.7b — live headcount**        | ✅ realtime count, snapshot cron with locking                                             |
+| **Phase 1.8 — exit criteria**          | ✅ **14 checks pass against the live DB** (`npm run verify:phase1`)                       |
+| **MVP (Phase 0 + 1)**                  | ✅ **complete** — every nav route resolves                                                |
+| **Absences (skip / away)**             | ✅ policy, service, settings toggles, student + admin screens                             |
+| **First live client — Campus Crave**   | ✅ onboarded on the live project: 3 admins, 3 staff, 26 students                          |
+| **Platform operator (SUPER_ADMIN)**    | ✅ `superuser` login + mess switcher, 13 live checks pass                                 |
+| **Students sign in with a mobile**     | ✅ generated `profiles.mobile`, login resolves it to their account                        |
+| **Auto-assigned roll numbers**         | ✅ per-mess toggle, allocated under a row lock (010)                                      |
+| **Counter photo from the camera**      | ✅ getUserMedia capture, same upload action as a picked file                              |
+| **Mobile app — Slice 0 (transport)**   | ✅ `/api/*` reachable over a bearer token, 4 live checks pass                             |
+| **Mobile app — Slice 1a (auth API)**   | ✅ login / change-password / logout / me, 9 live checks pass                              |
+| **Mobile app — Slice 1b (Flutter)**    | ✅ login → role-routed shell, run on iOS against production                               |
+| **Store legal pages on mealadda.in**   | ✅ /privacy, /terms, /delete-account, /support — public app routes, see RELEASE-MOBILE.md |
+| **Aurora Depth UI revamp (web + app)** | ✅ Indigo light / Teal dark, theme toggle, Archivo — DESIGN.md §0                         |
+| **Public landing page (`/`)**          | ✅ features, how it works, pricing ("Talk to us"), about us, sign in                      |
+| **Admin-only web sign-in (D-30)**      | ✅ built, **switch off** (`WEB_SIGNIN_APP_ONLY`) — 6 live checks pass                     |
+| **Operator persona chooser (D-31)**    | ✅ `/superuser`: admin / staff / enter as student — 24 live checks pass                   |
 
 **Phase 0 is done.** Three roles sign in against the live database and land on their own
 shell; cross-tenant isolation is proven with real data. Phase 1 domain logic (QR policy,

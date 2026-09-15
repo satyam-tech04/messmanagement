@@ -9,5 +9,5 @@ class AppInfo {
   const AppInfo._();
 
   static const String name = "MealAdda";
-  static const String supportEmail = "support@mealadda.app";
+  static const String supportEmail = "support@mealadda.in";
 }
