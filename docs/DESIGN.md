@@ -36,6 +36,10 @@ Adopted 15 Sep 2026 from the owner's theme study. Two palettes, one product, on 
   contrast).
 - **Theme choice:** light / dark / match device, persisted per device (`next-themes` on
   web, `ThemeController` in the app). Every animation stops under reduced motion.
+- **It is a mess, not a console.** Public and sign-in surfaces lead with food: the thali
+  illustration, meal-time chips, dishes and plain words (`src/components/mess-illustrations.tsx`).
+  Food colours (`--food-turmeric`, `--food-leaf`, `--food-chilli`) are for artwork only. Section
+  labels are sentence-case pills, not monospace readouts; mono is kept for IDs and roll numbers.
 - **Status colours are not brand colours** — §3 still holds in both schemes.
 
 ## Non-negotiables

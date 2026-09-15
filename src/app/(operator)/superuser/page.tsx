@@ -1,13 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import {
-  ArrowRight,
-  ArrowRightLeft,
-  ChefHat,
-  LayoutDashboard,
-  QrCode,
-  ScanLine,
-} from "lucide-react";
+import { ArrowRight, ArrowRightLeft, ChefHat, HandPlatter, QrCode, Store } from "lucide-react";
 import { AuroraEyebrow } from "@/components/aurora-backdrop";
 import { OPERATOR_PERSONAS, type OperatorPersona } from "@/core/policies/operator-access.policy";
 import { requireSessionUser } from "@/infra/auth/session";
@@ -25,29 +18,29 @@ const COPY: Record<
     tag: string;
     body: string;
     points: readonly string[];
-    Icon: typeof LayoutDashboard;
+    Icon: typeof Store;
     cta: string;
   }
 > = {
   ADMIN: {
     title: "Mess admin",
-    tag: "01 / RUN THE MESS",
+    tag: "Run the mess office",
     body: "The office view: students, plans, menus, attendance, reports and settings — exactly what this mess's own admin sees.",
     points: ["Students & subscriptions", "Week menu planner", "Headcount & reports"],
-    Icon: LayoutDashboard,
+    Icon: Store,
     cta: "Open admin",
   },
   STAFF: {
     title: "Counter staff",
-    tag: "02 / WORK THE COUNTER",
+    tag: "Serve at the counter",
     body: "The serving line: scan signed QR codes, fall back to manual entry, watch the live count and ring up counter sales.",
     points: ["QR scanner", "Manual entry fallback", "Live meal count"],
-    Icon: ScanLine,
+    Icon: HandPlatter,
     cta: "Open counter",
   },
   STUDENT: {
     title: "Student",
-    tag: "03 / SEE A STUDENT'S DAY",
+    tag: "See a student's day",
     body: "Enter a real student's account to see their QR, menu and plan exactly as they do. Every entry and exit is audited.",
     points: ["Rotating meal QR", "Today's menu", "Plan & absences"],
     Icon: QrCode,
@@ -62,9 +55,10 @@ export default async function SuperuserPage() {
   return (
     <div className="space-y-12">
       <section className="aurora-rise flex flex-col items-start gap-5">
-        <AuroraEyebrow pulse>Signed in as platform admin</AuroraEyebrow>
+        <AuroraEyebrow pulse>Platform admin</AuroraEyebrow>
         <h1 className="max-w-3xl text-4xl leading-[1.02] font-black tracking-[-0.035em] sm:text-6xl">
-          Welcome back, {firstName}. <span className="aurora-text">How are you working today?</span>
+          Welcome back, {firstName}.{" "}
+          <span className="aurora-text">Which side of the mess today?</span>
         </h1>
         <p className="text-muted-foreground max-w-2xl text-base leading-relaxed sm:text-lg">
           {/* A template string, not JSX text: the space after an expression in a
@@ -112,9 +106,7 @@ export default async function SuperuserPage() {
                 <span className="aurora-fill aurora-glow flex size-12 items-center justify-center rounded-2xl">
                   <Icon className="size-6" aria-hidden="true" />
                 </span>
-                <span className="text-muted-foreground font-mono text-[10px] tracking-[0.16em]">
-                  {tag}
-                </span>
+                <span className="text-muted-foreground text-xs font-semibold">{tag}</span>
               </div>
               <div className="space-y-2">
                 <h2 className="text-2xl font-extrabold tracking-tight">{title}</h2>

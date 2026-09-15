@@ -92,7 +92,7 @@ export function AuroraMark({ className }: { className?: string }) {
   );
 }
 
-/** Mono eyebrow label with a live pulse, as used above section titles. */
+/** Small section label with an optional live dot — sentence case, warm, not a terminal readout. */
 export function AuroraEyebrow({
   children,
   pulse = false,
@@ -105,7 +105,7 @@ export function AuroraEyebrow({
   return (
     <span
       className={cn(
-        "text-aurora-3 inline-flex items-center gap-2.5 font-mono text-[11px] tracking-[0.18em] uppercase",
+        "text-aurora-1 bg-aurora-1/10 inline-flex w-fit items-center gap-2 rounded-full px-3.5 py-1.5 text-[13px] font-bold",
         className,
       )}
     >

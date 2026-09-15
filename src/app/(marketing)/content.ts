@@ -1,158 +1,149 @@
 /**
  * Everything the landing page says, in one file.
  *
- * Kept as data so copy can be edited without touching layout, and so a claim
- * can be checked against the product in one place. Every figure here is a
- * real default or behaviour of the shipped code — the QR rotates every 15s
- * (`tenant_settings.qr_refresh_seconds`), tokens are HMAC-SHA256 signed, the
- * counter queues scans offline. Pricing deliberately names no numbers until
- * they are decided.
+ * Written for a mess owner, a warden or a hostel manager — not an engineer.
+ * The product's engineering (signed QR codes, per-mess data isolation, exact
+ * money) is real and stays true here, but it is said in the words of the
+ * dining hall: nobody sneaks a second plate, nobody else sees your students,
+ * the bill always adds up.
+ *
+ * Every claim is something the shipped product does. Pricing names no numbers
+ * until they are decided, and the menu dishes and counts on the mock cards are
+ * illustrative, labelled as a sample.
  */
 export const NAV_LINKS = [
   { href: "#features", label: "Features" },
-  { href: "#how-it-works", label: "How it works" },
+  { href: "#day", label: "A day at the mess" },
   { href: "#pricing", label: "Pricing" },
   { href: "#about", label: "About us" },
 ] as const;
 
-export const HERO_STATS = [
-  { value: "15s", label: "QR ROTATION" },
-  { value: "HMAC", label: "SIGNED EVERY SCAN" },
-  { value: "Offline", label: "COUNTER QUEUE" },
-  { value: "3 apps", label: "STUDENT · COUNTER · ADMIN" },
+/** Rolling strip of dishes — the mess, before the software. */
+export const DISHES = [
+  "Poha & chai",
+  "Aloo paratha",
+  "Idli sambar",
+  "Rajma chawal",
+  "Dal tadka",
+  "Veg pulao",
+  "Chole bhature",
+  "Paneer butter masala",
+  "Masala dosa",
+  "Kheer on Sundays",
 ] as const;
 
-export const MARQUEE = [
-  "SIGNED ROTATING QR",
-  "LIVE HEADCOUNT",
-  "OFFLINE SCAN QUEUE",
-  "WEEK MENU PLANNER",
-  "MEAL PLANS & PAUSES",
-  "ABSENCE REQUESTS",
-  "COUNTER SALES",
-  "CSV IMPORT & REPORTS",
-  "ROW-LEVEL SECURITY",
-  "TENANT-LOCAL TIME",
-] as const;
-
-export interface Feature {
-  readonly tag: string;
+export interface Audience {
+  readonly who: string;
   readonly title: string;
   readonly body: string;
   readonly points: readonly string[];
-  readonly icon:
-    "QrCode" | "ChefHat" | "ClipboardList" | "UtensilsCrossed" | "CalendarOff" | "Receipt";
+  readonly icon: "GraduationCap" | "ChefHat" | "Store";
 }
 
-export const FEATURES: readonly Feature[] = [
+export const AUDIENCES: readonly Audience[] = [
   {
-    tag: "01 / ATTENDANCE",
-    title: "Signed QR at the counter",
-    body: "Each student carries a QR that rotates every few seconds and is signed by the server, so a screenshot from yesterday gets nobody fed.",
+    who: "For students",
+    title: "Know what's cooking. Walk in, eat.",
+    body: "Today's menu is on their phone. At the counter they show their meal QR and pick up a plate — no register, no token slips, no lost cards.",
     points: [
-      "Distinct outcome per scan — served, already served, no plan",
-      "Audited manual entry when a phone dies",
-      "Scans queue offline and sync when Wi-Fi returns",
+      "Today's menu, every meal",
+      "Meal QR in the MealAdda app",
+      "Skip a meal when going home",
     ],
-    icon: "QrCode",
+    icon: "GraduationCap",
   },
   {
-    tag: "02 / KITCHEN",
-    title: "A headcount you can cook to",
-    body: "Live meal counts per slot update with every scan, and a snapshot before service tells the kitchen how many plates to plan.",
+    who: "For the kitchen & counter",
+    title: "Cook for the students who are actually eating.",
+    body: "The count updates with every plate served, and skipped meals are already taken off — so the kitchen stops cooking for empty chairs.",
     points: [
-      "Realtime count for breakfast, lunch, snacks and dinner",
-      "Absences and pauses already subtracted",
-      "Daily snapshot for leftover and waste review",
+      "Live count for each meal",
+      "Fast QR scanning in the rush",
+      "Manual entry if a phone dies",
     ],
     icon: "ChefHat",
   },
   {
-    tag: "03 / PLANS",
-    title: "Meal plans without spreadsheets",
-    body: "Monthly or custom plans with the price and meal slots frozen at assignment, so a later price change never rewrites what a student signed up for.",
-    points: [
-      "Assign, renew, pause and end with a full history",
-      "Price and slot snapshots per subscription",
-      "Bulk student import from CSV",
-    ],
+    who: "For the mess owner",
+    title: "Plans, menus and students in one place.",
+    body: "See who is on which plan, when it runs out, what was served and what sold at the counter — without a single spreadsheet at month end.",
+    points: ["Meal plans & renewals", "Weekly menu planner", "Reports you can download"],
+    icon: "Store",
+  },
+];
+
+export interface Feature {
+  readonly title: string;
+  readonly body: string;
+  readonly icon: "QrCode" | "Soup" | "ClipboardList" | "CalendarOff" | "Megaphone" | "Receipt";
+}
+
+export const FEATURES: readonly Feature[] = [
+  {
+    title: "QR meal pass",
+    body: "Every student gets a QR that keeps changing, so a screenshot can't be shared for a free meal.",
+    icon: "QrCode",
+  },
+  {
+    title: "Weekly menu",
+    body: "Plan breakfast to dinner for the week once. Students see each day's menu on their phone.",
+    icon: "Soup",
+  },
+  {
+    title: "Meal plans",
+    body: "Monthly or custom plans with lunch, dinner or all meals — pause, renew and track who's covered.",
     icon: "ClipboardList",
   },
   {
-    tag: "04 / MENU",
-    title: "The week's menu, everywhere",
-    body: "Plan the week once. Students see today's menu in the app the moment it is published, and special meals go out as announcements.",
-    points: [
-      "Week planner with CSV import",
-      "Today's menu on every student's phone",
-      "Special-meal announcements",
-    ],
-    icon: "UtensilsCrossed",
-  },
-  {
-    tag: "05 / STUDENTS",
-    title: "Absences and feedback, handled",
-    body: "Students skip a meal or request days away from the app, within the rules your mess sets. Feedback reaches the office instead of the corridor.",
-    points: [
-      "Skip a meal ahead of the cutoff",
-      "Away requests with optional approval",
-      "Meal feedback, on when you want it",
-    ],
+    title: "Skip a meal, go home",
+    body: "Students mark meals or days away in the app, within your rules, and the kitchen count drops.",
     icon: "CalendarOff",
   },
   {
-    tag: "06 / COUNTER",
-    title: "Counter sales and reports",
-    body: "Guest plates and extras are rung up at the counter as paid or unpaid, and every figure the office needs exports in a click.",
-    points: [
-      "Paid / unpaid bills at the counter",
-      "Attendance and sales exports",
-      "Money kept in exact paise, never rounded",
-    ],
+    title: "Announcements & feedback",
+    body: "Tell everyone about Sunday's special, and hear what students thought of the food.",
+    icon: "Megaphone",
+  },
+  {
+    title: "Counter sales",
+    body: "Guests and extra plates billed right at the counter, marked paid or unpaid.",
     icon: "Receipt",
   },
 ];
 
-export const DAY_STEPS = [
-  {
-    step: "STEP 01",
-    title: "Plan",
-    body: "The admin publishes the week's menu and assigns plans. Students see it on their phones.",
-  },
-  {
-    step: "STEP 02",
-    title: "Show",
-    body: "At meal time a student opens the app. Their QR is live, signed and rotating.",
-  },
-  {
-    step: "STEP 03",
-    title: "Scan",
-    body: "Counter staff scan it. The verdict — served or why not — is readable from a metre away.",
-  },
-  {
-    step: "STEP 04",
-    title: "Cook",
-    body: "Every scan moves the live count. Tomorrow's headcount is known before the kitchen starts.",
-  },
-] as const;
+export interface DayMoment {
+  readonly time: string;
+  readonly title: string;
+  readonly body: string;
+  readonly icon: "Sunrise" | "Soup" | "House" | "Moon";
+}
 
-export const SURFACES = [
+export const DAY: readonly DayMoment[] = [
   {
-    name: "Student app",
-    platform: "iOS & ANDROID",
-    body: "The QR is the hero: legible at arm's length in a queue, plus today's menu, the plan and absences.",
+    time: "7:00 am",
+    title: "The menu is already on every phone",
+    body: "Poha and chai for breakfast. Students know before they leave the room.",
+    icon: "Sunrise",
   },
   {
-    name: "Counter app",
-    platform: "iOS & ANDROID TABLETS",
-    body: "Built for a rush: enormous verdicts, a sound per outcome, manual fallback and a live count.",
+    time: "1:00 pm",
+    title: "The lunch rush moves quickly",
+    body: "Show QR, get a plate. The counter sees at once if someone has already eaten.",
+    icon: "Soup",
   },
   {
-    name: "Admin console",
-    platform: "WEB",
-    body: "Dense and complete: students, plans, menus, attendance, headcount, reports and settings.",
+    time: "4:00 pm",
+    title: "A student heads home for the weekend",
+    body: "They mark the days away in the app. Tonight's dinner count drops by one.",
+    icon: "House",
   },
-] as const;
+  {
+    time: "9:30 pm",
+    title: "Dinner's done, tomorrow is planned",
+    body: "The day's meals are counted, so the kitchen knows how much to cook tomorrow.",
+    icon: "Moon",
+  },
+];
 
 export interface PricingTier {
   readonly name: string;
@@ -165,11 +156,11 @@ export interface PricingTier {
 export const PRICING: readonly PricingTier[] = [
   {
     name: "Pilot",
-    tagline: "Try MealAdda with one mess and real students.",
+    tagline: "Try MealAdda in one mess with your real students.",
     features: [
-      "One mess, guided onboarding",
-      "Signed QR attendance & manual fallback",
-      "Menus, plans and live headcount",
+      "One mess, set up with you",
+      "QR meal pass & counter scanning",
+      "Weekly menu and meal plans",
       "Student and counter apps",
     ],
     highlight: false,
@@ -177,52 +168,57 @@ export const PRICING: readonly PricingTier[] = [
   },
   {
     name: "Mess",
-    tagline: "Everything a running hostel mess needs, every day.",
+    tagline: "Everything a busy hostel mess needs, every day.",
     features: [
       "Everything in Pilot",
-      "Absences, pauses and renewals",
+      "Skip meals, days away & renewals",
       "Counter sales, announcements & feedback",
-      "CSV import, exports and reports",
-      "Support from the team that builds it",
+      "Reports and student import",
+      "Help from the team that builds it",
     ],
     highlight: true,
     cta: "Talk to us",
   },
   {
     name: "Campus",
-    tagline: "Several messes or hostels under one operator.",
+    tagline: "Several messes or hostels under one management.",
     features: [
       "Everything in Mess",
-      "Multiple messes, isolated data per mess",
-      "Platform admin across every mess",
-      "Onboarding for each new hostel",
+      "Many messes, each kept separate",
+      "One login to support every mess",
+      "Setup for each new hostel",
     ],
     highlight: false,
-    cta: "Contact sales",
+    cta: "Contact us",
   },
 ];
 
-export const PRINCIPLES = [
+/** What we promise a mess, in plain words. Each maps to real product behaviour. */
+export const PROMISES = [
   {
-    title: "Fail closed",
-    body: "If the server can't verify a QR, the scan is denied and staff use the audited fallback. A bypassable code costs more than a 20-second delay.",
+    title: "No free second plate",
+    body: "A meal QR works once per meal and changes every few seconds, so it can't be passed around.",
+    icon: "ShieldCheck",
   },
   {
-    title: "Money is exact",
-    body: "Every amount is whole paise in the database — never a float, never rounded — so a bill always adds up to what was paid.",
+    title: "Nobody hungry by mistake",
+    body: "If the internet drops, the counter keeps a manual entry that's recorded — students still eat.",
+    icon: "HeartHandshake",
   },
   {
-    title: "Your hostel's clock",
-    body: "Cutoffs, today's menu and the daily headcount follow your mess's own timezone, not a server somewhere else.",
+    title: "Your students stay private",
+    body: "Each mess only ever sees its own students. Nobody else on MealAdda can.",
+    icon: "Lock",
   },
   {
-    title: "Your data stays yours",
-    body: "Every mess is isolated at the database itself. One hostel can never see another's students.",
+    title: "Bills that add up",
+    body: "Every rupee is stored exactly, to the paisa, so totals always match what was paid.",
+    icon: "IndianRupee",
   },
 ] as const;
 
 /** The "About us" story. Edit freely — nothing else depends on the wording. */
 export const ABOUT_PARAGRAPHS = [
-  "MealAdda started from a simple observation: a hostel mess is a small logistics operation that runs on paper registers, WhatsApp groups and guesswork. Students get turned away over a lost card, kitchens cook for a headcount nobody knows, and the office reconciles it all at the end of the month.",
-  "We are building the system we wished those messes had — already running in a live hostel mess, three times a day. We engineer it like payments software, because to a student standing at the counter, it is.",
+  "Anyone who has lived in a hostel knows the mess: the register at the door, the token slips, the WhatsApp group announcing paneer on Sunday, and a kitchen that never quite knows how many will turn up.",
+  "MealAdda is built to make that everyday routine calm — for the students queueing three times a day, the cooks planning the pots, and the owner closing the month. It's already running in a live hostel mess.",
 ] as const;

@@ -1,22 +1,18 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { ArrowLeft, Check, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ChefHat } from "lucide-react";
 import { AuroraBackdrop, AuroraEyebrow, AuroraMark } from "@/components/aurora-backdrop";
+import { MEAL_TIMES, MealChip, ThaliIllustration } from "@/components/mess-illustrations";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { APP_NAME } from "@/lib/app-info";
-
-const HIGHLIGHTS = [
-  "Live headcount before the kitchen starts cooking",
-  "Signed, rotating QR — screenshots get nobody fed",
-  "Every override and account entry on the audit trail",
-];
 
 /**
  * Shell for unauthenticated screens.
  *
- * Two panes on desktop: the form on a glass card, and the Aurora story panel
- * beside it. The story collapses away entirely on a phone — half a screen of
- * decoration there would push the password field below the fold.
+ * Two panes on desktop: the form on a glass card, and a mess scene beside it —
+ * a steaming thali and the day's meal times, so signing in feels like walking
+ * into the dining hall rather than a server console. The scene collapses away
+ * on a phone, where it would push the password field below the fold.
  */
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
@@ -26,11 +22,9 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
       <div className="relative z-10 grid min-h-svh lg:grid-cols-[1fr_1.05fr]">
         <div className="flex flex-col gap-8 p-6 sm:p-10">
           <div className="flex items-center justify-between gap-4">
-            <Link href="/" className="flex items-center gap-3" aria-label={`${APP_NAME} home`}>
+            <Link href="/" className="flex items-center gap-2.5" aria-label={`${APP_NAME} home`}>
               <AuroraMark />
-              <span className="font-heading text-sm font-extrabold tracking-[0.22em] uppercase">
-                {APP_NAME}
-              </span>
+              <span className="font-heading text-lg font-black tracking-tight">{APP_NAME}</span>
             </Link>
             <ThemeToggle />
           </div>
@@ -46,35 +40,34 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
               <ArrowLeft className="size-3.5" aria-hidden="true" />
               Back to {APP_NAME}
             </Link>
-            <span className="font-mono tracking-[0.1em]">
-              © {new Date().getFullYear()} {APP_NAME.toUpperCase()}
+            <span>
+              © {new Date().getFullYear()} {APP_NAME}
             </span>
           </div>
         </div>
 
-        <div className="relative hidden border-l lg:block" style={{ background: "var(--chip)" }}>
-          <div className="relative flex h-full flex-col justify-center gap-10 p-14 xl:p-20">
-            <AuroraEyebrow pulse>Mess operations console</AuroraEyebrow>
-            <p className="max-w-[18ch] text-5xl leading-[1.02] font-black tracking-[-0.04em] xl:text-6xl">
-              Scan, verify, serve. <span className="aurora-text">The kitchen already knows.</span>
+        <div
+          className="relative hidden overflow-hidden border-l lg:block"
+          style={{ background: "var(--chip)" }}
+        >
+          <div className="relative flex h-full flex-col justify-center gap-8 p-14 xl:p-20">
+            <AuroraEyebrow>
+              <ChefHat className="size-4" aria-hidden="true" />
+              Your mess, today
+            </AuroraEyebrow>
+            <p className="max-w-[16ch] text-5xl leading-[1.02] font-black tracking-[-0.04em] xl:text-6xl">
+              Plan the menu. <span className="aurora-text">Serve every plate.</span>
             </p>
-            <ul className="space-y-4">
-              {HIGHLIGHTS.map((h) => (
-                <li key={h} className="flex items-start gap-3 text-base">
-                  <span className="aurora-fill mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full">
-                    <Check className="size-3" aria-hidden="true" />
-                  </span>
-                  {h}
-                </li>
+            <p className="text-muted-foreground max-w-[42ch] text-lg leading-relaxed">
+              Menus, meal plans, the counter and tonight&apos;s headcount — all waiting for you
+              inside.
+            </p>
+            <div className="relative z-10 grid max-w-lg grid-cols-2 gap-3">
+              {MEAL_TIMES.map((m) => (
+                <MealChip key={m.meal} {...m} />
               ))}
-            </ul>
-            <div className="bg-card/70 flex max-w-md items-center gap-4 rounded-2xl border p-5 backdrop-blur-xl">
-              <ShieldCheck className="text-aurora-1 size-8 shrink-0" aria-hidden="true" />
-              <p className="text-muted-foreground text-sm leading-relaxed">
-                Each mess&rsquo;s data is isolated at the database. Signing in only ever opens your
-                own hostel.
-              </p>
             </div>
+            <ThaliIllustration className="plate-float pointer-events-none absolute -right-36 -bottom-44 w-[400px] opacity-90" />
           </div>
         </div>
       </div>

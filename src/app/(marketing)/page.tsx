@@ -6,121 +6,166 @@ import {
   Check,
   ChefHat,
   ClipboardList,
+  GraduationCap,
+  HeartHandshake,
+  House,
+  IndianRupee,
+  Lock,
   LogIn,
+  Megaphone,
+  Moon,
   QrCode,
   Receipt,
   ShieldCheck,
-  Smartphone,
+  Soup,
+  Store,
+  Sunrise,
   UtensilsCrossed,
 } from "lucide-react";
-import { AuroraBackdrop, AuroraEyebrow, AuroraMark } from "@/components/aurora-backdrop";
+import { AuroraBackdrop, AuroraMark } from "@/components/aurora-backdrop";
+import {
+  MEAL_TIMES,
+  MealChip,
+  PhoneMock,
+  ThaliIllustration,
+} from "@/components/mess-illustrations";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { APP_NAME, SUPPORT_EMAIL } from "@/lib/app-info";
 import { cn } from "@/lib/utils";
 import {
-  DAY_STEPS,
+  ABOUT_PARAGRAPHS,
+  AUDIENCES,
+  DAY,
+  DISHES,
   FEATURES,
-  HERO_STATS,
-  MARQUEE,
   NAV_LINKS,
   PRICING,
-  PRINCIPLES,
-  ABOUT_PARAGRAPHS,
-  SURFACES,
+  PROMISES,
+  type Audience,
+  type DayMoment,
   type Feature,
 } from "./content";
 import { ScrollProgress } from "./scroll-progress";
 
 export const metadata: Metadata = {
-  title: `${APP_NAME} — Hostel mess management with signed QR attendance`,
+  title: `${APP_NAME} — Hostel mess management, from menu to plate`,
   description:
-    "MealAdda runs hostel mess operations: rotating signed QR meal attendance, meal plans, weekly menus, absences and a live headcount the kitchen can cook to.",
+    "MealAdda runs your hostel mess: weekly menus, meal plans, a QR meal pass for every student and a live count so the kitchen cooks for who's actually eating.",
 };
 
-const FEATURE_ICONS: Record<Feature["icon"], typeof QrCode> = {
-  QrCode,
+const AUDIENCE_ICONS: Record<Audience["icon"], typeof ChefHat> = {
+  GraduationCap,
   ChefHat,
+  Store,
+};
+const FEATURE_ICONS: Record<Feature["icon"], typeof ChefHat> = {
+  QrCode,
+  Soup,
   ClipboardList,
-  UtensilsCrossed,
   CalendarOff,
+  Megaphone,
   Receipt,
 };
+const DAY_ICONS: Record<DayMoment["icon"], typeof ChefHat> = { Sunrise, Soup, House, Moon };
+const PROMISE_ICONS = { ShieldCheck, HeartHandshake, Lock, IndianRupee } as const;
 
 const LEGAL_SITE = "https://satyam-tech04.github.io/messmanagement";
 
+/** Small, warm section label — sentence case, not a terminal readout. */
+function Kicker({
+  children,
+  icon: Icon = UtensilsCrossed,
+}: {
+  children: React.ReactNode;
+  icon?: typeof ChefHat;
+}) {
+  return (
+    <span className="text-aurora-1 bg-aurora-1/10 inline-flex w-fit items-center gap-2 rounded-full px-3.5 py-1.5 text-[13px] font-bold">
+      <Icon className="size-4" aria-hidden="true" />
+      {children}
+    </span>
+  );
+}
+
 function SectionHeading({
-  eyebrow,
+  kicker,
+  icon,
   title,
   body,
   id,
+  center = false,
 }: {
-  eyebrow: string;
+  kicker: string;
+  icon?: typeof ChefHat;
   title: React.ReactNode;
   body?: string;
   id: string;
+  center?: boolean;
 }) {
   return (
-    <div className="mb-12 flex flex-wrap items-end justify-between gap-6">
-      <div className="flex max-w-3xl flex-col gap-4">
-        <AuroraEyebrow>{eyebrow}</AuroraEyebrow>
-        <h2
-          id={id}
-          className="text-[clamp(2rem,4.2vw,3.6rem)] leading-[1.04] font-black tracking-[-0.03em]"
-        >
-          {title}
-        </h2>
-      </div>
+    <div
+      className={cn(
+        "mb-12 flex max-w-3xl flex-col gap-4",
+        center && "mx-auto items-center text-center",
+      )}
+    >
+      <Kicker {...(icon ? { icon } : {})}>{kicker}</Kicker>
+      <h2
+        id={id}
+        className="text-[clamp(2rem,4vw,3.25rem)] leading-[1.06] font-black tracking-[-0.03em]"
+      >
+        {title}
+      </h2>
       {body ? (
-        <p className="text-muted-foreground max-w-[44ch] text-base leading-relaxed">{body}</p>
+        <p className="text-muted-foreground max-w-[58ch] text-lg leading-relaxed">{body}</p>
       ) : null}
     </div>
   );
 }
 
-/** A static rendering of what the counter actually checks — the "tech insight". */
-function ScanTrace() {
-  const rows: Array<[string, string, "ok" | "muted" | "plain"]> = [
-    ["token", "v1.7f3c…e91a", "plain"],
-    ["signature", "HMAC-SHA256 ✓", "ok"],
-    ["expires_in", "12s", "plain"],
-    ["student", "Roll 214 · ACTIVE", "plain"],
-    ["plan", "Monthly · LUNCH, DINNER", "plain"],
-    ["service_date", "2026-09-15 (Asia/Kolkata)", "muted"],
-    ["already_served", "false", "plain"],
-  ];
+/** The hero's right side: a steaming thali with the day's mess life floating round it. */
+function HeroPlate() {
   return (
-    <div className="bg-card/80 relative overflow-hidden rounded-3xl border shadow-2xl backdrop-blur-xl">
-      <div className="flex items-center justify-between border-b px-5 py-3">
-        <div className="flex items-center gap-1.5" aria-hidden="true">
-          <span className="size-2.5 rounded-full bg-red-400/70" />
-          <span className="size-2.5 rounded-full bg-amber-400/70" />
-          <span className="size-2.5 rounded-full bg-emerald-400/70" />
-        </div>
-        <span className="text-muted-foreground font-mono text-[10px] tracking-[0.16em]">
-          POST /api/qr/verify
-        </span>
+    <div className="relative mx-auto aspect-square w-full max-w-[520px]">
+      <div
+        aria-hidden="true"
+        className="absolute inset-[8%] rounded-full blur-3xl"
+        style={{ background: "radial-gradient(circle, var(--orb-2), transparent 70%)" }}
+      />
+      <ThaliIllustration className="plate-float relative size-full" />
+
+      {/* Today's menu card */}
+      <div className="bg-card/90 absolute top-[4%] -left-2 w-52 rounded-2xl border p-4 shadow-xl backdrop-blur-xl sm:-left-8">
+        <p className="text-muted-foreground flex items-center gap-1.5 text-xs font-semibold">
+          <Soup className="text-chilli size-3.5" aria-hidden="true" /> Today&apos;s lunch
+        </p>
+        <ul className="mt-2 space-y-1 text-sm">
+          <li>Rajma chawal</li>
+          <li>Jeera aloo &amp; roti</li>
+          <li>Salad &amp; gulab jamun</li>
+        </ul>
       </div>
-      <dl className="space-y-2.5 px-5 py-5 font-mono text-[13px]">
-        {rows.map(([k, v, tone]) => (
-          <div key={k} className="flex justify-between gap-4">
-            <dt className="text-muted-foreground">{k}</dt>
-            <dd
-              className={cn(
-                "text-right",
-                tone === "ok" && "text-live font-semibold",
-                tone === "muted" && "text-muted-foreground",
-              )}
-            >
-              {v}
-            </dd>
-          </div>
-        ))}
-      </dl>
-      <div className="aurora-fill flex items-center justify-between px-5 py-4">
-        <span className="flex items-center gap-2 text-lg font-black tracking-tight">
-          <Check className="size-5" aria-hidden="true" /> SERVED · LUNCH
+
+      {/* Served count card */}
+      <div className="bg-card/90 absolute right-0 bottom-[10%] w-56 rounded-2xl border p-4 shadow-xl backdrop-blur-xl sm:-right-6">
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-muted-foreground font-semibold">Lunch served</span>
+          <span className="text-muted-foreground/70 text-[10px]">sample</span>
+        </div>
+        <p className="font-heading mt-1 text-2xl font-black">
+          212 <span className="text-muted-foreground text-base font-bold">of 240</span>
+        </p>
+        <div className="bg-muted mt-2 h-2 overflow-hidden rounded-full">
+          <div className="aurora-fill h-full w-[88%] rounded-full" />
+        </div>
+      </div>
+
+      {/* A served ping */}
+      <div className="bg-card/90 absolute top-[46%] -right-1 flex items-center gap-2 rounded-full border py-1.5 pr-3.5 pl-1.5 text-xs font-semibold shadow-lg backdrop-blur-xl sm:-right-10">
+        <span className="bg-leaf flex size-6 items-center justify-center rounded-full text-white">
+          <Check className="size-3.5" aria-hidden="true" />
         </span>
-        <span className="font-mono text-xs opacity-80">verdict</span>
+        Served · Room 204
       </div>
     </div>
   );
@@ -141,16 +186,14 @@ export default function LandingPage() {
           style={{ background: "var(--glass-header)" }}
         >
           <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-8">
-            <Link href="/" className="flex items-center gap-3" aria-label={`${APP_NAME} home`}>
+            <Link href="/" className="flex items-center gap-2.5" aria-label={`${APP_NAME} home`}>
               <AuroraMark />
-              <span className="font-heading text-sm font-extrabold tracking-[0.22em] uppercase">
-                {APP_NAME}
-              </span>
+              <span className="font-heading text-lg font-black tracking-tight">{APP_NAME}</span>
             </Link>
 
             <nav
               aria-label="Sections"
-              className="text-muted-foreground hidden items-center gap-8 text-[13px] tracking-wide md:flex"
+              className="text-muted-foreground hidden items-center gap-8 text-sm font-medium md:flex"
             >
               {NAV_LINKS.map((l) => (
                 <a key={l.href} href={l.href} className="hover:text-foreground transition-colors">
@@ -163,17 +206,16 @@ export default function LandingPage() {
               <ThemeToggle className="hidden sm:inline-flex" />
               <Link
                 href="/login"
-                className="bg-foreground text-background focus-visible:ring-ring/50 inline-flex h-10 items-center gap-2 rounded-full px-5 text-[13px] font-bold transition-transform hover:-translate-y-0.5 focus-visible:ring-[3px] focus-visible:outline-none"
+                className="bg-foreground text-background focus-visible:ring-ring/50 inline-flex h-10 items-center gap-2 rounded-full px-5 text-sm font-bold transition-transform hover:-translate-y-0.5 focus-visible:ring-[3px] focus-visible:outline-none"
               >
                 <LogIn className="size-4" aria-hidden="true" />
                 Sign in
               </Link>
             </div>
           </div>
-          {/* Section links stay reachable on a phone, where the nav above hides. */}
           <nav
             aria-label="Sections"
-            className="text-muted-foreground flex gap-5 overflow-x-auto border-t px-4 py-2 text-xs md:hidden"
+            className="text-muted-foreground flex items-center gap-5 overflow-x-auto border-t px-4 py-2 text-xs font-medium md:hidden"
           >
             {NAV_LINKS.map((l) => (
               <a key={l.href} href={l.href} className="hover:text-foreground whitespace-nowrap">
@@ -188,107 +230,93 @@ export default function LandingPage() {
           {/* ── Hero ─────────────────────────────────────────────── */}
           <section
             aria-labelledby="hero-title"
-            className="mx-auto flex max-w-7xl flex-col items-center gap-8 px-4 pt-20 pb-20 text-center sm:px-8 sm:pt-28"
+            className="mx-auto grid max-w-7xl items-center gap-14 px-4 pt-14 pb-16 sm:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:pt-20"
           >
-            <div className="aurora-chip aurora-rise inline-flex items-center gap-2.5 rounded-full px-4 py-2">
-              <AuroraEyebrow pulse className="tracking-[0.14em]">
-                Hostel mess OS · QR attendance + live headcount
-              </AuroraEyebrow>
-            </div>
+            <div className="flex flex-col items-start gap-7">
+              <div className="aurora-rise">
+                <Kicker icon={ChefHat}>Hostel mess management</Kicker>
+              </div>
 
-            <h1
-              id="hero-title"
-              className="max-w-[16ch] text-[clamp(2.75rem,7.2vw,6.75rem)] leading-[0.96] font-black tracking-[-0.045em]"
-            >
-              <span className="aurora-rise inline-block" style={{ animationDelay: ".05s" }}>
-                Every plate
-              </span>{" "}
-              <span className="aurora-rise inline-block" style={{ animationDelay: ".15s" }}>
-                accounted for.
-              </span>{" "}
-              <span
-                className="aurora-rise aurora-text inline-block"
-                style={{ animationDelay: ".3s" }}
+              <h1
+                id="hero-title"
+                className="aurora-rise text-[clamp(2.6rem,5.8vw,5rem)] leading-[1.0] font-black tracking-[-0.04em]"
+                style={{ animationDelay: ".1s" }}
               >
-                Every meal,
-              </span>{" "}
-              <span
-                className="aurora-rise aurora-text inline-block"
+                Good food, on time, <span className="aurora-text">for every student.</span>
+              </h1>
+
+              <p
+                className="text-muted-foreground aurora-rise max-w-[54ch] text-lg leading-relaxed"
+                style={{ animationDelay: ".2s" }}
+              >
+                {APP_NAME} runs your hostel mess — the weekly menu, meal plans, a QR meal pass for
+                every student and a live count for the kitchen. Shorter queues at the counter, less
+                food thrown away.
+              </p>
+
+              <div className="aurora-rise flex flex-wrap gap-3" style={{ animationDelay: ".3s" }}>
+                <Link
+                  href="/login"
+                  className="aurora-fill aurora-glow focus-visible:ring-ring/50 inline-flex h-14 items-center gap-2 rounded-full px-8 text-base font-extrabold transition-transform hover:-translate-y-0.5 focus-visible:ring-[3px] focus-visible:outline-none"
+                >
+                  Sign in to your mess
+                  <ArrowRight className="size-4" aria-hidden="true" />
+                </Link>
+                <a
+                  href="#day"
+                  className="bg-card/70 focus-visible:ring-ring/50 inline-flex h-14 items-center rounded-full border px-8 text-base font-semibold backdrop-blur transition-transform hover:-translate-y-0.5 focus-visible:ring-[3px] focus-visible:outline-none"
+                >
+                  See a day at the mess
+                </a>
+              </div>
+
+              <ul
+                className="aurora-rise text-muted-foreground flex flex-wrap gap-x-5 gap-y-2 text-sm"
                 style={{ animationDelay: ".4s" }}
               >
-                one scan.
-              </span>
-            </h1>
-
-            <p
-              className="text-muted-foreground aurora-rise max-w-[62ch] text-[clamp(1rem,1.35vw,1.2rem)] leading-relaxed"
-              style={{ animationDelay: ".5s" }}
-            >
-              {APP_NAME} runs your hostel mess end to end —{" "}
-              <span className="text-foreground font-semibold">meal plans</span>,{" "}
-              <span className="text-foreground font-semibold">weekly menus</span>, signed{" "}
-              <span className="text-foreground font-semibold">QR attendance</span> at the counter
-              and a <span className="text-foreground font-semibold">live headcount</span> the
-              kitchen can cook to.
-            </p>
-
-            <div
-              className="aurora-rise flex flex-wrap justify-center gap-3"
-              style={{ animationDelay: ".6s" }}
-            >
-              <Link
-                href="/login"
-                className="aurora-fill aurora-glow focus-visible:ring-ring/50 inline-flex h-14 items-center gap-2 rounded-full px-8 text-[15px] font-extrabold transition-transform hover:-translate-y-0.5 focus-visible:ring-[3px] focus-visible:outline-none"
-              >
-                Sign in to your mess
-                <ArrowRight className="size-4" aria-hidden="true" />
-              </Link>
-              <a
-                href="#pricing"
-                className="aurora-chip focus-visible:ring-ring/50 inline-flex h-14 items-center rounded-full px-8 text-[15px] font-semibold transition-transform hover:-translate-y-0.5 focus-visible:ring-[3px] focus-visible:outline-none"
-              >
-                See pricing
-              </a>
+                {[
+                  "No registers or token slips",
+                  "Students & staff use the app",
+                  "Set up with you",
+                ].map((t) => (
+                  <li key={t} className="flex items-center gap-2">
+                    <Check className="text-leaf size-4" aria-hidden="true" />
+                    {t}
+                  </li>
+                ))}
+              </ul>
             </div>
 
-            <dl
-              className="aurora-rise mt-10 grid w-full max-w-5xl grid-cols-2 gap-4 lg:grid-cols-4"
-              style={{ animationDelay: ".7s" }}
-            >
-              {HERO_STATS.map((s, i) => (
-                <div
-                  key={s.label}
-                  className="bg-card/60 rounded-2xl border p-5 text-left backdrop-blur-md transition-transform duration-300 hover:-translate-y-1.5"
-                >
-                  <dd
-                    className={cn(
-                      "font-heading text-3xl font-black tracking-tight",
-                      i === 0 && "text-aurora-1",
-                    )}
-                  >
-                    {s.value}
-                  </dd>
-                  <dt className="text-muted-foreground mt-2 font-mono text-[10px] tracking-[0.14em]">
-                    {s.label}
-                  </dt>
-                </div>
-              ))}
-            </dl>
+            <div className="aurora-rise" style={{ animationDelay: ".25s" }}>
+              <HeroPlate />
+            </div>
           </section>
 
-          {/* ── Marquee ──────────────────────────────────────────── */}
+          {/* ── Meal times ───────────────────────────────────────── */}
+          <section aria-label="Meal times" className="mx-auto max-w-7xl px-4 pb-16 sm:px-8">
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              {MEAL_TIMES.map((m) => (
+                <MealChip key={m.meal} {...m} />
+              ))}
+            </div>
+            <p className="text-muted-foreground mt-3 text-center text-sm">
+              Breakfast to dinner — every meal handled, on your mess&apos;s own timings.
+            </p>
+          </section>
+
+          {/* ── Dishes marquee ───────────────────────────────────── */}
           <div
             aria-hidden="true"
             className="overflow-hidden border-y py-4"
             style={{ background: "var(--chip)" }}
           >
-            <div className="aurora-marquee text-muted-foreground flex w-max font-mono text-xs tracking-[0.2em]">
+            <div className="aurora-marquee text-muted-foreground flex w-max text-base font-semibold">
               {[0, 1].map((copy) => (
-                <div key={copy} className="flex gap-11 pr-11">
-                  {MARQUEE.map((item) => (
-                    <span key={item} className="flex items-center gap-11">
-                      {item}
-                      <span className="text-aurora-1">✦</span>
+                <div key={copy} className="flex gap-10 pr-10">
+                  {DISHES.map((dish) => (
+                    <span key={dish} className="flex items-center gap-10 whitespace-nowrap">
+                      {dish}
+                      <UtensilsCrossed className="text-turmeric size-4" />
                     </span>
                   ))}
                 </div>
@@ -296,48 +324,44 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* ── Features ─────────────────────────────────────────── */}
+          {/* ── Who it's for ─────────────────────────────────────── */}
           <section
             id="features"
-            aria-labelledby="features-title"
+            aria-labelledby="audience-title"
             className="mx-auto max-w-7xl scroll-mt-24 px-4 py-24 sm:px-8"
           >
             <SectionHeading
-              id="features-title"
-              eyebrow="Core features"
+              id="audience-title"
+              kicker="Made for the whole mess"
               title={
                 <>
-                  Built for the mess counter,{" "}
-                  <span className="aurora-text">not a restaurant POS</span>
+                  One system for the students,{" "}
+                  <span className="aurora-text">the kitchen and the office</span>
                 </>
               }
-              body="Six parts of running a hostel mess, designed around what actually goes wrong at 1pm with two hundred students in the queue."
+              body="A mess works when three groups of people are in sync. MealAdda gives each of them exactly what they need."
             />
 
-            <div className="bg-border grid gap-px overflow-hidden rounded-3xl border sm:grid-cols-2 lg:grid-cols-3">
-              {FEATURES.map((f) => {
-                const Icon = FEATURE_ICONS[f.icon];
+            <div className="grid gap-5 lg:grid-cols-3">
+              {AUDIENCES.map((a) => {
+                const Icon = AUDIENCE_ICONS[a.icon];
                 return (
                   <article
-                    key={f.title}
-                    className="bg-card/90 flex flex-col gap-4 p-8 backdrop-blur"
+                    key={a.who}
+                    className="bg-card/80 flex flex-col gap-4 rounded-3xl border p-8 backdrop-blur-xl transition-transform duration-300 hover:-translate-y-1"
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="text-aurora-1 font-mono text-[11px] tracking-[0.16em]">
-                        {f.tag}
-                      </span>
-                      <span className="aurora-chip text-aurora-1 flex size-10 items-center justify-center rounded-xl">
-                        <Icon className="size-5" aria-hidden="true" />
-                      </span>
-                    </div>
-                    <h3 className="text-2xl font-extrabold tracking-tight">{f.title}</h3>
-                    <p className="text-muted-foreground text-[15px] leading-relaxed">{f.body}</p>
-                    <ul className="mt-1 space-y-2 text-sm">
-                      {f.points.map((p) => (
-                        <li key={p} className="flex gap-2.5">
-                          <span className="text-aurora-1" aria-hidden="true">
-                            ▸
-                          </span>
+                    <span className="aurora-fill flex size-12 items-center justify-center rounded-2xl">
+                      <Icon className="size-6" aria-hidden="true" />
+                    </span>
+                    <p className="text-aurora-1 text-sm font-bold">{a.who}</p>
+                    <h3 className="text-2xl leading-tight font-extrabold tracking-tight">
+                      {a.title}
+                    </h3>
+                    <p className="text-muted-foreground leading-relaxed">{a.body}</p>
+                    <ul className="mt-auto space-y-2.5 border-t pt-4 text-sm">
+                      {a.points.map((p) => (
+                        <li key={p} className="flex items-center gap-2.5">
+                          <Check className="text-leaf size-4 shrink-0" aria-hidden="true" />
                           {p}
                         </li>
                       ))}
@@ -346,78 +370,73 @@ export default function LandingPage() {
                 );
               })}
             </div>
+
+            <div className="mt-16 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {FEATURES.map((f) => {
+                const Icon = FEATURE_ICONS[f.icon];
+                return (
+                  <div
+                    key={f.title}
+                    className="bg-card/60 flex gap-4 rounded-2xl border p-5 backdrop-blur"
+                  >
+                    <span className="bg-aurora-1/10 text-aurora-1 flex size-11 shrink-0 items-center justify-center rounded-xl">
+                      <Icon className="size-5" aria-hidden="true" />
+                    </span>
+                    <div>
+                      <h3 className="font-heading font-extrabold">{f.title}</h3>
+                      <p className="text-muted-foreground mt-1 text-sm leading-relaxed">{f.body}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </section>
 
-          {/* ── How it works ─────────────────────────────────────── */}
+          {/* ── A day at the mess ────────────────────────────────── */}
           <section
-            id="how-it-works"
-            aria-labelledby="how-title"
+            id="day"
+            aria-labelledby="day-title"
             className="mx-auto max-w-7xl scroll-mt-24 px-4 pb-24 sm:px-8"
           >
-            <div className="grid items-center gap-12 lg:grid-cols-[1.1fr_0.9fr]">
+            <div className="bg-card/50 grid items-center gap-12 rounded-[2rem] border p-6 backdrop-blur-xl sm:p-12 lg:grid-cols-[1.15fr_0.85fr]">
               <div>
                 <SectionHeading
-                  id="how-title"
-                  eyebrow="A day in the mess"
+                  id="day-title"
+                  kicker="A day at the mess"
+                  icon={Sunrise}
                   title={
                     <>
-                      From menu to plate, <span className="aurora-text">verified in one scan</span>
+                      From morning chai{" "}
+                      <span className="aurora-text">to the last dinner plate</span>
                     </>
                   }
                 />
-                <ol className="grid gap-6 border-t pt-8 sm:grid-cols-2">
-                  {DAY_STEPS.map((s) => (
-                    <li key={s.step} className="flex flex-col gap-2">
-                      <span className="text-aurora-1 font-mono text-[11px] tracking-[0.14em]">
-                        {s.step}
-                      </span>
-                      <span className="text-xl font-extrabold">{s.title}</span>
-                      <span className="text-muted-foreground text-sm leading-relaxed">
-                        {s.body}
-                      </span>
-                    </li>
-                  ))}
+                <ol className="relative space-y-8 border-l-2 border-dashed pl-8">
+                  {DAY.map((d) => {
+                    const Icon = DAY_ICONS[d.icon];
+                    return (
+                      <li key={d.time} className="relative">
+                        <span className="aurora-fill absolute top-0 -left-[3.05rem] flex size-9 items-center justify-center rounded-full ring-4 ring-[var(--background)]">
+                          <Icon className="size-4" aria-hidden="true" />
+                        </span>
+                        <p className="text-aurora-1 text-sm font-bold">{d.time}</p>
+                        <p className="font-heading mt-0.5 text-xl font-extrabold">{d.title}</p>
+                        <p className="text-muted-foreground mt-1 leading-relaxed">{d.body}</p>
+                      </li>
+                    );
+                  })}
                 </ol>
               </div>
 
-              <div className="relative">
+              <div className="relative flex justify-center py-6">
                 <div
                   aria-hidden="true"
-                  className="absolute -inset-8 rounded-[3rem] opacity-70 blur-3xl"
-                  style={{ background: "radial-gradient(circle, var(--orb-2), transparent 70%)" }}
+                  className="absolute inset-0 rounded-full blur-3xl"
+                  style={{ background: "radial-gradient(circle, var(--orb-1), transparent 70%)" }}
                 />
-                <div className="relative">
-                  <p className="text-muted-foreground mb-3 flex items-center gap-2 font-mono text-[11px] tracking-[0.14em]">
-                    <ShieldCheck className="text-aurora-1 size-4" aria-hidden="true" />
-                    WHAT ONE SCAN CHECKS
-                  </p>
-                  <ScanTrace />
-                </div>
+                <PhoneMock className="relative rotate-[-3deg]" />
+                <ThaliIllustration className="absolute -right-2 -bottom-4 w-36 sm:right-4" />
               </div>
-            </div>
-
-            <div className="mt-20 grid gap-5 md:grid-cols-3">
-              {SURFACES.map((s) => (
-                <div
-                  key={s.name}
-                  className="bg-card/70 relative overflow-hidden rounded-3xl border p-7 backdrop-blur-xl"
-                >
-                  <span
-                    aria-hidden="true"
-                    className="aurora-sweep absolute top-0 left-0 h-0.5 w-2/5"
-                    style={{
-                      background:
-                        "linear-gradient(90deg, transparent, var(--aurora-1), transparent)",
-                    }}
-                  />
-                  <Smartphone className="text-aurora-1 mb-4 size-5" aria-hidden="true" />
-                  <p className="text-muted-foreground font-mono text-[10px] tracking-[0.16em]">
-                    {s.platform}
-                  </p>
-                  <h3 className="mt-2 text-xl font-extrabold">{s.name}</h3>
-                  <p className="text-muted-foreground mt-2 text-sm leading-relaxed">{s.body}</p>
-                </div>
-              ))}
             </div>
           </section>
 
@@ -429,13 +448,15 @@ export default function LandingPage() {
           >
             <SectionHeading
               id="pricing-title"
-              eyebrow="Pricing"
+              kicker="Pricing"
+              icon={IndianRupee}
+              center
               title={
                 <>
-                  Priced per mess, <span className="aurora-text">sized to your hostel</span>
+                  Priced for your mess, <span className="aurora-text">not a one-size plan</span>
                 </>
               }
-              body="Every mess is different — how many students, how many meals a day, one hostel or several. Tell us about yours and we'll put a quote together."
+              body="Every mess is different — how many students, how many meals, one hostel or several. Tell us about yours and we'll share a quote."
             />
 
             <div className="grid gap-5 lg:grid-cols-3">
@@ -448,8 +469,8 @@ export default function LandingPage() {
                   )}
                 >
                   {tier.highlight ? (
-                    <span className="aurora-fill absolute top-6 right-6 rounded-full px-3 py-1 font-mono text-[10px] font-bold tracking-[0.14em]">
-                      RECOMMENDED
+                    <span className="aurora-fill absolute top-6 right-6 rounded-full px-3 py-1 text-xs font-bold">
+                      Recommended
                     </span>
                   ) : null}
                   <div className="space-y-2">
@@ -458,17 +479,12 @@ export default function LandingPage() {
                   </div>
                   <div>
                     <p className="font-heading text-4xl font-black tracking-tight">Talk to us</p>
-                    <p className="text-muted-foreground mt-1 font-mono text-[11px] tracking-[0.12em]">
-                      QUOTED PER MESS
-                    </p>
+                    <p className="text-muted-foreground mt-1 text-sm">Quoted per mess</p>
                   </div>
                   <ul className="flex-1 space-y-3 text-sm">
                     {tier.features.map((f) => (
                       <li key={f} className="flex gap-3">
-                        <Check
-                          className="text-aurora-1 mt-0.5 size-4 shrink-0"
-                          aria-hidden="true"
-                        />
+                        <Check className="text-leaf mt-0.5 size-4 shrink-0" aria-hidden="true" />
                         {f}
                       </li>
                     ))}
@@ -494,49 +510,56 @@ export default function LandingPage() {
             aria-labelledby="about-title"
             className="mx-auto max-w-7xl scroll-mt-24 px-4 pb-24 sm:px-8"
           >
-            <div className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr]">
+            <div className="grid gap-12 lg:grid-cols-[0.95fr_1.05fr]">
               <div className="flex flex-col gap-5">
-                <AuroraEyebrow>About us</AuroraEyebrow>
+                <Kicker icon={HeartHandshake}>About us</Kicker>
                 <h2
                   id="about-title"
-                  className="text-[clamp(2rem,4.2vw,3.6rem)] leading-[1.04] font-black tracking-[-0.03em]"
+                  className="text-[clamp(2rem,4vw,3.25rem)] leading-[1.06] font-black tracking-[-0.03em]"
                 >
-                  We build for the <span className="aurora-text">three rushes</span> a day
+                  Built around the mess queue,{" "}
+                  <span className="aurora-text">not a spreadsheet</span>
                 </h2>
                 {ABOUT_PARAGRAPHS.map((text) => (
                   <p
                     key={text.slice(0, 24)}
-                    className="text-muted-foreground text-base leading-relaxed"
+                    className="text-muted-foreground text-lg leading-relaxed"
                   >
                     {text}
                   </p>
                 ))}
                 <a
                   href={`mailto:${SUPPORT_EMAIL}`}
-                  className="text-aurora-1 inline-flex w-fit items-center gap-2 text-sm font-bold"
+                  className="text-aurora-1 inline-flex w-fit items-center gap-2 font-bold"
                 >
                   {SUPPORT_EMAIL}
                   <ArrowRight className="size-4" aria-hidden="true" />
                 </a>
               </div>
 
-              <div className="bg-border grid gap-px overflow-hidden rounded-3xl border sm:grid-cols-2">
-                {PRINCIPLES.map((p, i) => (
-                  <div key={p.title} className="bg-card/90 flex flex-col gap-3 p-7 backdrop-blur">
-                    <span className="text-aurora-1 font-mono text-[11px] tracking-[0.16em]">
-                      PRINCIPLE {String(i + 1).padStart(2, "0")}
-                    </span>
-                    <h3 className="text-lg font-extrabold">{p.title}</h3>
-                    <p className="text-muted-foreground text-sm leading-relaxed">{p.body}</p>
-                  </div>
-                ))}
+              <div className="grid gap-4 sm:grid-cols-2">
+                {PROMISES.map((p) => {
+                  const Icon = PROMISE_ICONS[p.icon];
+                  return (
+                    <div
+                      key={p.title}
+                      className="bg-card/80 flex flex-col gap-3 rounded-3xl border p-7 backdrop-blur"
+                    >
+                      <span className="bg-aurora-1/10 text-aurora-1 flex size-11 items-center justify-center rounded-xl">
+                        <Icon className="size-5" aria-hidden="true" />
+                      </span>
+                      <h3 className="font-heading text-lg font-extrabold">{p.title}</h3>
+                      <p className="text-muted-foreground text-sm leading-relaxed">{p.body}</p>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </section>
 
           {/* ── Closing CTA ──────────────────────────────────────── */}
           <section className="mx-auto max-w-7xl px-4 pb-24 sm:px-8">
-            <div className="bg-card/70 relative flex flex-col items-center gap-6 overflow-hidden rounded-[2rem] border px-6 py-20 text-center backdrop-blur-xl">
+            <div className="bg-card/70 relative grid items-center gap-8 overflow-hidden rounded-[2rem] border p-8 backdrop-blur-xl sm:p-14 lg:grid-cols-[1fr_auto]">
               <div
                 aria-hidden="true"
                 className="aurora-spin absolute inset-x-[30%] -inset-y-[40%]"
@@ -545,43 +568,42 @@ export default function LandingPage() {
                     "conic-gradient(from 0deg, transparent, var(--orb-2), transparent 40%)",
                 }}
               />
-              <h2 className="relative max-w-[22ch] text-[clamp(1.9rem,4.4vw,3.6rem)] leading-[1.05] font-black tracking-[-0.03em]">
-                Ready to run your mess on {APP_NAME}?
-              </h2>
-              <p className="text-muted-foreground relative max-w-[56ch] text-base leading-relaxed">
-                Mess admins sign in on the web. Students and counter staff use the {APP_NAME} app.
-              </p>
-              <div className="relative flex flex-wrap justify-center gap-3">
-                <Link
-                  href="/login"
-                  className="bg-foreground text-background inline-flex h-12 items-center gap-2 rounded-full px-7 text-sm font-extrabold transition-transform hover:-translate-y-0.5"
-                >
-                  <LogIn className="size-4" aria-hidden="true" />
-                  Admin sign in
-                </Link>
-                <a
-                  href={`mailto:${SUPPORT_EMAIL}`}
-                  className="aurora-chip inline-flex h-12 items-center rounded-full px-7 text-sm font-semibold transition-transform hover:-translate-y-0.5"
-                >
-                  Book a walkthrough
-                </a>
+              <div className="relative flex flex-col gap-5">
+                <h2 className="max-w-[20ch] text-[clamp(1.9rem,4vw,3.25rem)] leading-[1.06] font-black tracking-[-0.03em]">
+                  Ready for a calmer mess tomorrow?
+                </h2>
+                <p className="text-muted-foreground max-w-[52ch] text-lg leading-relaxed">
+                  Mess owners and admins sign in here. Students and counter staff use the {APP_NAME}{" "}
+                  app on their phones.
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <Link
+                    href="/login"
+                    className="bg-foreground text-background inline-flex h-12 items-center gap-2 rounded-full px-7 text-sm font-extrabold transition-transform hover:-translate-y-0.5"
+                  >
+                    <LogIn className="size-4" aria-hidden="true" />
+                    Admin sign in
+                  </Link>
+                  <a
+                    href={`mailto:${SUPPORT_EMAIL}`}
+                    className="aurora-chip inline-flex h-12 items-center rounded-full px-7 text-sm font-semibold transition-transform hover:-translate-y-0.5"
+                  >
+                    Book a walkthrough
+                  </a>
+                </div>
               </div>
-              <p className="text-live relative inline-flex items-center gap-2 font-mono text-[11px] tracking-[0.14em]">
-                <span className="aurora-pulse bg-live size-1.5 rounded-full" aria-hidden="true" />
-                LIVE IN A HOSTEL MESS TODAY
-              </p>
+              <ThaliIllustration className="relative mx-auto hidden w-56 lg:block" />
             </div>
           </section>
         </main>
 
         {/* ── Footer ─────────────────────────────────────────────── */}
         <footer className="text-muted-foreground border-t">
-          <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-6 px-4 py-10 text-[13px] sm:px-8">
-            <div className="flex items-center gap-3">
-              <AuroraMark className="size-5 rounded-md" />
-              <span className="text-foreground font-heading font-extrabold tracking-[0.2em] uppercase">
-                {APP_NAME}
-              </span>
+          <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-6 px-4 py-10 text-sm sm:px-8">
+            <div className="flex items-center gap-2.5">
+              <AuroraMark className="size-6 rounded-md" />
+              <span className="text-foreground font-heading font-black">{APP_NAME}</span>
+              <span className="hidden sm:inline">· Hostel mess management</span>
             </div>
             <nav aria-label="Footer" className="flex flex-wrap gap-6">
               <a href="#features" className="hover:text-foreground">
@@ -600,8 +622,8 @@ export default function LandingPage() {
                 Support
               </a>
             </nav>
-            <p className="font-mono text-[11px] tracking-[0.1em]">
-              © {year} {APP_NAME.toUpperCase()} · HOSTEL MESS OS
+            <p>
+              © {year} {APP_NAME}
             </p>
           </div>
         </footer>
