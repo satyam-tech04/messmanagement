@@ -70,6 +70,10 @@ const ADMIN_NAV: readonly NavSection[] = [
       // Phase 2 subscription invoices, and two screens of that name showing
       // unrelated totals is how an owner loses track of what the mess earned.
       { label: "Counter sales", href: "/admin/counter-sales", icon: "Receipt" },
+      // Counter logins. Under Configuration rather than Operations would hide
+      // it from the owner who has just hired somebody and wants them scanning
+      // tonight.
+      { label: "Staff", href: "/admin/staff", icon: "UserCog" },
     ],
   },
   {

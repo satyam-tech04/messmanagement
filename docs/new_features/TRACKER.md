@@ -319,6 +319,34 @@ names the start date it is refusing, so a stale one is recognisable.
   the extension overlaps the next term and the DB constraint refuses it with a raw error.
   The pause policy does not yet know about the following term.
 
+### NF-11 — An admin creates staff logins ✅
+
+Asked for 16 Sep 2026. Until now a staff account existed only where a provisioning script
+had put one, so a mess that hired somebody had to come back to us — for the one thing a
+customer must be able to do alone.
+
+- [x] `parseStaffInvite()` in `staff-admin.policy.ts`, 12 tests written first
+- [x] `createStaffLogin` + `resetStaffPassword` actions, both audited (`STAFF_CREATED`, `STAFF_PASSWORD_RESET`)
+- [x] `/admin/staff` — list, add, reset, with all four states and a loading skeleton
+- [x] Staff nav entry under Operations
+- [x] Temporary password shown **once**, with a copy-details button; `must_change_password` set
+
+**Staff sign in with a real email**, unlike students, whose login is derived from a roll
+number into an unreachable `.invalid` address. A synthetic address is refused: a staff
+member on one could never recover their own account, and it would sit inside the students'
+namespace. The list flags anyone who has not yet chosen their own password, since until
+they do the password the admin handed over still works.
+
+No migration: `profiles` already carries the role and the `profiles_admin_write` RLS policy.
+The auth user is created first and deleted again if the profile insert fails, so a failure
+cannot leave an address claimed by an account belonging to no mess.
+
+**Not included** (say so before someone assumes otherwise): an admin cannot create another
+**admin** here, and there is no deactivate or delete — a staff member who leaves keeps their
+login until one of us disables it. Both are small follow-ons.
+
+**Not yet live-verified.** Nobody has signed in as an account created this way.
+
 ### NF-9 — Import a menu from a spreadsheet ✅
 
 Requested 6 Sep 2026 with the mess's own weekly menu sheet. Upload once, publish across a
