@@ -321,8 +321,16 @@ export function activateSubscription(
     return err(
       domainError(
         "CONFLICT",
-        `This student already has a plan covering ${clash.startDate} to ${clash.endDate}. Start the new one on ${firstFree} or later.`,
-        { from: clash.startDate, to: clash.endDate, firstFree },
+        // Names the start date being refused, not only the term in the way. The
+        // message outlives the submission that produced it, so an admin who has
+        // since corrected the date must be able to see that it is stale.
+        `Starting ${period.startDate} would overlap a plan this student already has, covering ${clash.startDate} to ${clash.endDate}. Start the new one on ${firstFree} or later.`,
+        {
+          startDate: period.startDate,
+          from: clash.startDate,
+          to: clash.endDate,
+          firstFree,
+        },
       ),
     );
   }

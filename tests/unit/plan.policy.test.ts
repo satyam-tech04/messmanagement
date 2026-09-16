@@ -580,6 +580,23 @@ describe("activateSubscription — overlap with an existing subscription", () =>
     if (!r.ok) expect(r.error.message).toContain("2026-10-01");
   });
 
+  it("names the start date that was actually refused", () => {
+    // An admin who is told "already has a plan covering A to B" while a later
+    // date sits in the box reads it as a bug in the date they can see. The
+    // refusal has to say which start date it is talking about, because the
+    // message stays on screen after the field is changed.
+    const r = activateSubscription({
+      ...base,
+      existingPeriods: [currentTerm],
+      startDate: toServiceDate("2026-09-06"),
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.error.message).toContain("2026-09-06");
+      expect(r.error.details?.startDate).toBe("2026-09-06");
+    }
+  });
+
   it("accepts a renewal starting the day after the current term ends", () => {
     // The whole point: two subscriptions coexist, back to back, neither touched.
     const r = activateSubscription({

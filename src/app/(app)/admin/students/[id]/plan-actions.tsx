@@ -54,6 +54,35 @@ function Submitting({ idle, busy }: { idle: string; busy: string }) {
   );
 }
 
+/**
+ * Hides a result the moment the form changes.
+ *
+ * `useActionState` keeps the last error until the next submission, so a refusal
+ * naming dates the admin has since corrected stays on screen looking like the
+ * answer to what they are now reading. One owner photographed exactly that:
+ * "already has a plan covering 3 Aug to 3 Sep" under a start date of 16 Sep,
+ * which the server would have accepted.
+ */
+function useFreshResult(state: ActionState): {
+  shown: ActionState;
+  formProps: { onChange: () => void; onSubmit: () => void };
+  markChanged: () => void;
+} {
+  const [stale, setStale] = useState(false);
+  const shown = stale ? {} : state;
+  return {
+    shown,
+    formProps: {
+      onChange: () => setStale(true),
+      // The new attempt's own result must be shown, whatever the last one said.
+      onSubmit: () => setStale(false),
+    },
+    // For controls that are buttons rather than inputs — picking a plan fires
+    // no change event.
+    markChanged: () => setStale(true),
+  };
+}
+
 function Feedback({ state }: { state: ActionState }) {
   if (state.error) {
     return (
@@ -100,10 +129,12 @@ export function AssignPlanDialog({
   const [override, setOverride] = useState("");
 
   const plan = plans.find((p) => p.id === planId) ?? null;
+  const { shown, formProps, markChanged } = useFreshResult(state);
 
   // Default to the plan's own term the moment a plan is picked, so the common
   // case — a student buying the whole thing — needs no typing at all.
   const choosePlan = (next: AssignablePlan) => {
+    markChanged();
     setPlanId(next.id);
     setDays(String(next.durationDays));
     setOverride("");
@@ -143,14 +174,14 @@ export function AssignPlanDialog({
 
   return (
     <div className="space-y-3">
-      <Feedback state={state} />
+      <Feedback state={shown} />
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger render={<Button />}>
           <Plus className="size-4" aria-hidden="true" />
           Assign a plan
         </DialogTrigger>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
-          <form action={formAction}>
+          <form action={formAction} {...formProps}>
             <DialogHeader>
               <DialogTitle>Assign a plan</DialogTitle>
               <DialogDescription>
@@ -279,7 +310,7 @@ export function AssignPlanDialog({
               ) : null}
             </div>
 
-            <Feedback state={state} />
+            <Feedback state={shown} />
 
             <DialogFooter className="pt-4">
               <DialogClose render={<Button type="button" variant="ghost" />}>Cancel</DialogClose>
@@ -472,10 +503,12 @@ export function RenewPlanDialog({
   const [override, setOverride] = useState("");
 
   const plan = plans.find((p) => p.id === planId) ?? null;
+  const { shown, formProps, markChanged } = useFreshResult(state);
 
   if (state.success && open) setOpen(false);
 
   const choosePlan = (next: AssignablePlan) => {
+    markChanged();
     setPlanId(next.id);
     setDays(String(next.durationDays));
     setOverride("");
@@ -505,7 +538,7 @@ export function RenewPlanDialog({
         Renew
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
-        <form action={formAction}>
+        <form action={formAction} {...formProps}>
           <DialogHeader>
             <DialogTitle>Renew this plan</DialogTitle>
             <DialogDescription>
@@ -635,7 +668,7 @@ export function RenewPlanDialog({
               </>
             ) : null}
 
-            <Feedback state={state} />
+            <Feedback state={shown} />
           </div>
 
           <DialogFooter>

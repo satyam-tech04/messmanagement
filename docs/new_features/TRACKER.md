@@ -303,6 +303,14 @@ first; the fixes below have tests written before the change.
 - [x] App scanner reconciles today's total every 15 s
 - [x] `canDeleteScheduledSubscription()` + `deleteScheduledSubscription` action + Delete on "Starts later" rows
 
+**Renewal refusal looked wrong (16 Sep 2026).** An owner photographed "This student already
+has a plan covering 2026-08-03 to 2026-09-03. Start the new one on 2026-09-04 or later."
+under a start date of **16/09/2026**, which the policy accepts — proven by a test at those
+exact dates. The refusal was left from an earlier attempt: `useActionState` keeps the last
+error until the next submission, so it stayed on screen after the date was corrected. Both
+the assign and renew dialogs now drop a result the moment the form changes, and the refusal
+names the start date it is refusing, so a stale one is recognisable.
+
 **Still open**
 
 - **#6 hang** — needs a reproduction on the deployment (browser + runtime logs). Not
