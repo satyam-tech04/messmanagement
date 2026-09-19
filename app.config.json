@@ -17,12 +17,16 @@
     "",
     "`storeName` is the App Store / Play listing title, which must be unique",
     "across the whole store and is often longer than the name under the icon.",
-    "It is set in each console by hand and lives here only as a record."
+    "It is set in each console by hand and lives here only as a record.",
+    "",
+    "`website` is the permanent origin. The app compiles it in as its API base",
+    "URL and opens the legal pages under it, so it must never be a Vercel host."
   ],
 
   "name": "MealAdda",
   "storeName": "MealAdda",
   "tagline": "hostel mess subscriptions, QR meal attendance and counter operations.",
   "bundleId": "com.mealadda.app",
-  "supportEmail": "support@mealadda.in"
+  "supportEmail": "support@mealadda.in",
+  "website": "https://www.mealadda.in"
 }

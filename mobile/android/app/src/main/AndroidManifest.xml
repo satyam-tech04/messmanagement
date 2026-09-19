@@ -1,4 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Flutter's template declares this only in the debug and profile
+         manifests. Without it here, a release build reaches the network only
+         while some plugin happens to declare it for us. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <!-- The counter scanner reads students' meal codes. Declared here as well
          as requested at runtime: without it the camera fails silently rather
          than prompting, which at a counter looks like a broken tablet. -->

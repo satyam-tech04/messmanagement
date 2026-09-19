@@ -12,9 +12,11 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../data/session.dart';
 import '../core/config.dart';
+import '../core/legal_links.dart';
 import '../design/aurora.dart';
 import '../design/async_view.dart';
 import '../design/brand.dart';
@@ -182,6 +184,14 @@ class _AppShellState extends ConsumerState<AppShell> {
                 ref.read(authControllerProvider.notifier).signOut();
                 return;
               }
+              for (final link in LegalLinks.all) {
+                if (value == link.path) {
+                  // The system browser, not an in-app view: these are the same
+                  // public pages the store listing links to.
+                  launchUrl(link.uri, mode: LaunchMode.externalApplication);
+                  return;
+                }
+              }
               final mode = ThemeMode.values.asNameMap()[value];
               if (mode != null) {
                 ref.read(themeModeProvider.notifier).set(mode);
@@ -224,6 +234,18 @@ class _AppShellState extends ConsumerState<AppShell> {
                             size: 18,
                             color: context.colors.primary,
                           ),
+                      ],
+                    ),
+                  ),
+                const PopupMenuDivider(),
+                for (final link in LegalLinks.all)
+                  PopupMenuItem(
+                    value: link.path,
+                    child: Row(
+                      children: [
+                        Icon(link.icon, size: 18),
+                        const SizedBox(width: Space.md),
+                        Expanded(child: Text(link.label)),
                       ],
                     ),
                   ),

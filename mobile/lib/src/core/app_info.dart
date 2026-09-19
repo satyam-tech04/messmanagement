@@ -10,4 +10,7 @@ class AppInfo {
 
   static const String name = "MealAdda";
   static const String supportEmail = "support@mealadda.in";
+
+  /// The permanent public origin: the API base URL and the legal pages.
+  static const String website = "https://www.mealadda.in";
 }

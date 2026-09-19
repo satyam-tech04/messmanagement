@@ -23,6 +23,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { LEGAL_PAGES } from "@/lib/site";
 
 const root = join(import.meta.dirname, "../..");
 const read = (path: string) => readFileSync(join(root, path), "utf8");
@@ -31,8 +32,9 @@ const config = JSON.parse(read("app.config.json")) as {
   name: string;
   bundleId: string;
   supportEmail: string;
+  website: string;
 };
-const { name, bundleId, supportEmail } = config;
+const { name, bundleId, supportEmail, website } = config;
 
 /** `com.mealadda.app` → `mealadda`, the Dart and npm package name. */
 const packageName = bundleId.split(".").at(-2)!;
@@ -55,6 +57,13 @@ describe("app.config.json is the only source of the product name", () => {
     expect(name.length).toBeLessThanOrEqual(15);
   });
 
+  it("names a permanent https origin for the website", () => {
+    // The app compiles this into the binary. A Vercel-generated host would
+    // strand every installed copy the day the project is renamed.
+    expect(website).toMatch(/^https:\/\/[a-z0-9.-]+$/);
+    expect(website).not.toMatch(/vercel\.app/);
+  });
+
   it("keeps the name safe for XML and a plist", () => {
     expect(name).not.toMatch(/["'<>&]/);
   });
@@ -71,6 +80,24 @@ describe("generated constants", () => {
     const dart = read("mobile/lib/src/core/app_info.dart");
     expect(dart).toContain(`static const String name = ${JSON.stringify(name)};`);
     expect(dart).toContain(`static const String supportEmail = ${JSON.stringify(supportEmail)};`);
+    expect(dart).toContain(`static const String website = ${JSON.stringify(website)};`);
+  });
+
+  it("points the app's production API at the website, not a Vercel host", () => {
+    // Changing this after release needs a store update every student must
+    // install before their app works again.
+    const dart = read("mobile/lib/src/core/config.dart");
+    expect(dart).toMatch(/static const String _productionBaseUrl\s*=\s*AppInfo\.website;/);
+  });
+
+  it("links every public legal page from inside the app", () => {
+    // Apple requires the privacy policy and account deletion to be reachable
+    // in the app itself, not only from the store listing. The paths are the
+    // web's LEGAL_PAGES, so a page cannot be renamed on one side only.
+    const dart = read("mobile/lib/src/core/legal_links.dart");
+    for (const { href } of LEGAL_PAGES) {
+      expect(dart).toContain(`'${href}'`);
+    }
   });
 });
 
@@ -78,6 +105,15 @@ describe("Android", () => {
   it("labels the launcher with the name", () => {
     expect(read("mobile/android/app/src/main/res/values/strings.xml")).toContain(
       `<string name="app_name">${name}</string>`,
+    );
+  });
+
+  it("declares INTERNET in the release manifest itself", () => {
+    // Flutter's template puts it only in the debug and profile manifests.
+    // A release build then reaches the network only while some plugin happens
+    // to declare it — drop that plugin and the store build goes silently offline.
+    expect(read("mobile/android/app/src/main/AndroidManifest.xml")).toContain(
+      '<uses-permission android:name="android.permission.INTERNET" />',
     );
   });
 

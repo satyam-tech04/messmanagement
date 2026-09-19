@@ -40,7 +40,11 @@ import { dirname, join } from "node:path";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const config = JSON.parse(readFileSync(join(root, "app.config.json"), "utf8"));
 
-const { name, supportEmail, tagline } = config;
+const { name, supportEmail, tagline, website } = config;
+if (!/^https:\/\/[a-z0-9.-]+$/.test(website ?? "")) {
+  console.error(`app.config.json needs \`website\` as a bare https origin, got: ${website}`);
+  process.exit(1);
+}
 if (!name || typeof name !== "string") {
   console.error("app.config.json needs a non-empty `name`.");
   process.exit(1);
@@ -84,6 +88,9 @@ class AppInfo {
 
   static const String name = ${JSON.stringify(name)};
   static const String supportEmail = ${JSON.stringify(supportEmail ?? "")};
+
+  /// The permanent public origin: the API base URL and the legal pages.
+  static const String website = ${JSON.stringify(website)};
 }
 `,
 );

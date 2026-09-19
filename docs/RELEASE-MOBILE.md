@@ -85,16 +85,13 @@ Without `key.properties` the release build falls back to debug signing so
 `flutter run --release` still works. Play Console refuses a debug-signed bundle,
 so that fallback cannot reach a store by accident.
 
-### 3. Decide the production domain ⚠️
+### 3. Production domain ✅
 
-`AppConfig` compiles the API base URL **into the binary**. It currently points at
-`https://messmanagement-lime.vercel.app`, a Vercel-generated name derived from
-the project name.
-
-Fine for TestFlight. **Not fine for a public release**: once students install,
-changing that string needs a store update every one of them has to receive
-before their app works again. Buy a domain, point production at it, change the
-one constant in `mobile/lib/src/core/config.dart`.
+`AppConfig` compiles the API base URL **into the binary**, so it must be the
+permanent domain. It is `AppInfo.website` (`https://www.mealadda.in`), generated
+from `website` in `app.config.json`; `tests/unit/app-identity.test.ts` fails if
+it is ever a `vercel.app` host again. Verified 2026-09-19: login, `/api/me`,
+`/api/student/plan` and `/api/student/menu` all answer on that origin.
 
 ### 4. Store records
 
@@ -243,10 +240,42 @@ invalidate anything already given to Apple.
 
 ---
 
+## Pre-submission check — 2026-09-19
+
+Fixed in code:
+
+- API base URL moved from `messmanagement-lime.vercel.app` to `www.mealadda.in`.
+- `INTERNET` declared in the main Android manifest. It had only arrived through a
+  plugin; the Flutter template puts it in the debug and profile manifests alone.
+- Privacy policy, Terms, Delete account and Help & support are in the account
+  menu (top-right, every role). Apple requires the privacy policy and account
+  deletion to be reachable **inside** the app, not only on the listing.
+
+Still to do by hand, blocking submission:
+
+| #   | Item                                                                                                                                                                             | Where                    |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
+| 1   | Create the upload keystore and `mobile/android/key.properties` — neither exists, so every release build is debug-signed and Play refuses it                                      | §2 above                 |
+| 2   | Mailbox or forwarding for `support@mealadda.in` — `mealadda.in` still has **no MX record**                                                                                       | Hostinger                |
+| 3   | Move Flutter to stable. The toolchain is `3.48.0-0.5.pre` on `main`, and `pubspec.yaml` requires Dart `^3.13.0-228.0.dev`, so the constraint must drop to whatever stable ships  | §1 above                 |
+| 4   | Give the reviewer data: QA student `9100000101` has a plan only until **2026-10-12** and today's menu has **no items**. Publish menus and extend the plan past the review window | web console, demo-hostel |
+| 5   | Decide iPad. `TARGETED_DEVICE_FAMILY = "1,2"`, so Apple needs 13-inch iPad screenshots and may review on an iPad. If no counter uses an iPad, set it to `1` in Xcode             | Runner target → General  |
+| 6   | Register `com.mealadda.app` in the Apple developer portal (team `M7ZGXF8RPW`) and create both store records                                                                      | §4 above                 |
+
+Checked and fine: targetSdk 36 / minSdk 24; iOS deployment target 15.6; camera
+purpose string names the app and the reason; `ITSAppUsesNonExemptEncryption`
+false; no photo-library, location or microphone permission requested; launcher
+icons and splash generated; build number `1.0.0+1`.
+
 ## Known gaps at the time of writing
 
 - **The staff screens have not been exercised on a physical device.** Scanner,
   live counts and the till compile and their rules are unit-tested, but camera →
   verify → attendance row has not been run end to end.
 - **Push notifications are not built.** Slice 6, blocked on a Firebase project.
+  Nothing exists yet: no Firebase config, no `firebase_messaging`, no APNs
+  entitlement, no device-token table. Neither store requires push, so the first
+  release can ship without it. Adding push later needs a new build that adds
+  `GoogleService-Info.plist` / `google-services.json`, the Push Notifications
+  capability and the APNs key in Firebase. It does not change the bundle id.
 - **Advertising is not built.** Slice 7, blocked on AdMob app ids.

@@ -24,18 +24,19 @@
 ///     the same network.
 library;
 
+import 'app_info.dart';
+
 class AppConfig {
   const AppConfig._();
 
-  /// Where the app points when nothing overrides it.
+  /// Where the app points when nothing overrides it: the permanent domain from
+  /// `app.config.json`.
   ///
-  /// Note this is a Vercel-generated hostname, derived from the project name.
-  /// It is fine for testing, but it must be replaced with a custom domain
-  /// before the first store release: this string is compiled into the binary,
-  /// and changing it afterwards needs a store update that every already-installed
-  /// app has to receive before it works again.
-  static const String _productionBaseUrl =
-      'https://messmanagement-lime.vercel.app';
+  /// This string is compiled into the binary, and changing it after release
+  /// needs a store update every installed app has to receive before it works
+  /// again — which is why it is the custom domain and never a Vercel-generated
+  /// host that moves when the project is renamed.
+  static const String _productionBaseUrl = AppInfo.website;
 
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
