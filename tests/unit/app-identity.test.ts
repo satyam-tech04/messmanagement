@@ -152,6 +152,21 @@ describe("iOS", () => {
     expect(purpose).toMatch(/camera/i);
   });
 
+  it("ships for iPhone only", () => {
+    // `1` is iPhone, `2` is iPad. Declaring iPad means Apple reviews the app on
+    // one and the listing needs 13-inch screenshots — for a scanner and a meal
+    // code nobody holds a tablet for. Xcode re-adds `2` at the slightest
+    // provocation, so it is asserted rather than remembered.
+    const pbx = read("mobile/ios/Runner.xcodeproj/project.pbxproj");
+    const families = [...pbx.matchAll(/TARGETED_DEVICE_FAMILY = "?([^;"]+)"?;/g)].map((m) =>
+      m[1]!.trim(),
+    );
+    expect(families.length).toBeGreaterThan(0);
+    for (const family of families) {
+      expect(family).toBe("1");
+    }
+  });
+
   it("builds both targets under the configured bundle id", () => {
     const pbx = read("mobile/ios/Runner.xcodeproj/project.pbxproj");
     const ids = [...pbx.matchAll(/PRODUCT_BUNDLE_IDENTIFIER = ([^;]+);/g)].map((m) => m[1]!.trim());

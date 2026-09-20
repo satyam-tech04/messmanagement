@@ -262,6 +262,12 @@ Still to do by hand, blocking submission:
 | 5   | Decide iPad. `TARGETED_DEVICE_FAMILY = "1,2"`, so Apple needs 13-inch iPad screenshots and may review on an iPad. If no counter uses an iPad, set it to `1` in Xcode             | Runner target → General  |
 | 6   | Register `com.mealadda.app` in the Apple developer portal (team `M7ZGXF8RPW`) and create both store records                                                                      | §4 above                 |
 
+**iPhone only.** `TARGETED_DEVICE_FAMILY` is `1` on every configuration and the
+`~ipad` orientation key is gone, so the built `Runner.app` declares
+`UIDeviceFamily = (1)`. Apple therefore reviews on an iPhone and the listing
+needs no 13-inch iPad screenshots. A test pins this: Xcode re-adds `2` at the
+slightest provocation.
+
 Checked and fine: targetSdk 36 / minSdk 24; iOS deployment target 15.6; camera
 purpose string names the app and the reason; `ITSAppUsesNonExemptEncryption`
 false; no photo-library, location or microphone permission requested; launcher
