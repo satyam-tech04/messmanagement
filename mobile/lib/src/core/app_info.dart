@@ -13,4 +13,10 @@ class AppInfo {
 
   /// The permanent public origin: the API base URL and the legal pages.
   static const String website = "https://www.mealadda.in";
+
+  /// Shown under the account menu, and quoted in support conversations.
+  static const String version = "1.0.0";
+
+  /// The store's build number. Compared against the server's minimum on launch.
+  static const int build = 1;
 }

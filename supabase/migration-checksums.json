@@ -106,5 +106,11 @@
     "state": "applied",
     "appliedTo": "yenxlcrtlmnfotfqqabo",
     "appliedAt": "2026-09-09"
+  },
+  "20260921000019_account_deletion_requests.sql": {
+    "sha256": "77582c8844ac3820384f1b8144b6bfbe7d19e4d3329935ba0c144d4397f0c837",
+    "state": "applied",
+    "appliedTo": "yenxlcrtlmnfotfqqabo",
+    "appliedAt": "2026-09-21"
   }
 }

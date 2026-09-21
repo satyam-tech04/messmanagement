@@ -13,6 +13,57 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export type Database = {
   public: {
     Tables: {
+      account_deletion_requests: {
+      Row: {
+        id: string;
+        tenant_id: string;
+        profile_id: string;
+        student_id: string | null;
+        status: Database["public"]["Enums"]["deletion_request_status"];
+        requested_at: string;
+        erase_by: string;
+        previous_profile_status: Database["public"]["Enums"]["profile_status"];
+        previous_student_status: Database["public"]["Enums"]["student_status"] | null;
+        decided_at: string | null;
+        decided_by: string | null;
+        note: string | null;
+        created_at: string;
+        updated_at: string;
+      };
+      Insert: {
+        id?: string;
+        tenant_id: string;
+        profile_id: string;
+        student_id?: string | null;
+        status?: Database["public"]["Enums"]["deletion_request_status"];
+        requested_at?: string;
+        erase_by: string;
+        previous_profile_status: Database["public"]["Enums"]["profile_status"];
+        previous_student_status?: Database["public"]["Enums"]["student_status"] | null;
+        decided_at?: string | null;
+        decided_by?: string | null;
+        note?: string | null;
+        created_at?: string;
+        updated_at?: string;
+      };
+      Update: {
+        id?: string;
+        tenant_id?: string;
+        profile_id?: string;
+        student_id?: string | null;
+        status?: Database["public"]["Enums"]["deletion_request_status"];
+        requested_at?: string;
+        erase_by?: string;
+        previous_profile_status?: Database["public"]["Enums"]["profile_status"];
+        previous_student_status?: Database["public"]["Enums"]["student_status"] | null;
+        decided_at?: string | null;
+        decided_by?: string | null;
+        note?: string | null;
+        created_at?: string;
+        updated_at?: string;
+      };
+      Relationships: [];
+    };
       announcements: {
       Row: {
         id: string;
@@ -1672,6 +1723,7 @@ export type Database = {
       attendance_method: "QR" | "MANUAL" | "RFID";
       bill_payment_status: "UNPAID" | "PAID";
       bill_status: "OPEN" | "FINALIZED" | "CANCELLED";
+      deletion_request_status: "REQUESTED" | "COMPLETED" | "CANCELLED";
       meal_slot: "BREAKFAST" | "LUNCH" | "SNACKS" | "DINNER";
       mess_cut_status: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED" | "CREDITED";
       pause_status: "ACTIVE" | "CANCELLED";

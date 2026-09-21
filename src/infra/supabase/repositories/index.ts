@@ -19,6 +19,7 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
+  AccountDeletionRepository,
   AttendanceRepository,
   AuditLogRepository,
   HeadcountSnapshotRepository,
@@ -29,6 +30,7 @@ import type {
   TenantRepository,
 } from "@/core/ports/repositories";
 import type { Database } from "../database.types";
+import { SupabaseAccountDeletionRepository } from "./account-deletion.repository";
 import { SupabaseAttendanceRepository } from "./attendance.repository";
 import { SupabaseHeadcountSnapshotRepository } from "./headcount-snapshot.repository";
 import { SupabaseAuditLogRepository } from "./audit-log.repository";
@@ -47,6 +49,12 @@ export interface Repositories {
   readonly headcountSnapshots: HeadcountSnapshotRepository;
   readonly audit: AuditLogRepository;
   readonly rateLimiter: RateLimiter;
+  /**
+   * Service-role: requesting a deletion disables the requester's own profile,
+   * and erasure rewrites rows RLS exists to protect. The tenancy boundary is
+   * the query, which filters by `tenant_id` on every call.
+   */
+  readonly accountDeletions: AccountDeletionRepository;
 }
 
 export function createRepositories(
@@ -64,12 +72,14 @@ export function createRepositories(
     headcountSnapshots: new SupabaseHeadcountSnapshotRepository(db),
     audit: new SupabaseAuditLogRepository(admin),
     rateLimiter: new SupabaseRateLimiter(admin),
+    accountDeletions: new SupabaseAccountDeletionRepository(admin),
   };
 }
 
 export { rateLimitBuckets } from "./rate-limiter";
 export { SupabaseImpersonationDirectory } from "./impersonation.repository";
 export {
+  SupabaseAccountDeletionRepository,
   SupabaseAttendanceRepository,
   SupabaseAuditLogRepository,
   SupabaseHeadcountSnapshotRepository,

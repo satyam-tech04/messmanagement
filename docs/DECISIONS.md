@@ -233,6 +233,54 @@ that mess's audit trail. The change-password action refuses while impersonating.
 need a second data path behind every student page, and a second path is where a
 cross-tenant read eventually slips in.
 
+### D-32 — A student deletes their own account in the app; the mess erases it (21 Sep 2026)
+
+Both stores require account deletion to be startable inside the app. Until now there
+was no delete-student feature at all: /delete-account promised an email to support,
+actioned by hand.
+
+**Decision.** A student confirms in the app by typing DELETE. Three things follow:
+
+1. **Access stops immediately** — `profiles.status = 'DISABLED'`, which every endpoint
+   already fails closed on, so the tokens on the phone die on their next request.
+2. **The mess erases them within 30 days**, from a queue at `/admin/account-deletions`.
+   The mess verifies its own student, which is what the published policy says happens.
+3. **Erasure anonymises; it never deletes a row.** `profiles.id` cascades from
+   `auth.users`, `students.profile_id` from `profiles`, and attendance, subscriptions,
+   mess cuts, feedback and counter bills all cascade from `students` — so deleting a
+   login would silently take a year of the mess's accounts with it.
+
+**Only a student may ask.** A mess employee's login belongs to the mess, and an admin
+who erased themselves from a phone would leave a hostel with no way back in.
+
+**Blocked immediately, rather than after 30 days.** It is what Apple expects to see, and
+it makes the promise unambiguous. The cost is a mis-tap locking a student out of meals
+they have paid for, so an admin can cancel a request and the statuses go back to exactly
+what they were — a student who was BLOCKED when they asked stays blocked afterwards.
+
+**Rejected:** erasing on the spot with no queue. Nobody would verify the request was
+genuine, and the mess would lose its only way to contact a student who still owes money.
+
+**Rejected:** a cancel button in the app. Whoever asked is signed out, so there is nobody
+to press it — cancellation is the mess's, at the student's request.
+
+### D-33 — The app checks it is still allowed to run (21 Sep 2026)
+
+`/api/app-version` returns the oldest build the API still supports (`MIN_APP_BUILD`).
+An older app shows a blocking update screen instead of its own UI.
+
+**Decision, and why it ships in 1.0.** This cannot be added later. The only thing that
+can tell an installed app to update is code already inside it, so a release without this
+can never require an upgrade — a future breaking change would simply start failing on
+every phone that never updated, three times a day, at a counter.
+
+**Fails open.** Rule 7 says fail closed on security and money; this is neither. A counter
+on dropped wifi that could not reach the endpoint would show every student an update
+screen mid-service. Unreachable means "carry on"; only an explicit answer blocks.
+
+**`updateUrl` comes from the server**, because the store listings do not exist yet and
+pointing at them must not require the very update being demanded.
+
 ---
 
 ## Open — must be answered before Phase 2

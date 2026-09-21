@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 12+ splits backup into cloud backup and device-to-device transfer.
+  `allowBackup="false"` only covers the first, so both are refused here.
+
+  The app stores its session tokens in `flutter_secure_storage`, which encrypts
+  them with a key held in the device's Keystore. The key is never backed up, so
+  a restored copy is a blob the new device cannot decrypt — and the student
+  lands in a broken session rather than a sign-in screen. Nothing else the app
+  keeps is worth restoring: every screen is served from the API.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="root" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </device-transfer>
+</data-extraction-rules>

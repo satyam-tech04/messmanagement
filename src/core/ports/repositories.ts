@@ -10,13 +10,14 @@
  * Every method takes an explicit `tenantId`. There is no ambient tenant.
  */
 
-import type { MealSlot, MessCutStatus, StudentStatus } from "../domain/enums";
+import type { MealSlot, MessCutStatus, ProfileStatus, StudentStatus } from "../domain/enums";
 import type { PauseRecord } from "../policies/pause.policy";
 import type { TenantSettings } from "../domain/tenant-context";
 import type { ServiceDate } from "../time";
 import type { MessCutSnapshot, SubscriberSnapshot } from "../policies/headcount.policy";
 import type { SwitchableTenant } from "../policies/tenant-switch.policy";
 import type { ImpersonationCandidate } from "../policies/operator-access.policy";
+import type { DeletionRequestStatus, RedactedIdentity } from "../policies/account-deletion.policy";
 
 export interface SubscriptionForVerification {
   readonly id: string;
@@ -293,4 +294,87 @@ export interface AuditLogRepository {
 export interface RateLimiter {
   /** Returns true when the request is permitted. */
   consume(bucketKey: string, windowSeconds: number, maxRequests: number): Promise<boolean>;
+}
+
+// ---------------------------------------------------------------------------
+// Account deletion (migration 019)
+// ---------------------------------------------------------------------------
+
+/** Who an account belongs to, and what state it was in before they asked to go. */
+export interface AccountHolder {
+  readonly profileId: string;
+  readonly studentId: string | null;
+  readonly profileStatus: ProfileStatus;
+  /** Null for a mess employee, who has no student row. */
+  readonly studentStatus: StudentStatus | null;
+}
+
+export interface DeletionRequestRow {
+  readonly id: string;
+  readonly tenantId: string;
+  readonly profileId: string;
+  readonly studentId: string | null;
+  readonly status: DeletionRequestStatus;
+  readonly requestedAt: string;
+  readonly eraseBy: string;
+  readonly previousProfileStatus: ProfileStatus;
+  readonly previousStudentStatus: StudentStatus | null;
+  readonly decidedAt: string | null;
+  readonly decidedBy: string | null;
+  readonly note: string | null;
+  /**
+   * The name and roll as they were when the request was made. The queue still
+   * has to say whose request it was after erasure has taken the name out of
+   * `profiles`, and that record is the proof the mess did what it promised.
+   */
+  readonly studentName: string | null;
+  readonly rollNumber: string | null;
+}
+
+export interface CreateDeletionRequestInput {
+  readonly tenantId: string;
+  readonly profileId: string;
+  readonly studentId: string | null;
+  readonly eraseBy: string;
+  readonly previousProfileStatus: ProfileStatus;
+  readonly previousStudentStatus: StudentStatus | null;
+}
+
+export interface AccountDeletionRepository {
+  holderOf(tenantId: string, profileId: string): Promise<AccountHolder | null>;
+  openRequestFor(tenantId: string, profileId: string): Promise<DeletionRequestRow | null>;
+  byId(tenantId: string, id: string): Promise<DeletionRequestRow | null>;
+  listByTenant(tenantId: string): Promise<readonly DeletionRequestRow[]>;
+  create(input: CreateDeletionRequestInput): Promise<DeletionRequestRow>;
+  markDecided(
+    tenantId: string,
+    id: string,
+    decision: {
+      readonly status: DeletionRequestStatus;
+      readonly decidedBy: string;
+      readonly note?: string | null;
+    },
+  ): Promise<DeletionRequestRow>;
+  /** Sets the statuses that decide whether the account can be used at all. */
+  setAccess(
+    tenantId: string,
+    profileId: string,
+    access: {
+      readonly profileStatus: ProfileStatus;
+      readonly studentStatus: StudentStatus | null;
+    },
+  ): Promise<void>;
+  /**
+   * Writes the person out of their rows: profile, student, photographs and
+   * anything they typed. Never deletes a row — attendance and billing cascade
+   * from `students`, so a delete would take the mess's accounts with it.
+   */
+  eraseIdentity(
+    tenantId: string,
+    input: {
+      readonly profileId: string;
+      readonly studentId: string | null;
+      readonly redacted: RedactedIdentity;
+    },
+  ): Promise<void>;
 }

@@ -66,6 +66,10 @@ const ADMIN_NAV: readonly NavSection[] = [
       // what students have already asked for, and requests submitted while the
       // feature was on do not disappear when it is turned off.
       { label: "Absences", href: "/admin/absences", icon: "CalendarOff" },
+      // Always shown. A student who asks to be deleted is signed out at once,
+      // so an admin who never opens this leaves someone locked out and a
+      // published 30-day promise unkept.
+      { label: "Account deletions", href: "/admin/account-deletions", icon: "UserMinus" },
       // Deliberately NOT called "Billing": that entry below is reserved for
       // Phase 2 subscription invoices, and two screens of that name showing
       // unrelated totals is how an owner loses track of what the mess earned.

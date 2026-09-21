@@ -6,5 +6,8 @@ export const APP_NAME = "MealAdda";
 
 export const SUPPORT_EMAIL = "support@mealadda.in";
 
+/** The permanent public origin. The app compiles this in as its API base URL. */
+export const WEBSITE = "https://www.mealadda.in";
+
 /** `Students · <app name>` — the shape every page title takes. */
 export const pageTitle = (section: string) => `${section} · ${APP_NAME}`;

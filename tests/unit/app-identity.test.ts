@@ -74,6 +74,7 @@ describe("generated constants", () => {
     const ts = read("src/lib/app-info.ts");
     expect(ts).toContain(`export const APP_NAME = ${JSON.stringify(name)};`);
     expect(ts).toContain(`export const SUPPORT_EMAIL = ${JSON.stringify(supportEmail)};`);
+    expect(ts).toContain(`export const WEBSITE = ${JSON.stringify(website)};`);
   });
 
   it("carries the name and support address into Dart", () => {
@@ -180,6 +181,20 @@ describe("iOS", () => {
 describe("package metadata", () => {
   it("names the Dart package after the bundle id", () => {
     expect(read("mobile/pubspec.yaml")).toMatch(new RegExp(`^name: ${packageName}$`, "m"));
+  });
+
+  it("carries pubspec's version into Dart, so the app can show it", () => {
+    // The generated constant is only right until somebody bumps the version and
+    // forgets to re-run the script. This is what catches that, on the commit
+    // that bumped it — the build number is also what the force-update check
+    // compares, so a stale one would block the wrong releases.
+    const pubspec = read("mobile/pubspec.yaml");
+    const version = /^version:\s*(\d+\.\d+\.\d+)\+(\d+)\s*$/m.exec(pubspec);
+    expect(version, "pubspec.yaml needs `version: x.y.z+n`").not.toBeNull();
+
+    const dart = read("mobile/lib/src/core/app_info.dart");
+    expect(dart).toContain(`static const String version = ${JSON.stringify(version![1])};`);
+    expect(dart).toContain(`static const int build = ${version![2]};`);
   });
 
   it("describes the Flutter package with the current name", () => {

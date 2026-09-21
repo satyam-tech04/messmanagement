@@ -7,11 +7,14 @@ import { LegalDocument, type LegalSection } from "../legal-document";
 /**
  * The account-deletion URL Play Console's Data safety form asks for.
  *
- * It must work for someone who can no longer sign in, so it explains the
- * request route rather than offering an in-app button. There is **no delete
- * student feature** — administrators can deactivate a student and remove a
- * photo, nothing more — so every request is fulfilled by hand, and this page
- * promises only what that process delivers.
+ * Since D-32 the app itself can start a deletion, so this page leads with that
+ * and keeps the email route for someone who can no longer sign in — which is
+ * exactly who reads a page like this, including anyone already deleted.
+ *
+ * Every promise below is now enforced in code: confirming in the app disables
+ * the login on the spot, and the mess erases the personal data from
+ * /admin/account-deletions. What is kept is kept because attendance and billing
+ * rows cascade from the student — so erasure anonymises rather than deletes.
  */
 export const metadata: Metadata = {
   title: pageTitle("Delete your account"),
@@ -31,8 +34,13 @@ const SECTIONS: readonly LegalSection[] = [
     body: (
       <>
         <p>
-          {APP_NAME} accounts are created and managed by your hostel or mess, so deletion is handled
-          together with them. Use either route:
+          The quickest way is in the app: open the account menu in the top right, choose{" "}
+          <strong>Delete account</strong>, and confirm. You are signed out immediately and your mess
+          is told to erase your details.
+        </p>
+        <p>
+          If you can no longer sign in — or you would rather not use the app — use either route
+          instead:
         </p>
         <ol>
           <li>

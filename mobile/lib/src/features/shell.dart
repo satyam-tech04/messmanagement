@@ -16,7 +16,9 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../data/session.dart';
 import '../core/config.dart';
+import '../core/app_info.dart';
 import '../core/legal_links.dart';
+import 'account/delete_account_screen.dart';
 import '../design/aurora.dart';
 import '../design/async_view.dart';
 import '../design/brand.dart';
@@ -184,6 +186,18 @@ class _AppShellState extends ConsumerState<AppShell> {
                 ref.read(authControllerProvider.notifier).signOut();
                 return;
               }
+              // A student deletes their account in the app; a mess employee
+              // cannot — their login belongs to the mess — so for them the
+              // same entry opens the page that explains who to ask.
+              if (value == LegalLinks.deleteAccount.path &&
+                  widget.session.isStudent) {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const DeleteAccountScreen(),
+                  ),
+                );
+                return;
+              }
               for (final link in LegalLinks.all) {
                 if (value == link.path) {
                   // The system browser, not an in-app view: these are the same
@@ -210,6 +224,13 @@ class _AppShellState extends ConsumerState<AppShell> {
                       Text(
                         widget.session.tenantName,
                         style: context.texts.bodySmall,
+                      ),
+                      // The first thing any support conversation asks for.
+                      Text(
+                        'Version ${AppInfo.version} (${AppInfo.build})',
+                        style: context.texts.bodySmall?.copyWith(
+                          color: context.colors.onSurfaceVariant,
+                        ),
                       ),
                     ],
                   ),

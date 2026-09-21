@@ -23,10 +23,28 @@ class LegalLink {
 class LegalLinks {
   const LegalLinks._();
 
-  static const List<LegalLink> all = [
-    LegalLink('Privacy policy', '/privacy', Icons.privacy_tip_outlined),
-    LegalLink('Terms & conditions', '/terms', Icons.description_outlined),
-    LegalLink('Delete account', '/delete-account', Icons.person_remove_outlined),
-    LegalLink('Help & support', '/support', Icons.help_outline_rounded),
-  ];
+  static const LegalLink privacy = LegalLink(
+    'Privacy policy',
+    '/privacy',
+    Icons.privacy_tip_outlined,
+  );
+  static const LegalLink terms = LegalLink(
+    'Terms & conditions',
+    '/terms',
+    Icons.description_outlined,
+  );
+
+  /// Also opened from the in-app deletion screen, for the full wording.
+  static const LegalLink deleteAccount = LegalLink(
+    'Delete account',
+    '/delete-account',
+    Icons.person_remove_outlined,
+  );
+  static const LegalLink support = LegalLink(
+    'Help & support',
+    '/support',
+    Icons.help_outline_rounded,
+  );
+
+  static const List<LegalLink> all = [privacy, terms, deleteAccount, support];
 }

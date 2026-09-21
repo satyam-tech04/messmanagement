@@ -183,14 +183,25 @@ requested **child-directed and non-personalised for every user without
 exception** — the app cannot know an individual student's age, so the strictest
 setting applies to all of them. Declare this on both stores.
 
-**Account deletion.** Play requires a route to it. **There is no delete-student
-feature** — admins can deactivate a student and remove a photo, nothing more. The
-`delete-account` page therefore promises a request handled by us: the student asks
-their mess or emails support, we verify with the mess, and delete within 30 days
-(profile, contact details, photo, feedback; attendance and payment rows are kept
-but unlinked). Until a delete tool exists, each request is done by hand against the
-database. Declare on Play: deletion is by request, some data retained for
-accounting.
+**Account deletion.** Built and in the app (D-32). A student opens the account menu,
+taps **Delete account**, types DELETE and confirms. They are signed out on the spot,
+and the mess erases them from **Account deletions** in the admin console, within 30
+days. Erasure removes the name, mobile, email, room, roll number, photograph and
+feedback; attendance and billing rows stay, no longer linked to a person, because
+the mess's accounts depend on them.
+
+Answer both consoles with:
+
+- **In-app deletion:** yes. App Store Connect asks whether the app offers it — the
+  answer is now yes, and the path is Account menu → Delete account.
+- **Deletion URL** (Play Data safety): https://www.mealadda.in/delete-account
+- **Data retained after deletion:** yes — attendance and payment records, kept for the
+  mess's accounting and unlinked from the person.
+
+Mess employees (admin and staff) cannot delete themselves from the app: their login
+belongs to the mess. The same menu entry opens the web page for them, which explains
+who to ask. `npm run verify:account-deletion` proves the whole path against the live
+database with a disposable tenant.
 
 **Support email.** Every page and both apps name `support@mealadda.in`
 (`supportEmail` in `app.config.json`, applied by `npm run app:name`). The domain
@@ -243,6 +254,19 @@ invalidate anything already given to Apple.
 ## Pre-submission check — 2026-09-19
 
 Fixed in code:
+
+- **Account deletion** now exists end to end (D-32): in-app request, immediate
+  sign-out, an admin queue at `/admin/account-deletions`, and erasure that
+  anonymises instead of deleting. 18 live checks pass.
+- **Force-update check** (D-33): `/api/app-version` names the oldest supported
+  build and an older app shows a blocking update screen. Set `MIN_APP_BUILD` on
+  Vercel the day a breaking change ships. **This could not have been added after
+  release** — only code already on the phone can demand an upgrade.
+- **Android backup disabled.** The session store is encrypted with a Keystore key
+  that is never backed up, so a restored copy was a blob the new device could not
+  read. Cloud backup and device-to-device transfer are both refused.
+- **The app shows its version** under the account menu, generated from
+  `pubspec.yaml` so it cannot drift from what the store shows.
 
 - API base URL moved from `messmanagement-lime.vercel.app` to `www.mealadda.in`.
 - `INTERNET` declared in the main Android manifest. It had only arrived through a

@@ -61,6 +61,11 @@ const STATUS_TONES: Record<string, StatusTone> = {
   UPDATE: "info",
   LAPSED: "warning",
   "NO PLAN": "neutral",
+  // Account deletion (D-32). REQUESTED is amber: nothing is wrong, but a
+  // student is locked out and a published 30-day clock is running. COMPLETED is
+  // neutral rather than green — an erasure is finished, not good news.
+  REQUESTED: "warning",
+  COMPLETED: "neutral",
   // Invoices (Phase 2)
   PAID: "success",
   // Amber, not red: an unpaid counter bill is money owed, which needs

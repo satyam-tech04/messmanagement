@@ -71,6 +71,14 @@ class ApiClient {
   Future<Map<String, dynamic>> post(String path, {Object? body}) =>
       _send('POST', path, body: body);
 
+  /// A read with no session, for the endpoints that answer before anyone signs
+  /// in — the version check has to work for an app that is blocked from
+  /// signing in at all.
+  Future<Map<String, dynamic>> getUnauthenticated(String path) async {
+    final response = await _raw('GET', path, token: null);
+    return _unwrap(response);
+  }
+
   /// Sends without a token and without refresh — for login, where there is no
   /// session yet and a 401 is the answer, not a problem to recover from.
   Future<Map<String, dynamic>> postUnauthenticated(

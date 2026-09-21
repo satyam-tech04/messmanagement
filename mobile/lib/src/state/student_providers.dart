@@ -112,3 +112,16 @@ Future<void> submitFeedback(
       );
   ref.invalidate(studentFeedbackProvider);
 }
+
+/// Asks the server to delete this student's account.
+///
+/// Not autoDispose and deliberately not cached as state: it is called once,
+/// from a button, and the session is dead the moment it succeeds. Returns the
+/// date the mess has promised to erase everything by, which the screen shows
+/// back to the student.
+final deleteAccountProvider = FutureProvider.autoDispose<String>((ref) async {
+  final json = await ref
+      .read(apiClientProvider)
+      .post('/api/student/account-deletion', body: {'confirm': 'DELETE'});
+  return json['eraseBy'] as String;
+});

@@ -65,6 +65,23 @@ if (/["'<>&]/.test(name)) {
   process.exit(1);
 }
 
+/**
+ * The version, read from the one file both stores already take it from.
+ *
+ * Generated into Dart so the app can show it — "which version are you on?" is
+ * the first question any support conversation asks, and a number nobody can
+ * read from the screen is a number nobody can tell you. The build number is
+ * also what the force-update check compares against, so it must be the same
+ * number the store sees, not a second one kept in step by hand.
+ */
+const pubspecSource = readFileSync(join(root, "mobile/pubspec.yaml"), "utf8");
+const versionMatch = /^version:\s*(\d+\.\d+\.\d+)\+(\d+)\s*$/m.exec(pubspecSource);
+if (!versionMatch) {
+  console.error("mobile/pubspec.yaml needs a `version: x.y.z+n` line.");
+  process.exit(1);
+}
+const [, appVersion, appBuild] = versionMatch;
+
 const applyBundleId = process.argv.includes("--bundle-id");
 const written = [];
 
@@ -91,6 +108,12 @@ class AppInfo {
 
   /// The permanent public origin: the API base URL and the legal pages.
   static const String website = ${JSON.stringify(website)};
+
+  /// Shown under the account menu, and quoted in support conversations.
+  static const String version = ${JSON.stringify(appVersion)};
+
+  /// The store's build number. Compared against the server's minimum on launch.
+  static const int build = ${appBuild};
 }
 `,
 );
@@ -105,6 +128,9 @@ write(
 export const APP_NAME = ${JSON.stringify(name)};
 
 export const SUPPORT_EMAIL = ${JSON.stringify(supportEmail ?? "")};
+
+/** The permanent public origin. The app compiles this in as its API base URL. */
+export const WEBSITE = ${JSON.stringify(website)};
 
 /** \`Students · <app name>\` — the shape every page title takes. */
 export const pageTitle = (section: string) => \`\${section} · \${APP_NAME}\`;

@@ -45,6 +45,19 @@ const serverSchema = z.object({
     .default("false")
     .transform((v) => v === "true"),
 
+  /**
+   * The oldest app build the API still answers properly (D-33).
+   *
+   * Raising this shows every older install a blocking "update to carry on"
+   * screen. It is an env var rather than a constant because the whole point is
+   * to be able to turn it on the day a breaking change ships, without waiting
+   * for a deploy of the app itself — and because it must be possible to lower
+   * again in a hurry if it is ever set too high.
+   *
+   * Defaults to 0: nothing is blocked until somebody decides otherwise.
+   */
+  MIN_APP_BUILD: z.coerce.number().int().min(0).default(0),
+
   // --- Migration tooling. Absent in a deployed runtime, which is fine. ---
   SUPABASE_PROJECT_REF: z.string().optional(),
   SUPABASE_DB_PASSWORD: z.string().optional(),

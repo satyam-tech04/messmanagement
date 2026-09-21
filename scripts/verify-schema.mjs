@@ -43,6 +43,7 @@ const EXPECTED_TABLES = [
   "meal_feedback",
   "headcount_snapshots",
   "rate_limits",
+  "account_deletion_requests",
 ];
 
 // RLS on, zero policies — intentional. Only the service role may touch these.
@@ -191,6 +192,27 @@ if (!attendanceIdx.length) {
   unique && scoped && columns
     ? pass("attendance_one_live_per_student_meal — unique over live rows only")
     : fail(`attendance idempotency index is wrong shape: ${def}`);
+}
+
+// One open deletion request per person (D-32). A partial unique index rather
+// than a constraint, because only REQUESTED rows may collide — a student who was
+// erased and later re-admitted must be able to ask again. Assert the property,
+// not just the name: without the WHERE clause this would refuse the second
+// request forever, and without UNIQUE a double tap would disable a student twice.
+const { rows: deletionIdx } = await client.query(
+  `select indexdef from pg_indexes
+    where schemaname='public' and indexname='account_deletion_one_open_idx'`,
+);
+if (!deletionIdx.length) {
+  fail("account_deletion_one_open_idx — MISSING (deletion requests are not idempotent)");
+} else {
+  const def = deletionIdx[0].indexdef;
+  const unique = def.includes("CREATE UNIQUE INDEX");
+  const scoped = def.includes("'REQUESTED'");
+  const columns = ["tenant_id", "profile_id"].every((c) => def.includes(c));
+  unique && scoped && columns
+    ? pass("account_deletion_one_open_idx — unique over open requests only")
+    : fail(`deletion idempotency index is wrong shape: ${def}`);
 }
 
 // --- Security helpers + auth hook ----------------------------------------
