@@ -105,12 +105,63 @@ async function accessTokenFor(credentials: Credentials): Promise<string> {
 }
 
 /**
- * FCM's verdicts that mean "never try this token again".
+ * The Android notification channel every message is delivered on.
  *
- * Everything else — a timeout, a 503 — is transient and must not delete a
- * living student's device.
+ * Must equal `androidChannelId` in the app's push_logic.dart and the default
+ * declared in AndroidManifest.xml. If they drift, background notifications fall
+ * into Android's generic "Miscellaneous" channel, which the student cannot
+ * silence separately from everything else. `tests/unit/push-channel.test.ts`
+ * holds the three together.
  */
-const DEAD_TOKEN_STATUSES = new Set(["UNREGISTERED", "INVALID_ARGUMENT", "NOT_FOUND"]);
+export const ANDROID_CHANNEL_ID = "mealadda_default";
+
+/**
+ * The FCM v1 request body for one device.
+ *
+ * Pure, so its shape is tested rather than discovered: FCM rejects the whole
+ * message if any `data` value is not a string, and silently delivers into the
+ * wrong Android channel if `channel_id` is missing.
+ */
+export function fcmMessageFor(token: string, message: PushMessage) {
+  return {
+    message: {
+      token,
+      notification: { title: message.title, body: message.body },
+      // Read by the app to route the tap. Every value must be a string.
+      data: { kind: message.kind, route: message.route },
+      android: {
+        priority: "HIGH",
+        notification: { sound: "default", channel_id: ANDROID_CHANNEL_ID },
+      },
+      apns: {
+        payload: { aps: { sound: "default", badge: 1 } },
+      },
+    },
+  };
+}
+
+/**
+ * Whether FCM is saying this token will never work again.
+ *
+ * Deliberately narrow, because the cost of a false positive is enormous: the
+ * token is deleted, and that student silently stops hearing anything.
+ *
+ * `UNREGISTERED` and `NOT_FOUND` always mean the token is gone. But
+ * `INVALID_ARGUMENT` is ambiguous — FCM returns it for a malformed *token* and
+ * for a malformed *message* alike. Treating every one as a dead token means a
+ * single payload bug deletes every student's device in one send. So it counts
+ * only when FCM's own message says the problem is the registration token.
+ */
+export function isDeadTokenError(
+  error: { status?: string; message?: string } | undefined,
+): boolean {
+  if (!error?.status) return false;
+  if (error.status === "UNREGISTERED" || error.status === "NOT_FOUND") return true;
+  if (error.status === "INVALID_ARGUMENT") {
+    return /registration token/i.test(error.message ?? "");
+  }
+  return false;
+}
 
 /** How many sends are in flight at once. A mess is hundreds of students. */
 const CONCURRENCY = 20;
@@ -138,19 +189,7 @@ class FcmPushSender implements PushSender {
               Authorization: `Bearer ${accessToken}`,
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({
-              message: {
-                token,
-                notification: { title: message.title, body: message.body },
-                // Read by the app to route the tap. Data values must be
-                // strings — FCM rejects anything else outright.
-                data: { kind: message.kind, route: message.route },
-                android: { priority: "HIGH", notification: { sound: "default" } },
-                apns: {
-                  payload: { aps: { sound: "default", badge: 1 } },
-                },
-              },
-            }),
+            body: JSON.stringify(fcmMessageFor(token, message)),
           });
 
           if (response.ok) {
@@ -160,11 +199,9 @@ class FcmPushSender implements PushSender {
 
           failed++;
           const error = (await response.json().catch(() => null)) as {
-            error?: { status?: string };
+            error?: { status?: string; message?: string };
           } | null;
-          if (error?.error?.status && DEAD_TOKEN_STATUSES.has(error.error.status)) {
-            deadTokens.push(token);
-          }
+          if (isDeadTokenError(error?.error)) deadTokens.push(token);
         } catch {
           // Network-level failure: transient by assumption, so the token lives.
           failed++;

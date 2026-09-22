@@ -48,6 +48,23 @@
             android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="@string/admob_app_id" />
 
+        <!-- Defaults for notifications FCM draws while the app is backgrounded
+             or closed (D-34). Without the icon, Android paints the colourful
+             launcher icon as a solid white square; without the channel, they
+             land in a generic "Miscellaneous" channel the student cannot
+             silence on its own. The channel id must match `androidChannelId`
+             in push_logic.dart and the one the server sends —
+             tests/unit/push-channel.test.ts checks all three. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_stat_notification" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/notification_accent" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="mealadda_default" />
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

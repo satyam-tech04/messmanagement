@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tints the status-bar icon and the notification header: the Indigo
+         light-theme primary from DESIGN.md §0 (#3b3fa1), so a notification
+         reads as ours at a glance. -->
+    <color name="notification_accent">#3B3FA1</color>
+</resources>

@@ -39,5 +39,15 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
+
+    # google_mobile_ads 9.x imports a private header from the Google Mobile Ads
+    # SDK that is not part of any module. With `use_frameworks!` Xcode refuses
+    # that by default ("Include of non-modular header inside framework
+    # module"), and the whole iOS build fails. Allowing it for pod targets is
+    # the fix the plugin's own issue tracker points to; it changes nothing for
+    # our code, only how CocoaPods-built frameworks are compiled.
+    target.build_configurations.each do |config|
+      config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
+    end
   end
 end

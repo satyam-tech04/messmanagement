@@ -43,6 +43,9 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        // Required by flutter_local_notifications, which draws notifications
+        // that arrive while the app is open (D-34) — FCM shows nothing then.
+        isCoreLibraryDesugaringEnabled = true
     }
 
     defaultConfig {
@@ -87,4 +90,13 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    // flutter_local_notifications documents a Flutter crash on Android 12L and
+    // above once desugaring is on, fixed by these. Included up front rather
+    // than discovered on a student's phone.
+    implementation("androidx.window:window:1.0.0")
+    implementation("androidx.window:window-java:1.0.0")
 }

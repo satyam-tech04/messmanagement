@@ -8,4 +8,4 @@
  */
 import "server-only";
 
-export { createPushSender, isPushConfigured } from "./fcm-sender";
+export { createPushSender, isPushConfigured, ANDROID_CHANNEL_ID } from "./fcm-sender";
