@@ -127,6 +127,15 @@ write(
 /** The product's name, as shown in the web console and page titles. */
 export const APP_NAME = ${JSON.stringify(name)};
 
+/**
+ * The app version currently in the stores, from mobile/pubspec.yaml.
+ *
+ * The console needs it to say what raising the minimum build would do: a
+ * minimum above this locks out every student including the newest release.
+ */
+export const APP_VERSION = ${JSON.stringify(appVersion)};
+export const APP_BUILD = ${appBuild};
+
 export const SUPPORT_EMAIL = ${JSON.stringify(supportEmail ?? "")};
 
 /** The permanent public origin. The app compiles this in as its API base URL. */

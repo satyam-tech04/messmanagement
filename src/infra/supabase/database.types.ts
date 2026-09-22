@@ -643,6 +643,45 @@ export type Database = {
       };
       Relationships: [];
     };
+      platform_config: {
+      Row: {
+        id: number;
+        ads_enabled: boolean;
+        ads_placements: Json;
+        ads_unit_android: string | null;
+        ads_unit_ios: string | null;
+        ads_test_mode: boolean;
+        min_app_build: number;
+        flags: Json;
+        updated_at: string;
+        updated_by: string | null;
+      };
+      Insert: {
+        id?: number;
+        ads_enabled?: boolean;
+        ads_placements?: Json;
+        ads_unit_android?: string | null;
+        ads_unit_ios?: string | null;
+        ads_test_mode?: boolean;
+        min_app_build?: number;
+        flags?: Json;
+        updated_at?: string;
+        updated_by?: string | null;
+      };
+      Update: {
+        id?: number;
+        ads_enabled?: boolean;
+        ads_placements?: Json;
+        ads_unit_android?: string | null;
+        ads_unit_ios?: string | null;
+        ads_test_mode?: boolean;
+        min_app_build?: number;
+        flags?: Json;
+        updated_at?: string;
+        updated_by?: string | null;
+      };
+      Relationships: [];
+    };
       profiles: {
       Row: {
         id: string;

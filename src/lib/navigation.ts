@@ -121,6 +121,9 @@ const PLATFORM_NAV: NavSection = {
   heading: "Platform",
   items: [
     { label: "Messes", href: "/admin/messes", icon: "Building2" },
+    // Ads, placements and the minimum app version — every installed app reads
+    // these at launch, so they belong to the operator, never to a mess admin.
+    { label: "App configuration", href: "/superuser/app-config", icon: "SlidersHorizontal" },
     // Back to the admin / staff / student chooser the operator lands on.
     { label: "Switch persona", href: "/superuser", icon: "Sparkles" },
   ],

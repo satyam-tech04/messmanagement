@@ -44,10 +44,22 @@ const EXPECTED_TABLES = [
   "headcount_snapshots",
   "rate_limits",
   "account_deletion_requests",
+  "device_tokens",
+  "notification_deliveries",
+  "platform_config",
 ];
 
 // RLS on, zero policies — intentional. Only the service role may touch these.
-const POLICYLESS_BY_DESIGN = new Set(["tenant_secrets", "rate_limits"]);
+// `platform_config` and `notification_deliveries` join them: the first is read
+// through an API route on the service role and written only by the operator's
+// Server Action, the second is an operational ledger no student screen reads.
+// RLS on with no policies denies everyone, which is the intent.
+const POLICYLESS_BY_DESIGN = new Set([
+  "tenant_secrets",
+  "rate_limits",
+  "platform_config",
+  "notification_deliveries",
+]);
 
 const REQUIRED_CONSTRAINTS = [
   // The overlap guard for subscription pauses. An application check cannot

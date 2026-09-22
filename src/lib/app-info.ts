@@ -4,6 +4,15 @@
 /** The product's name, as shown in the web console and page titles. */
 export const APP_NAME = "MealAdda";
 
+/**
+ * The app version currently in the stores, from mobile/pubspec.yaml.
+ *
+ * The console needs it to say what raising the minimum build would do: a
+ * minimum above this locks out every student including the newest release.
+ */
+export const APP_VERSION = "1.0.0";
+export const APP_BUILD = 1;
+
 export const SUPPORT_EMAIL = "support@mealadda.in";
 
 /** The permanent public origin. The app compiles this in as its API base URL. */

@@ -212,6 +212,12 @@ describe("package metadata", () => {
     const dart = read("mobile/lib/src/core/app_info.dart");
     expect(dart).toContain(`static const String version = ${JSON.stringify(version![1])};`);
     expect(dart).toContain(`static const int build = ${version![2]};`);
+
+    // The console shows this when deciding what to set the minimum build to,
+    // so a stale copy would misreport which students a change locks out.
+    const ts = read("src/lib/app-info.ts");
+    expect(ts).toContain(`export const APP_VERSION = ${JSON.stringify(version![1])};`);
+    expect(ts).toContain(`export const APP_BUILD = ${version![2]};`);
   });
 
   it("describes the Flutter package with the current name", () => {

@@ -15,13 +15,25 @@
  * the very update it is asking for.
  */
 import { NextResponse } from "next/server";
+import { readAppConfig } from "@/infra/queries/platform-config";
+import { createAdminClient } from "@/infra/supabase/admin";
 import { serverEnv } from "@/lib/env.server";
 import { WEBSITE } from "@/lib/app-info";
 
 export async function GET() {
+  // Reads the same row `/api/app-config` does (D-35), so an operator who raises
+  // the minimum build in the console is obeyed here too. The env var survives
+  // as the fallback when the row cannot be read.
+  let minimumBuild = serverEnv.MIN_APP_BUILD;
+  try {
+    ({ minimumBuild } = await readAppConfig(createAdminClient(), "ANDROID", minimumBuild));
+  } catch {
+    // Unreachable database blocks nobody.
+  }
+
   return NextResponse.json(
     {
-      minimumBuild: serverEnv.MIN_APP_BUILD,
+      minimumBuild,
       updateUrl: WEBSITE,
       message: "Update the app to carry on. This version can no longer reach the mess.",
     },

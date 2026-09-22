@@ -118,5 +118,11 @@
     "state": "applied",
     "appliedTo": "yenxlcrtlmnfotfqqabo",
     "appliedAt": "2026-09-21"
+  },
+  "20260922000021_platform_config.sql": {
+    "sha256": "0ace99aeb0431696fd6b29ffb6ca896a0f6b6893c40033b18d1b965e3e52215b",
+    "state": "applied",
+    "appliedTo": "yenxlcrtlmnfotfqqabo",
+    "appliedAt": "2026-09-22"
   }
 }
