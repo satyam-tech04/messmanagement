@@ -152,12 +152,30 @@ asking the export-compliance question on every single upload.
 
 ### Android → internal testing
 
+Never run `flutter build appbundle` by hand for a store build. Use:
+
 ```bash
-cd mobile
-flutter build appbundle --release
+npm run release:android                          # production — real AdMob ids required
+npm run release:android -- --allow-sample-ads    # closed test, Google's test ads
 ```
 
-Upload `build/app/outputs/bundle/release/app-release.aab`.
+`scripts/release-android.mjs` refuses a dirty tree, a missing or unreadable
+upload keystore, a `google-services.json` for another package, sample AdMob ids
+(unless the flag is passed, which labels the bundle **closed-test**), and a build
+number that was already filed. It then runs `npm run verify`, `flutter analyze`
+and `flutter test`, builds, checks the bundle is signed by the **upload key** (not
+the debug fallback), and files everything under
+`~/Desktop/MealAdda-releases/android/<version>+<build>-<channel>/`: the `.aab`,
+`native-debug-symbols.zip`, `mapping.txt`, `dart-symbols.zip`, `SHA256SUMS` and a
+`RELEASE.md` with upload steps.
+
+**Keys.** Play does not hand out a keystore. With Play App Signing, Google holds
+the _app signing key_ and creates it on the first upload; the `.jks` here is only
+the _upload key_. The upload key was created 2026-09-22 at `~/mealadda-upload.jks`,
+alias `upload`, SHA-256
+`9C:6F:D4:89:78:9F:12:5C:6A:0C:C5:47:76:68:64:A7:F5:E7:E6:ED:0A:82:F7:B1:B3:D2:69:DC:27:74:2A:66`.
+A lost upload key can be reset through Play support, but that takes days — keep
+the `.jks` and `key.properties` in a password manager.
 
 The `.aab` is around 50 MB because it contains every ABI and density; Play splits
 it and a user downloads roughly **15–18 MB**. That is the number to quote, not
