@@ -281,6 +281,34 @@ screen mid-service. Unreachable means "carry on"; only an explicit answer blocks
 **`updateUrl` comes from the server**, because the store listings do not exist yet and
 pointing at them must not require the very update being demanded.
 
+### D-35 — The app is configured from the server, not the build (22 Sep 2026)
+
+A store release is days of review, and some students never update. So anything that
+might plausibly need changing is read from the server at launch: `platform_config`, a
+single row edited at `/superuser/app-config` by the **SUPER_ADMIN only** — these are
+decisions about our app across every mess, not one mess's settings.
+
+Configurable today without a release: ads on/off, which of the four student screens
+carry a banner, the ad unit ids per platform, test vs live mode, and the minimum
+supported build (moved off an env var so it needs no deploy either).
+
+**Ads fail closed.** Unreadable config, a platform with no unit, or an app id pasted
+where a unit id belongs all mean no ads. The update gate fails the other way — open —
+because blocking a student from their meals over a network blip is the worse error.
+
+**The AdMob app id cannot be remote.** Android reads it through a ContentProvider and
+iOS from Info.plist, both before any Dart runs, and a missing one crashes the app at
+launch — before it could ask the server anything. It lives in `app.config.json` and is
+generated into both platform files, so changing it is one line plus a rebuild.
+
+**Every request is child-directed and non-personalised** (`AgeRestrictedTreatment.child`,
+`nonPersonalizedAds`, content rating G), for every user, because some messes serve
+minors and the app cannot know any individual's age.
+
+**Sample ids ship today.** The real AdMob account is suspended until early October, so
+`app.config.json` carries Google's public sample app ids, which serve test banners and
+earn nothing. `npm run verify:release-ads` refuses a release while they remain.
+
 ---
 
 ## Open — must be answered before Phase 2

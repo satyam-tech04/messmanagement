@@ -316,7 +316,14 @@ icons and splash generated; build number `1.0.0+1`.
   release can ship without it. Adding push later needs a new build that adds
   `GoogleService-Info.plist` / `google-services.json`, the Push Notifications
   capability and the APNs key in Firebase. It does not change the bundle id.
-- **Advertising is not built**, but it is decided: AdMob **adaptive banners**,
+- **Advertising is built (D-35), running on Google's sample ids.** Adaptive
+  banners on all four student screens, each switchable at
+  `/superuser/app-config`. Before a release with ads: put the real app ids in
+  `app.config.json`, run `npm run app:name`, enter the real unit ids in the
+  console, add Google's `SKAdNetworkItems` list to iOS `Info.plist` (attribution
+  only; test ads do not need it), serve `app-ads.txt` from mealadda.in, and run
+  `npm run verify:release-ads`, which fails while sample ids remain.
+- Original decision: AdMob **adaptive banners**,
   **student accounts only** — never the staff or admin screens, which are read at
   a counter during service. Slice 7, blocked on AdMob app ids. Student screens
   should be laid out so a bottom-anchored banner does not cover the meal code or

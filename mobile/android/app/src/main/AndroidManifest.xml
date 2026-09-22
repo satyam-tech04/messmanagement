@@ -39,6 +39,15 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!-- The Mobile Ads SDK reads this through a ContentProvider that runs
+             BEFORE any Dart, which is why the app id cannot come from the
+             server like every other ad setting (D-35). Missing or malformed,
+             the app crashes at launch rather than simply showing no ads.
+             The value is generated into strings.xml from app.config.json. -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="@string/admob_app_id" />
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

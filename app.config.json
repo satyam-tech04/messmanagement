@@ -28,5 +28,25 @@
   "tagline": "hostel mess subscriptions, QR meal attendance and counter operations.",
   "bundleId": "com.mealadda.app",
   "supportEmail": "support@mealadda.in",
-  "website": "https://www.mealadda.in"
+  "website": "https://www.mealadda.in",
+
+  "admob": {
+    "$comment": [
+      "AdMob APP ids — the one ad value that cannot be configured from the",
+      "database (D-35). Android reads it from the manifest and iOS from",
+      "Info.plist, through code that runs before any Dart does, and a missing",
+      "or malformed id CRASHES the app at launch rather than degrading.",
+      "",
+      "Ad UNIT ids are NOT here. Those live in `platform_config` and are edited",
+      "at /superuser/app-config, so they change without a release.",
+      "",
+      "⚠️ These are Google's public SAMPLE ids, used while the real AdMob",
+      "account is unavailable. They serve test ads only and earn nothing.",
+      "Replace both before any store submission that has ads switched on —",
+      "`npm run verify:release-ads` fails while they are still in place."
+    ],
+    "androidAppId": "ca-app-pub-3940256099942544~3347511713",
+    "iosAppId": "ca-app-pub-3940256099942544~1458002511",
+    "usingSampleIds": true
+  }
 }

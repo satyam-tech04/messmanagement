@@ -22,7 +22,7 @@ import 'features/auth/change_password_screen.dart';
 import 'features/auth/login_screen.dart';
 import 'features/shell.dart';
 import 'features/update_required_screen.dart';
-import 'state/app_version.dart';
+import 'state/app_config.dart';
 import 'state/auth_controller.dart';
 import 'state/connectivity.dart';
 import 'state/theme_controller.dart';
@@ -40,8 +40,8 @@ class MessOsApp extends ConsumerWidget {
 
     // Asked before the session is considered: a build the server has disowned
     // has no business rendering screens. Fails open, so an unreachable server
-    // is not an update screen (see app_version.dart).
-    final update = ref.watch(updateRequirementProvider);
+    // is not an update screen (see app_config.dart).
+    final config = ref.watch(remoteConfigProvider);
     final auth = ref.watch(authControllerProvider);
 
     return MaterialApp(
@@ -53,8 +53,8 @@ class MessOsApp extends ConsumerWidget {
       // a counter tablet under kitchen lights and a student's phone at 9pm are
       // genuinely different situations. Defaults to the device.
       themeMode: ref.watch(themeModeProvider),
-      home: (update.asData?.value.required ?? false)
-          ? UpdateRequiredScreen(requirement: update.requireValue)
+      home: (config.asData?.value.update.required ?? false)
+          ? UpdateRequiredScreen(requirement: config.requireValue.update)
           : auth.when(
         loading: () => const _Splash(),
         error: (error, _) => Scaffold(

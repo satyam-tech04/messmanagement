@@ -12,10 +12,7 @@
 /// happens when the server actually says so.
 library;
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import '../core/app_info.dart';
-import 'auth_controller.dart';
 
 class UpdateRequirement {
   const UpdateRequirement({
@@ -57,17 +54,3 @@ UpdateRequirement updateRequirementFrom(
     updateUrl: url is String && url.startsWith('https://') ? url : AppInfo.website,
   );
 }
-
-final updateRequirementProvider = FutureProvider<UpdateRequirement>((
-  ref,
-) async {
-  try {
-    final json = await ref
-        .read(apiClientProvider)
-        .getUnauthenticated('/api/app-version');
-    return updateRequirementFrom(json);
-  } catch (_) {
-    // See the note above: unreachable is not the same as too old.
-    return const UpdateRequirement.none();
-  }
-});

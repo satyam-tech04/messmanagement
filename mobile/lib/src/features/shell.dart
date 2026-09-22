@@ -19,6 +19,7 @@ import '../core/config.dart';
 import '../core/app_info.dart';
 import '../core/legal_links.dart';
 import 'account/delete_account_screen.dart';
+import 'ads/ad_banner.dart';
 import 'account/notification_settings_screen.dart';
 import '../design/aurora.dart';
 import '../design/async_view.dart';
@@ -34,6 +35,7 @@ import 'student/more_screen.dart';
 import 'student/plan_screen.dart';
 import 'student/qr_screen.dart';
 import '../state/auth_controller.dart';
+import '../state/app_config.dart';
 import '../state/push.dart';
 import '../state/theme_controller.dart';
 
@@ -48,6 +50,18 @@ const _pushRouteTabs = <String, String>{
   '/plan': 'Plan',
   '/absences': 'More',
   '/announcements': 'My code',
+};
+
+/// Which ad placement each student tab is (D-35).
+///
+/// By label rather than index, so reordering the tabs cannot quietly move an ad
+/// onto a screen the operator switched off — the meal-code screen especially,
+/// where an accidental tap at the counter is invalid traffic.
+const _tabPlacements = <String, AdPlacement>{
+  'My code': AdPlacement.qr,
+  'Menu': AdPlacement.menu,
+  'Plan': AdPlacement.plan,
+  'More': AdPlacement.more,
 };
 
 class _Tab {
@@ -334,6 +348,16 @@ class _AppShellState extends ConsumerState<AppShell> {
             // about what it can still do while offline.
             const OfflineBanner(),
             Expanded(child: _screenFor(tab)),
+            // One slot for every student screen; whether it shows anything is
+            // decided per screen from the server (D-35). Mess employees never
+            // see ads — they are at a counter, mid-service.
+            if (widget.session.isStudent && _tabPlacements[tab.label] != null)
+              AdSlot(
+                // Keyed by screen so moving between tabs loads that screen's
+                // banner rather than carrying the last one over.
+                key: ValueKey(tab.label),
+                placement: _tabPlacements[tab.label]!,
+              ),
           ],
         ),
       ),

@@ -41,6 +41,7 @@
     "verify:mobile-auth": "tsx scripts/verify-mobile-auth.mts",
     "verify:account-deletion": "tsx scripts/verify-account-deletion.mts",
     "verify:push": "tsx scripts/verify-push.mts",
+    "verify:release-ads": "tsx scripts/verify-release-ads.mts",
     "app:name": "node scripts/apply-app-identity.mjs",
     "app:bundle-id": "node scripts/apply-app-identity.mjs --bundle-id",
     "create:test-accounts": "tsx scripts/create-test-accounts.ts"

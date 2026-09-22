@@ -33,8 +33,9 @@ const config = JSON.parse(read("app.config.json")) as {
   bundleId: string;
   supportEmail: string;
   website: string;
+  admob: { androidAppId: string; iosAppId: string; usingSampleIds?: boolean };
 };
-const { name, bundleId, supportEmail, website } = config;
+const { name, bundleId, supportEmail, website, admob } = config;
 
 /** `com.mealadda.app` → `mealadda`, the Dart and npm package name. */
 const packageName = bundleId.split(".").at(-2)!;
@@ -66,6 +67,40 @@ describe("app.config.json is the only source of the product name", () => {
 
   it("keeps the name safe for XML and a plist", () => {
     expect(name).not.toMatch(/["'<>&]/);
+  });
+});
+
+describe("AdMob app ids", () => {
+  // The one ad value that cannot come from the database (D-35): both platforms
+  // read it before any Dart runs, and a wrong one crashes the app at launch.
+  it("are app ids, not ad unit ids", () => {
+    // `~` is an app id and `/` a unit id. Pasting a unit id here is the mistake
+    // that takes the whole app down on first launch.
+    for (const id of [admob.androidAppId, admob.iosAppId]) {
+      expect(id).toMatch(/^ca-app-pub-\d+~\d+$/);
+    }
+  });
+
+  it("reach the Android manifest through a generated string resource", () => {
+    expect(read("mobile/android/app/src/main/res/values/strings.xml")).toContain(
+      `<string name="admob_app_id" translatable="false">${admob.androidAppId}</string>`,
+    );
+    const manifest = read("mobile/android/app/src/main/AndroidManifest.xml");
+    expect(manifest).toContain("com.google.android.gms.ads.APPLICATION_ID");
+    expect(manifest).toContain('android:value="@string/admob_app_id"');
+  });
+
+  it("reach the iOS plist", () => {
+    expect(plistString("GADApplicationIdentifier")).toBe(admob.iosAppId);
+  });
+
+  it("declares honestly whether these are Google's sample ids", () => {
+    // The sample ids serve test ads and earn nothing. Shipping them by accident
+    // is silent — real students, real screen space, no revenue — so the flag is
+    // asserted to match reality rather than trusted to be updated.
+    const isSample = (id: string) => id.startsWith("ca-app-pub-3940256099942544");
+    const anySample = isSample(admob.androidAppId) || isSample(admob.iosAppId);
+    expect(admob.usingSampleIds ?? false).toBe(anySample);
   });
 });
 
