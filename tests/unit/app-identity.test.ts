@@ -20,7 +20,7 @@
  * addresses derive from them — and `tests/unit/identity.test.ts` pins them to
  * their literal values precisely so a rename can never reach them.
  */
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { LEGAL_PAGES } from "@/lib/site";
@@ -107,6 +107,23 @@ describe("Android", () => {
     expect(read("mobile/android/app/src/main/res/values/strings.xml")).toContain(
       `<string name="app_name">${name}</string>`,
     );
+  });
+
+  it("carries a Firebase config for THIS app, if it carries one at all", () => {
+    // The file is optional (push is off until it exists), but a wrong one is
+    // worse than none: Gradle applies it happily, the app builds, and every
+    // notification goes to a project that has never heard of these students.
+    // Easy to do — a `google-services.json` for another app is one Downloads
+    // folder away, and the file does not say which app it is for anywhere a
+    // human would look.
+    const path = "mobile/android/app/google-services.json";
+    if (!existsSync(join(root, path))) return;
+
+    const config = JSON.parse(read(path)) as {
+      client: Array<{ client_info: { android_client_info: { package_name: string } } }>;
+    };
+    const packages = config.client.map((c) => c.client_info.android_client_info.package_name);
+    expect(packages).toContain(bundleId);
   });
 
   it("declares INTERNET in the release manifest itself", () => {

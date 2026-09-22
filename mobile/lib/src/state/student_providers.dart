@@ -125,3 +125,25 @@ final deleteAccountProvider = FutureProvider.autoDispose<String>((ref) async {
       .post('/api/student/account-deletion', body: {'confirm': 'DELETE'});
   return json['eraseBy'] as String;
 });
+
+/// The notification switches, and whether there is anything to switch.
+final notificationSettingsProvider =
+    FutureProvider.autoDispose<NotificationSettings>((ref) async {
+      final json = await ref
+          .read(apiClientProvider)
+          .get('/api/student/notifications');
+      return NotificationSettings.fromJson(json);
+    });
+
+/// Saves the full set of switches.
+///
+/// The whole set, not a delta: a screen opened before a new kind existed would
+/// otherwise carry an opinion about something it never showed.
+Future<void> saveNotificationSettings(
+  WidgetRef ref,
+  List<String> enabled,
+) async {
+  await ref
+      .read(apiClientProvider)
+      .put('/api/student/notifications', body: {'enabled': enabled});
+}

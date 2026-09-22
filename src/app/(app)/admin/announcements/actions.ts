@@ -9,6 +9,8 @@
  * any of those tables from this file, the feature has drifted.
  */
 import { revalidatePath } from "next/cache";
+import { NotificationKind, deliveryKey } from "@/core/policies/notification.policy";
+import { dispatchNotification } from "@/infra/notify/dispatch";
 import { z } from "zod";
 import { ALL_MEAL_SLOTS, type MealSlot } from "@/core/domain/enums";
 import { parseAnnouncementDraft } from "@/core/policies/announcement.policy";
@@ -126,6 +128,20 @@ export async function saveAnnouncement(
       endsOn: draft.value.endsOn,
     },
   });
+
+  // Only a new announcement notifies (D-34). The dedupe key would stop an edit
+  // re-notifying anyway, but not asking is clearer than relying on that: fixing
+  // a typo is not news.
+  if (!announcementId) {
+    await dispatchNotification(user.tenantId, {
+      kind: NotificationKind.ANNOUNCEMENT,
+      tenantName: user.tenantName,
+      title: draft.value.title,
+      body: draft.value.body ?? "Open the app for details.",
+      dedupeKey: deliveryKey(NotificationKind.ANNOUNCEMENT, { id: written.data.id }),
+      audience: "ALL_STUDENTS",
+    });
+  }
 
   revalidatePath("/admin/announcements");
   revalidatePath("/student");

@@ -70,6 +70,7 @@ const ADMIN_NAV: readonly NavSection[] = [
       // so an admin who never opens this leaves someone locked out and a
       // published 30-day promise unkept.
       { label: "Account deletions", href: "/admin/account-deletions", icon: "UserMinus" },
+      { label: "Notifications", href: "/admin/notifications", icon: "Bell" },
       // Deliberately NOT called "Billing": that entry below is reserved for
       // Phase 2 subscription invoices, and two screens of that name showing
       // unrelated totals is how an owner loses track of what the mess earned.

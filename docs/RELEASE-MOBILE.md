@@ -178,6 +178,14 @@ present, photographs, and app activity (meals served, absences, ratings).
 **Ads.** The app contains **no** ads SDK, analytics or tracking today — answer
 "No ads" and "No tracking" (App Store: _Data Not Used to Track You_).
 
+⚠️ **These two answers expire.** Ads are a decided part of the product, not a
+maybe: **AdMob adaptive banners, on student screens only** (Slice 7). The first
+build that carries the SDK has to change both stores' answers in the same
+submission — ads declared, an advertising entry in Play's Data safety, and an
+ATT prompt on iOS if anything is personalised. Shipping the SDK while the forms
+still say "no ads" is how an account gets suspended rather than a build
+rejected.
+
 **Children.** Some messes serve students under 18. Advertising, if it ever ships, is
 requested **child-directed and non-personalised for every user without
 exception** — the app cannot know an individual student's age, so the strictest
@@ -308,4 +316,10 @@ icons and splash generated; build number `1.0.0+1`.
   release can ship without it. Adding push later needs a new build that adds
   `GoogleService-Info.plist` / `google-services.json`, the Push Notifications
   capability and the APNs key in Firebase. It does not change the bundle id.
-- **Advertising is not built.** Slice 7, blocked on AdMob app ids.
+- **Advertising is not built**, but it is decided: AdMob **adaptive banners**,
+  **student accounts only** — never the staff or admin screens, which are read at
+  a counter during service. Slice 7, blocked on AdMob app ids. Student screens
+  should be laid out so a bottom-anchored banner does not cover the meal code or
+  the navigation. Ads are requested child-directed and non-personalised for
+  every user without exception (see "Children" above); that constraint is not
+  negotiable for revenue.

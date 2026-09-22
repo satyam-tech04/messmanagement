@@ -11,6 +11,7 @@ import '../data/api_client.dart';
 import '../data/auth_repository.dart';
 import '../data/session.dart';
 import '../data/token_store.dart';
+import 'push.dart';
 
 final tokenStoreProvider = Provider<TokenStore>((ref) => TokenStore());
 
@@ -51,10 +52,13 @@ class AuthController extends AsyncNotifier<Session?> {
     final cached = await repo.cachedSession();
     if (cached != null) {
       unawaited(_confirm(repo));
+      unawaited(_startPush(cached));
       return cached;
     }
 
-    return repo.restore();
+    final restored = await repo.restore();
+    unawaited(_startPush(restored));
+    return restored;
   }
 
   /// Re-check the session against the server behind an already-drawn shell.
@@ -75,6 +79,15 @@ class AuthController extends AsyncNotifier<Session?> {
     }
   }
 
+  /// Registers this device for notifications, in the background.
+  ///
+  /// Students only (D-34), and never awaited: whether the app opens must not
+  /// depend on Firebase, and `PushService.start` swallows its own failures.
+  Future<void> _startPush(Session? session) async {
+    if (session == null || !session.isStudent) return;
+    await ref.read(pushServiceProvider).start();
+  }
+
   Future<void> logIn({
     required String identifier,
     required String password,
@@ -83,6 +96,7 @@ class AuthController extends AsyncNotifier<Session?> {
         .read(authRepositoryProvider)
         .logIn(identifier: identifier, password: password);
     state = AsyncData(session);
+    unawaited(_startPush(session));
   }
 
   Future<void> changePassword(String password) async {
@@ -93,6 +107,10 @@ class AuthController extends AsyncNotifier<Session?> {
   }
 
   Future<void> signOut() async {
+    // Before the session goes: giving up the token needs an authenticated
+    // request, and the next person to use this phone must not receive the
+    // previous student's notifications.
+    await ref.read(pushServiceProvider).stop();
     await ref.read(authRepositoryProvider).signOut();
     state = const AsyncData(null);
   }
@@ -100,6 +118,7 @@ class AuthController extends AsyncNotifier<Session?> {
   /// Drop the session without calling the server — for when the server has
   /// already told us it is gone.
   Future<void> forgetSession() async {
+    await ref.read(pushServiceProvider).stop();
     await ref.read(authRepositoryProvider).signOutLocally();
     state = const AsyncData(null);
   }

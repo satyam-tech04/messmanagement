@@ -8,10 +8,12 @@
  * second competing menu (rule 5).
  */
 import { revalidatePath } from "next/cache";
+import { NotificationKind, deliveryKey } from "@/core/policies/notification.policy";
+import { dispatchNotification } from "@/infra/notify/dispatch";
 import { z } from "zod";
 import type { MealSlot } from "@/core/domain/enums";
 import { parseMenuDraft } from "@/core/policies/menu.policy";
-import { serviceDateOf, toServiceDate } from "@/core/time";
+import { addDays, serviceDateOf, toServiceDate } from "@/core/time";
 import { createAdminClient } from "@/infra/supabase/admin";
 import { createClient } from "@/infra/supabase/server";
 import { getSessionUser } from "@/infra/auth/session";
@@ -94,6 +96,25 @@ export async function publishMenu(
       itemCount: draft.value.items.length,
     },
   });
+
+  // Only tomorrow's menu is news, and only once for the whole day (D-34).
+  // A mess filling in a week would otherwise buzz every student twenty times,
+  // which is the fastest way to have notifications turned off entirely. The
+  // dedupe key is the date, so the first slot published wins and the rest are
+  // silent.
+  const today = serviceDateOf(user.timezone, new Date());
+  if (draft.value.serviceDate === addDays(today, 1)) {
+    await dispatchNotification(user.tenantId, {
+      kind: NotificationKind.MENU_PUBLISHED,
+      tenantName: user.tenantName,
+      title: "Tomorrow's menu is up",
+      body: `${draft.value.mealSlot.toLowerCase()}: ${draft.value.items.join(", ")}`,
+      dedupeKey: deliveryKey(NotificationKind.MENU_PUBLISHED, {
+        id: draft.value.serviceDate,
+      }),
+      audience: "ALL_STUDENTS",
+    });
+  }
 
   revalidatePath("/admin/menu");
   revalidatePath("/student/menu");

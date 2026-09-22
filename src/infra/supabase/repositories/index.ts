@@ -21,6 +21,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   AccountDeletionRepository,
   AttendanceRepository,
+  DeviceTokenRepository,
+  NotificationDeliveryRepository,
   AuditLogRepository,
   HeadcountSnapshotRepository,
   MessCutRepository,
@@ -32,6 +34,10 @@ import type {
 import type { Database } from "../database.types";
 import { SupabaseAccountDeletionRepository } from "./account-deletion.repository";
 import { SupabaseAttendanceRepository } from "./attendance.repository";
+import {
+  SupabaseDeviceTokenRepository,
+  SupabaseNotificationDeliveryRepository,
+} from "./device-token.repository";
 import { SupabaseHeadcountSnapshotRepository } from "./headcount-snapshot.repository";
 import { SupabaseAuditLogRepository } from "./audit-log.repository";
 import { SupabaseMessCutRepository } from "./mess-cut.repository";
@@ -55,6 +61,13 @@ export interface Repositories {
    * the query, which filters by `tenant_id` on every call.
    */
   readonly accountDeletions: AccountDeletionRepository;
+  /**
+   * Service-role: a device token records the tenant it belongs to, which is
+   * derived server-side and never accepted from the app, and the delivery
+   * ledger has no policies because no student screen reads it.
+   */
+  readonly devices: DeviceTokenRepository;
+  readonly deliveries: NotificationDeliveryRepository;
 }
 
 export function createRepositories(
@@ -73,6 +86,8 @@ export function createRepositories(
     audit: new SupabaseAuditLogRepository(admin),
     rateLimiter: new SupabaseRateLimiter(admin),
     accountDeletions: new SupabaseAccountDeletionRepository(admin),
+    devices: new SupabaseDeviceTokenRepository(admin),
+    deliveries: new SupabaseNotificationDeliveryRepository(admin),
   };
 }
 
@@ -81,6 +96,8 @@ export { SupabaseImpersonationDirectory } from "./impersonation.repository";
 export {
   SupabaseAccountDeletionRepository,
   SupabaseAttendanceRepository,
+  SupabaseDeviceTokenRepository,
+  SupabaseNotificationDeliveryRepository,
   SupabaseAuditLogRepository,
   SupabaseHeadcountSnapshotRepository,
   SupabaseMessCutRepository,

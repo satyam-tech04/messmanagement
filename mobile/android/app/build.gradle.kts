@@ -1,9 +1,23 @@
 import java.util.Properties
 
+// Firebase is configured per deployment, and there is no project yet (D-34).
+// `google-services.json` is gitignored and absent, and applying the plugin
+// without it fails the build outright — so the plugin is applied only when the
+// file exists. Drop the file in and push starts working; leave it out and the
+// app builds and runs exactly as before, with notifications switched off.
+val googleServicesConfig = file("google-services.json")
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+    id("com.google.gms.google-services") apply false
+}
+
+if (googleServicesConfig.exists()) {
+    apply(plugin = "com.google.gms.google-services")
+} else {
+    logger.lifecycle("MealAdda: no google-services.json — building without push notifications.")
 }
 
 // Upload signing.

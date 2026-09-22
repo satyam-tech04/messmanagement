@@ -19,6 +19,7 @@ import '../core/config.dart';
 import '../core/app_info.dart';
 import '../core/legal_links.dart';
 import 'account/delete_account_screen.dart';
+import 'account/notification_settings_screen.dart';
 import '../design/aurora.dart';
 import '../design/async_view.dart';
 import '../design/brand.dart';
@@ -33,7 +34,21 @@ import 'student/more_screen.dart';
 import 'student/plan_screen.dart';
 import 'student/qr_screen.dart';
 import '../state/auth_controller.dart';
+import '../state/push.dart';
 import '../state/theme_controller.dart';
+
+/// Where a tapped notification lands.
+///
+/// Keyed by the route the server sends (see `notification.policy.ts`), and
+/// resolved to a tab **label** rather than an index, so reordering the tabs
+/// cannot silently send announcements to the wrong screen. Announcements live
+/// on the meal-code screen, which is why they point at "My code".
+const _pushRouteTabs = <String, String>{
+  '/menu': 'Menu',
+  '/plan': 'Plan',
+  '/absences': 'More',
+  '/announcements': 'My code',
+};
 
 class _Tab {
   const _Tab({
@@ -145,6 +160,19 @@ class _AppShellState extends ConsumerState<AppShell> {
   @override
   Widget build(BuildContext context) {
     final tabs = widget.session.role.usesStaffShell ? _staffTabs : _studentTabs;
+
+    // A tapped notification parks its route until there is a shell to move.
+    // Taken rather than read, so switching tabs by hand afterwards is not
+    // yanked back to where a notification pointed ten minutes ago.
+    ref.listen(pendingPushRouteProvider, (_, next) {
+      if (next == null) return;
+      final route = ref.read(pendingPushRouteProvider.notifier).take();
+      final label = _pushRouteTabs[route];
+      if (label == null) return;
+      final index = tabs.indexWhere((t) => t.label == label);
+      if (index >= 0 && index != _index) setState(() => _index = index);
+    });
+
     final tab = tabs[_index];
 
     return Scaffold(
@@ -184,6 +212,14 @@ class _AppShellState extends ConsumerState<AppShell> {
             onSelected: (value) {
               if (value == 'signOut') {
                 ref.read(authControllerProvider.notifier).signOut();
+                return;
+              }
+              if (value == 'notifications') {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const NotificationSettingsScreen(),
+                  ),
+                );
                 return;
               }
               // A student deletes their account in the app; a mess employee
@@ -259,6 +295,19 @@ class _AppShellState extends ConsumerState<AppShell> {
                     ),
                   ),
                 const PopupMenuDivider(),
+                // Students only: nothing is sent to mess employees (D-34), so
+                // a switch here would be four switches that do nothing.
+                if (widget.session.isStudent)
+                  const PopupMenuItem(
+                    value: 'notifications',
+                    child: Row(
+                      children: [
+                        Icon(Icons.notifications_outlined, size: 18),
+                        SizedBox(width: Space.md),
+                        Expanded(child: Text('Notifications')),
+                      ],
+                    ),
+                  ),
                 for (final link in LegalLinks.all)
                   PopupMenuItem(
                     value: link.path,

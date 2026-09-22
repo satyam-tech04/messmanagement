@@ -310,3 +310,51 @@ class Announcement {
     );
   }
 }
+
+/// One switch on the notifications screen.
+///
+/// The labels come from the server rather than the app: a kind added later
+/// should appear on an already-installed app, not wait for a store update that
+/// most students never install.
+class NotificationKindSetting {
+  const NotificationKindSetting({
+    required this.kind,
+    required this.title,
+    required this.description,
+    required this.enabled,
+  });
+
+  final String kind;
+  final String title;
+  final String description;
+  final bool enabled;
+
+  factory NotificationKindSetting.fromJson(Map<String, dynamic> json) {
+    return NotificationKindSetting(
+      kind: json['kind'] as String,
+      title: json['title'] as String? ?? json['kind'] as String,
+      description: json['description'] as String? ?? '',
+      enabled: json['enabled'] as bool? ?? true,
+    );
+  }
+}
+
+class NotificationSettings {
+  const NotificationSettings({required this.available, required this.kinds});
+
+  /// False when this deployment cannot push at all. The screen says so rather
+  /// than offering switches that change nothing.
+  final bool available;
+  final List<NotificationKindSetting> kinds;
+
+  factory NotificationSettings.fromJson(Map<String, dynamic> json) {
+    return NotificationSettings(
+      available: json['available'] as bool? ?? false,
+      kinds: ((json['kinds'] as List<dynamic>?) ?? [])
+          .map((k) => NotificationKindSetting.fromJson(
+                (k as Map).cast<String, dynamic>(),
+              ))
+          .toList(),
+    );
+  }
+}

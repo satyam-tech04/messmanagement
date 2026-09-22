@@ -8,13 +8,15 @@
  * an approved absence removes plates from a headcount the kitchen cooks to.
  */
 import { revalidatePath } from "next/cache";
+import { NotificationKind, deliveryKey } from "@/core/policies/notification.policy";
+import { dispatchNotification } from "@/infra/notify/dispatch";
 import { z } from "zod";
 import { decideAbsence } from "@/core/policies/decide-absence.policy";
 import { toServiceDate } from "@/core/time";
 import { getSessionUser } from "@/infra/auth/session";
 import { createAdminClient } from "@/infra/supabase/admin";
 import { SupabaseAuditLogRepository } from "@/infra/supabase/repositories";
-import { todayIn } from "@/lib/format";
+import { formatServiceDate, todayIn } from "@/lib/format";
 
 export interface DecisionActionState {
   readonly error?: string;
@@ -102,6 +104,34 @@ export async function decideAbsenceRequest(
       dateTo: row.date_to,
     },
   });
+
+  // The student has been waiting on this answer, so it is sent the moment it
+  // exists rather than being held for a civil hour (D-34).
+  const { data: student } = await admin
+    .from("students")
+    .select("profile_id")
+    .eq("tenant_id", user.tenantId)
+    .eq("id", row.student_id)
+    .maybeSingle();
+
+  if (student) {
+    const approved = decision.value.to === "APPROVED";
+    const dates =
+      row.date_from === row.date_to
+        ? formatServiceDate(toServiceDate(row.date_from))
+        : `${formatServiceDate(toServiceDate(row.date_from))} — ${formatServiceDate(toServiceDate(row.date_to))}`;
+
+    await dispatchNotification(user.tenantId, {
+      kind: NotificationKind.ABSENCE_DECISION,
+      tenantName: user.tenantName,
+      title: approved ? "Away request approved" : "Away request rejected",
+      body: approved
+        ? `${dates}. Those meals are off your plan.`
+        : `${dates}. ${decision.value.reason ?? "Ask your mess office why."}`,
+      dedupeKey: deliveryKey(NotificationKind.ABSENCE_DECISION, { id: row.id }),
+      audience: [student.profile_id],
+    });
+  }
 
   // An approved absence changes what the kitchen cooks.
   revalidatePath("/admin/absences");

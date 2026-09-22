@@ -40,6 +40,7 @@
     "verify:bearer": "tsx scripts/verify-bearer-api.mts",
     "verify:mobile-auth": "tsx scripts/verify-mobile-auth.mts",
     "verify:account-deletion": "tsx scripts/verify-account-deletion.mts",
+    "verify:push": "tsx scripts/verify-push.mts",
     "app:name": "node scripts/apply-app-identity.mjs",
     "app:bundle-id": "node scripts/apply-app-identity.mjs --bundle-id",
     "create:test-accounts": "tsx scripts/create-test-accounts.ts"

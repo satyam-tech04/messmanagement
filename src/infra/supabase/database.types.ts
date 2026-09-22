@@ -337,6 +337,39 @@ export type Database = {
       };
       Relationships: [];
     };
+      device_tokens: {
+      Row: {
+        id: string;
+        tenant_id: string;
+        profile_id: string;
+        token: string;
+        platform: Database["public"]["Enums"]["device_platform"];
+        app_build: number | null;
+        created_at: string;
+        last_seen_at: string;
+      };
+      Insert: {
+        id?: string;
+        tenant_id: string;
+        profile_id: string;
+        token: string;
+        platform: Database["public"]["Enums"]["device_platform"];
+        app_build?: number | null;
+        created_at?: string;
+        last_seen_at?: string;
+      };
+      Update: {
+        id?: string;
+        tenant_id?: string;
+        profile_id?: string;
+        token?: string;
+        platform?: Database["public"]["Enums"]["device_platform"];
+        app_build?: number | null;
+        created_at?: string;
+        last_seen_at?: string;
+      };
+      Relationships: [];
+    };
       headcount_snapshots: {
       Row: {
         id: string;
@@ -532,6 +565,36 @@ export type Database = {
       };
       Relationships: [];
     };
+      notification_deliveries: {
+      Row: {
+        id: string;
+        tenant_id: string;
+        kind: Database["public"]["Enums"]["notification_kind"];
+        dedupe_key: string;
+        sent_count: number;
+        failed_count: number;
+        created_at: string;
+      };
+      Insert: {
+        id?: string;
+        tenant_id: string;
+        kind: Database["public"]["Enums"]["notification_kind"];
+        dedupe_key: string;
+        sent_count?: number;
+        failed_count?: number;
+        created_at?: string;
+      };
+      Update: {
+        id?: string;
+        tenant_id?: string;
+        kind?: Database["public"]["Enums"]["notification_kind"];
+        dedupe_key?: string;
+        sent_count?: number;
+        failed_count?: number;
+        created_at?: string;
+      };
+      Relationships: [];
+    };
       plans: {
       Row: {
         id: string;
@@ -594,6 +657,7 @@ export type Database = {
         created_at: string;
         updated_at: string;
         mobile: string | null;
+        notification_opt_outs: string[];
       };
       Insert: {
         id: string;
@@ -608,6 +672,7 @@ export type Database = {
         created_at?: string;
         updated_at?: string;
         mobile?: string | null;
+        notification_opt_outs?: string[];
       };
       Update: {
         id?: string;
@@ -622,6 +687,7 @@ export type Database = {
         created_at?: string;
         updated_at?: string;
         mobile?: string | null;
+        notification_opt_outs?: string[];
       };
       Relationships: [];
     };
@@ -1724,8 +1790,10 @@ export type Database = {
       bill_payment_status: "UNPAID" | "PAID";
       bill_status: "OPEN" | "FINALIZED" | "CANCELLED";
       deletion_request_status: "REQUESTED" | "COMPLETED" | "CANCELLED";
+      device_platform: "IOS" | "ANDROID";
       meal_slot: "BREAKFAST" | "LUNCH" | "SNACKS" | "DINNER";
       mess_cut_status: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED" | "CREDITED";
+      notification_kind: "ANNOUNCEMENT" | "ABSENCE_DECISION" | "PLAN_REMINDER" | "MENU_PUBLISHED";
       pause_status: "ACTIVE" | "CANCELLED";
       plan_duration: "MONTHLY" | "QUARTERLY";
       profile_status: "ACTIVE" | "DISABLED";

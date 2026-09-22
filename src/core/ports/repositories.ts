@@ -18,6 +18,7 @@ import type { MessCutSnapshot, SubscriberSnapshot } from "../policies/headcount.
 import type { SwitchableTenant } from "../policies/tenant-switch.policy";
 import type { ImpersonationCandidate } from "../policies/operator-access.policy";
 import type { DeletionRequestStatus, RedactedIdentity } from "../policies/account-deletion.policy";
+import type { NotificationKind, PushMessage } from "../policies/notification.policy";
 
 export interface SubscriptionForVerification {
   readonly id: string;
@@ -377,4 +378,76 @@ export interface AccountDeletionRepository {
       readonly redacted: RedactedIdentity;
     },
   ): Promise<void>;
+}
+
+// ---------------------------------------------------------------------------
+// Push notifications (migration 020)
+// ---------------------------------------------------------------------------
+
+export interface RegisterDeviceInput {
+  readonly tenantId: string;
+  readonly profileId: string;
+  readonly token: string;
+  readonly platform: "IOS" | "ANDROID";
+  readonly appBuild: number | null;
+}
+
+/** One student, with everywhere they can be reached and what they have muted. */
+export interface NotificationRecipient {
+  readonly profileId: string;
+  readonly studentStatus: StudentStatus;
+  readonly optOuts: readonly string[];
+  readonly tokens: readonly string[];
+}
+
+export interface DeviceTokenRepository {
+  /**
+   * Idempotent by the token: the same device re-registering on every launch
+   * must update one row, and a token that moved to another account must move,
+   * not duplicate — or the previous holder keeps getting the notifications.
+   */
+  register(input: RegisterDeviceInput): Promise<void>;
+  forget(token: string): Promise<void>;
+  /** Every device of one person. Used on sign-out and on erasure (D-32). */
+  forgetAllFor(tenantId: string, profileId: string): Promise<void>;
+  /** Dead tokens FCM has rejected. Keeping them wastes a send every time. */
+  prune(tokens: readonly string[]): Promise<void>;
+  studentsOf(tenantId: string): Promise<readonly NotificationRecipient[]>;
+  byProfileIds(
+    tenantId: string,
+    profileIds: readonly string[],
+  ): Promise<readonly NotificationRecipient[]>;
+  optOutsFor(tenantId: string, profileId: string): Promise<readonly string[]>;
+  setOptOuts(tenantId: string, profileId: string, kinds: readonly string[]): Promise<void>;
+}
+
+export interface NotificationDeliveryRepository {
+  /**
+   * Reserves this event. Returns false when it has already been sent, which is
+   * what makes a retried cron run push nothing (rule 5).
+   */
+  claim(tenantId: string, kind: NotificationKind, dedupeKey: string): Promise<boolean>;
+  record(
+    tenantId: string,
+    kind: NotificationKind,
+    dedupeKey: string,
+    counts: { readonly sent: number; readonly failed: number },
+  ): Promise<void>;
+}
+
+export interface PushSendResult {
+  readonly sent: number;
+  readonly failed: number;
+  /** Tokens the transport says will never work again. */
+  readonly deadTokens: readonly string[];
+}
+
+/**
+ * The transport. Implemented against FCM, and by a no-op when the project has
+ * no credentials — push is configured per deployment, and its absence must
+ * never stop an announcement being published.
+ */
+export interface PushSender {
+  readonly enabled: boolean;
+  send(tokens: readonly string[], message: PushMessage): Promise<PushSendResult>;
 }

@@ -112,5 +112,11 @@
     "state": "applied",
     "appliedTo": "yenxlcrtlmnfotfqqabo",
     "appliedAt": "2026-09-21"
+  },
+  "20260921000020_push_notifications.sql": {
+    "sha256": "07a5fd7038764e65d92b26a738ccd418b85b65b0b8afe21e8ec2320e4c24ce22",
+    "state": "applied",
+    "appliedTo": "yenxlcrtlmnfotfqqabo",
+    "appliedAt": "2026-09-21"
   }
 }

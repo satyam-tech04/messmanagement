@@ -71,6 +71,14 @@ class ApiClient {
   Future<Map<String, dynamic>> post(String path, {Object? body}) =>
       _send('POST', path, body: body);
 
+  /// Used to give up a device's push token on sign-out.
+  Future<Map<String, dynamic>> delete(String path, {Object? body}) =>
+      _send('DELETE', path, body: body);
+
+  /// A full replacement, for the notification switches.
+  Future<Map<String, dynamic>> put(String path, {Object? body}) =>
+      _send('PUT', path, body: body);
+
   /// A read with no session, for the endpoints that answer before anyone signs
   /// in — the version check has to work for an app that is blocked from
   /// signing in at all.

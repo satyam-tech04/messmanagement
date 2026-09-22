@@ -259,7 +259,18 @@ export class SupabaseAccountDeletionRepository implements AccountDeletionReposit
       if (feedbackError) throw feedbackError;
     }
 
-    // 2. The profile: name, contact details, photo pointer.
+    // 2. Their devices. A push token identifies a phone and can be sent to, so
+    //    it is deleted outright rather than anonymised — there is nothing in a
+    //    token worth keeping, and an erased student must never be buzzed.
+    const { error: tokenError } = await this.client
+      .from("device_tokens")
+      .delete()
+      .eq("tenant_id", tenantId)
+      .eq("profile_id", profileId);
+
+    if (tokenError) throw tokenError;
+
+    // 3. The profile: name, contact details, photo pointer.
     const { error: profileError } = await this.client
       .from("profiles")
       .update({
@@ -274,7 +285,7 @@ export class SupabaseAccountDeletionRepository implements AccountDeletionReposit
 
     if (profileError) throw profileError;
 
-    // 3. The student row: roll number, room, block. The row itself stays —
+    // 4. The student row: roll number, room, block. The row itself stays —
     //    attendance, subscriptions and bills all cascade from it.
     if (studentId) {
       const { error: studentError } = await this.client
@@ -291,7 +302,7 @@ export class SupabaseAccountDeletionRepository implements AccountDeletionReposit
       if (studentError) throw studentError;
     }
 
-    // 4. The login itself. `profiles.status = 'DISABLED'` already refuses every
+    // 5. The login itself. `profiles.status = 'DISABLED'` already refuses every
     //    session, but the credentials must stop being credentials: the address
     //    is replaced with one derived from the profile id — the same value on a
     //    retry — and the password with a value nobody holds.
