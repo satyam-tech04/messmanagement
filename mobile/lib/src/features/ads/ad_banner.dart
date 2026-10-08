@@ -22,6 +22,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import '../../state/app_config.dart';
+import 'ad_retry.dart';
 
 /// Initialised once per process, lazily — the SDK is only started when an ad is
 /// actually going to be shown, so a deployment with ads off never runs it at
@@ -59,9 +60,12 @@ class _AdSlotState extends ConsumerState<AdSlot> {
   BannerAd? _ad;
   bool _loaded = false;
   String? _loadedFor;
+  int _failures = 0;
+  Timer? _retry;
 
   @override
   void dispose() {
+    _retry?.cancel();
     _ad?.dispose();
     super.dispose();
   }
@@ -93,6 +97,7 @@ class _AdSlotState extends ConsumerState<AdSlot> {
       listener: BannerAdListener(
         onAdLoaded: (_) {
           if (!mounted) return;
+          _failures = 0;
           setState(() => _loaded = true);
         },
         onAdFailedToLoad: (ad, error) {
@@ -104,15 +109,31 @@ class _AdSlotState extends ConsumerState<AdSlot> {
           setState(() {
             _ad = null;
             _loaded = false;
-            // Cleared so a later rebuild may try again.
-            _loadedFor = null;
           });
+          _retryLater();
         },
       ),
     );
 
     setState(() => _ad = ad);
     unawaited(ad.load());
+  }
+
+  /// Asks again after a wait, a few times, then leaves the slot empty.
+  ///
+  /// `_loadedFor` stays set in the meantime, and that is the point: the
+  /// `setState` above rebuilds this widget, and a rebuild that found it cleared
+  /// would request again at once — which fails again, rebuilds again, and
+  /// builds a new native ad view each time round.
+  void _retryLater() {
+    final delay = adRetryDelay(++_failures);
+    if (delay == null) return;
+
+    _retry?.cancel();
+    _retry = Timer(delay, () {
+      if (!mounted) return;
+      setState(() => _loadedFor = null);
+    });
   }
 
   @override

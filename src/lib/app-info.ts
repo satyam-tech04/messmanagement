@@ -11,7 +11,7 @@ export const APP_NAME = "MealAdda";
  * minimum above this locks out every student including the newest release.
  */
 export const APP_VERSION = "1.0.0";
-export const APP_BUILD = 1;
+export const APP_BUILD = 2;
 
 export const SUPPORT_EMAIL = "support@mealadda.in";
 

@@ -78,6 +78,12 @@ android {
             } else {
                 signingConfigs.getByName("upload")
             }
+            // R8 is on for release builds, and proguard-rules.pro holds a rule
+            // without which the app dies on open. See the note in that file.
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 }

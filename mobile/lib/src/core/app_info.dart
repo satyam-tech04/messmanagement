@@ -18,5 +18,5 @@ class AppInfo {
   static const String version = "1.0.0";
 
   /// The store's build number. Compared against the server's minimum on launch.
-  static const int build = 1;
+  static const int build = 2;
 }
