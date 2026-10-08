@@ -9,13 +9,20 @@
  *
  *   1. Preflight — clean git tree, upload keystore readable, Firebase config for
  *      this package, AdMob ids (sample ids only with --allow-sample-ads, and the
- *      bundle is then labelled closed-test), and a build number not already filed.
+ *      bundle is then labelled closed-test), a build number not already filed,
+ *      and exactly one Android device or emulator attached for step 5.
  *   2. Tests — `npm run verify` (web + domain), `flutter analyze`, `flutter test`.
  *   3. Build — `flutter build appbundle --release`, Dart symbols split out.
  *   4. Verify — the bundle's signer must be the upload key's certificate. Gradle
  *      falls back to the DEBUG key when key.properties is missing, and Play
  *      refuses that bundle only after a long upload.
- *   5. File — bundle, symbols, R8 mapping, checksums and notes into
+ *   5. Open it — the bundle itself is installed on the attached device and
+ *      launched, and must still be running, in front, with nothing in the crash
+ *      log. There is no flag to skip this. Build 1.0.0+1 passed steps 1–4 and
+ *      died on open on every phone: R8 had stripped a constructor, and only the
+ *      shrunk release build is missing it, so no test and no debug run could
+ *      have seen it.
+ *   6. File — bundle, symbols, R8 mapping, checksums and notes into
  *      ~/Desktop/MealAdda-releases/android/<version>+<build>-<channel>/.
  *
  * API base URL, Supabase URL/anon key and the Firebase project are compiled in
@@ -29,12 +36,14 @@ import { createHash } from "node:crypto";
 import { homedir } from "node:os";
 import { basename, join } from "node:path";
 import {
+  connectedDevices,
   extractSha256,
   parseProperties,
   parsePubspecVersion,
   releaseChannel,
   releaseName,
 } from "./lib/release-android.mjs";
+import { openBundleOnDevice } from "./lib/open-android-bundle.mjs";
 
 const root = join(import.meta.dirname, "..");
 const mobile = join(root, "mobile");
@@ -132,6 +141,43 @@ if (existsSync(outDir)) {
   );
 }
 
+// Checked here rather than at step 5, so a missing phone costs seconds and not
+// the ten minutes of tests and build that come first.
+const sdkAdb = join(
+  process.env.ANDROID_HOME ??
+    process.env.ANDROID_SDK_ROOT ??
+    join(homedir(), "Library/Android/sdk"),
+  "platform-tools",
+  "adb",
+);
+const adb = existsSync(sdkAdb) ? sdkAdb : "adb";
+let devices;
+try {
+  devices = connectedDevices(capture(adb, ["devices"]));
+} catch {
+  die(
+    "adb not found — install the Android SDK platform-tools. The bundle must be opened before it is filed.",
+  );
+}
+try {
+  capture("bundletool", ["version"]);
+} catch {
+  die(
+    "bundletool not found — `brew install bundletool`. It installs the bundle itself, as Play would.",
+  );
+}
+if (devices.length !== 1) {
+  die(
+    `${devices.length === 0 ? "No Android device is" : `${devices.length} Android devices are`} attached. ` +
+      "Connect exactly one phone with USB debugging authorised, or start one emulator — " +
+      "the bundle is installed and opened on it before it is filed, and that step cannot be skipped.",
+  );
+}
+const device = devices[0];
+const adbShell = (...args) => capture(adb, ["-s", device, "shell", ...args]).trim();
+const deviceName = `${adbShell("getprop", "ro.product.model")} (Android ${adbShell("getprop", "ro.build.version.release")})`;
+ok(`Will open the bundle on ${deviceName}`);
+
 // ── 2. Tests ────────────────────────────────────────────────────────────────
 step("Web + domain tests (npm run verify)");
 run("npm", ["run", "verify"]);
@@ -168,7 +214,21 @@ if (signerSha !== uploadSha) {
 }
 ok("Signed by the upload key");
 
-// ── 5. File the release ─────────────────────────────────────────────────────
+// ── 5. Open it on a device ──────────────────────────────────────────────────
+step(`Installing and opening the bundle on ${deviceName}`);
+const verdict = openBundleOnDevice({
+  aab,
+  adb,
+  device,
+  keyProps,
+  packageName: appConfig.bundleId,
+});
+if (!verdict.ok) {
+  die(`${verdict.reason}\n  Nothing was filed. Full log: adb logcat -b crash -d`);
+}
+ok(`Opened and stayed open on ${deviceName}`);
+
+// ── 6. File the release ─────────────────────────────────────────────────────
 step(`Filing to ${outDir}`);
 mkdirSync(outDir, { recursive: true });
 
@@ -212,9 +272,15 @@ writeFileSync(
 - API: ${appConfig.website}
 - AdMob app id: ${appConfig.admob.androidAppId}${channel === "closed-test" ? " (SAMPLE — test ads)" : ""}
 - Bundle: ${bundleName} (${mb} MB; users download ~15–18 MB)
+- Opened on: ${deviceName}
 
 Checks passed: clean tree, keystore, Firebase config, AdMob gate, npm run verify,
-flutter analyze, flutter test, upload-key signature.
+flutter analyze, flutter test, upload-key signature, and the bundle itself
+installed and opened on the device above without crashing.
+
+That last check opens the app to its first screen. It does not sign in. Before
+promoting this build beyond testers, sign in as a student on a real phone and
+confirm the meal code, the banner and the notification prompt appear.
 
 ## Upload
 

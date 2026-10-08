@@ -61,3 +61,49 @@ export function extractSha256(keytoolOutput) {
   const match = keytoolOutput.match(/SHA-?256\)?:\s*([0-9A-Fa-f:]+)/);
   return match ? match[1].toUpperCase() : null;
 }
+
+/**
+ * Serials from `adb devices` that are ready to take commands. A phone that is
+ * `unauthorized` or `offline` is left out: it is attached, and useless.
+ */
+export function connectedDevices(adbDevicesOutput) {
+  return adbDevicesOutput
+    .split(/\r?\n/)
+    .map((line) => line.trim().split(/\s+/))
+    .filter(([serial, state]) => serial && state === "device")
+    .map(([serial]) => serial);
+}
+
+/**
+ * Whether the installed bundle survived being opened.
+ *
+ * Three things must all hold a few seconds after launch: the process exists,
+ * the crash log has nothing from our package, and our activity is the one on
+ * screen. The crash log is checked even when the process is alive, because
+ * Android restarts a crashed app and a live pid would hide it.
+ *
+ * `crashLog` is `adb logcat -b crash`, cleared before the launch. It carries
+ * Java crashes ("Process: <package>") and native ones ("Cmdline: <package>").
+ */
+export function launchVerdict({ packageName, pid, crashLog, resumedActivity }) {
+  const ours = new RegExp(`(Process|Cmdline): ${packageName.replace(/\./g, "\\.")}\\b`);
+  if (ours.test(crashLog)) {
+    const lines = crashLog.split(/\r?\n/).filter((line) => line.trim());
+    // The innermost cause is the one that says what broke; the outer frames
+    // only say that something did.
+    const cause = (lines.filter((line) => line.includes("Caused by:")).at(-1) ?? lines[0])
+      .replace(/^.*(?:Caused by:|AndroidRuntime:|DEBUG\s*:)\s*/, "")
+      .trim();
+    return { ok: false, reason: `The app crashed on open: ${cause}` };
+  }
+  if (!pid.trim()) {
+    return { ok: false, reason: "The app is not running a few seconds after launch." };
+  }
+  if (!resumedActivity.startsWith(`${packageName}/`)) {
+    return {
+      ok: false,
+      reason: `The app is not in the foreground after launch (showing ${resumedActivity || "nothing"}).`,
+    };
+  }
+  return { ok: true };
+}

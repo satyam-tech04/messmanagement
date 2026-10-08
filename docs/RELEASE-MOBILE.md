@@ -164,7 +164,8 @@ upload keystore, a `google-services.json` for another package, sample AdMob ids
 (unless the flag is passed, which labels the bundle **closed-test**), and a build
 number that was already filed. It then runs `npm run verify`, `flutter analyze`
 and `flutter test`, builds, checks the bundle is signed by the **upload key** (not
-the debug fallback), and files everything under
+the debug fallback), **installs that bundle on the attached device and opens it**,
+and files everything under
 `~/Desktop/MealAdda-releases/android/<version>+<build>-<channel>/`: the `.aab`,
 `native-debug-symbols.zip`, `mapping.txt`, `dart-symbols.zip`, `SHA256SUMS` and a
 `RELEASE.md` with upload steps.
@@ -176,6 +177,25 @@ alias `upload`, SHA-256
 `9C:6F:D4:89:78:9F:12:5C:6A:0C:C5:47:76:68:64:A7:F5:E7:E6:ED:0A:82:F7:B1:B3:D2:69:DC:27:74:2A:66`.
 A lost upload key can be reset through Play support, but that takes days — keep
 the `.jks` and `key.properties` in a password manager.
+
+**The bundle is opened before it is filed, and there is no flag to skip it.**
+Connect exactly one phone (USB debugging authorised) or start one emulator before
+running the script; it refuses up front otherwise. It needs `bundletool`
+(`brew install bundletool`), which splits and installs the `.aab` itself, the way
+Play does — a separately built APK would be testing a sibling of what ships. The
+app must still be running, in the foreground, with nothing in the crash log.
+
+This exists because build 1.0.0+1 passed every other check and died on open on
+every phone. R8 runs only on release builds, and under AGP 9 it stripped the
+constructor Room uses to create WorkManager's database (WorkManager arrives with
+the ads SDK). No unit test and no debug run can see that class of bug; opening the
+shrunk build is the only thing that does. The keep rule is in
+`mobile/android/app/proguard-rules.pro`. When a dependency is added or upgraded,
+this step is what tells you whether it needs another rule.
+
+The check reaches the first screen only. It does not sign in, so the student
+shell (ads, push) still needs a manual sign-in on a real phone before a build is
+promoted beyond testers.
 
 The `.aab` is around 50 MB because it contains every ABI and density; Play splits
 it and a user downloads roughly **15–18 MB**. That is the number to quote, not
